@@ -1,0 +1,22 @@
+# Zig
+zig-out/
+zig-cache/
+.zig-cache/
+
+# Build artifacts
+chop
+*.wasm
+
+# Go
+vendor/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
