@@ -7,6 +7,16 @@ import "fmt"
 // evmHandle wraps the opaque pointer (stub)
 type evmHandle uintptr
 
+// isValidHandle checks if a handle is valid (non-zero for stub)
+func isValidHandle(h evmHandle) bool {
+	return h != 0
+}
+
+// invalidHandle returns an invalid handle (0 for stub)
+func invalidHandle() evmHandle {
+	return 0
+}
+
 // AsyncRequestType represents the type of async request
 type AsyncRequestType uint8
 

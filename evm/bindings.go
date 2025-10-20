@@ -81,6 +81,16 @@ import (
 // evmHandle wraps the opaque C pointer
 type evmHandle C.EvmHandle
 
+// isValidHandle checks if a handle is valid (non-nil for CGo)
+func isValidHandle(h evmHandle) bool {
+	return h != nil
+}
+
+// invalidHandle returns an invalid handle (nil for CGo)
+func invalidHandle() evmHandle {
+	return nil
+}
+
 // AsyncRequestType represents the type of async request
 type AsyncRequestType uint8
 
