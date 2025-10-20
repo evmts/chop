@@ -1,3 +1,5 @@
+// +build cgo
+
 package guillotine
 
 // #cgo LDFLAGS: -L${SRCDIR}/../../lib/guillotine-mini/zig-out/bin -lwasm

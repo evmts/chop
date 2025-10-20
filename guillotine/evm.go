@@ -61,7 +61,7 @@ type ExecutionResult struct {
 // NewEVM creates a new EVM instance
 func NewEVM(hardfork string, logLevel LogLevel) (*EVM, error) {
 	handle := evmCreate(hardfork, logLevel)
-	if handle == nil {
+	if handle == 0 {
 		return nil, fmt.Errorf("failed to create EVM instance")
 	}
 
@@ -70,9 +70,9 @@ func NewEVM(hardfork string, logLevel LogLevel) (*EVM, error) {
 
 // Close destroys the EVM instance and frees resources
 func (e *EVM) Close() {
-	if e.handle != nil {
+	if e.handle != 0 {
 		evmDestroy(e.handle)
-		e.handle = nil
+		e.handle = 0
 	}
 }
 
