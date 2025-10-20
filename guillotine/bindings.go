@@ -317,7 +317,7 @@ func evmCallFFI(handle evmHandle) (*AsyncRequest, bool) {
 	}
 	copy(req.Address[:], C.GoBytes(unsafe.Pointer(&cReq.address[0]), 20))
 	copy(req.Slot[:], C.GoBytes(unsafe.Pointer(&cReq.slot[0]), 32))
-	copy(req.JSONData[:], C.GoBytes(unsafe.Pointer(&cReq.json_data[0]), int(req.JSONLen)))
+	copy(req.JSONData[:], C.GoBytes(unsafe.Pointer(&cReq.json_data[0]), C.int(req.JSONLen)))
 
 	return req, true
 }
@@ -351,7 +351,7 @@ func evmContinueFFI(handle evmHandle, continueType uint8, data []byte) (*AsyncRe
 	copy(req.Address[:], C.GoBytes(unsafe.Pointer(&cReq.address[0]), 20))
 	copy(req.Slot[:], C.GoBytes(unsafe.Pointer(&cReq.slot[0]), 32))
 	if req.JSONLen > 0 {
-		copy(req.JSONData[:], C.GoBytes(unsafe.Pointer(&cReq.json_data[0]), int(req.JSONLen)))
+		copy(req.JSONData[:], C.GoBytes(unsafe.Pointer(&cReq.json_data[0]), C.int(req.JSONLen)))
 	}
 
 	return req, true

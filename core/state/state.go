@@ -1,7 +1,7 @@
 package state
 
 import (
-	"chop/internal/types"
+	"chop/types"
 	"encoding/json"
 	"os"
 	"path/filepath"

@@ -1,10 +1,10 @@
 package app
 
 import (
-	"chop/internal/core/bytecode"
-	logs "chop/internal/core"
-	"chop/internal/types"
-	"chop/internal/ui"
+	"chop/core/bytecode"
+	logs "chop/core"
+	"chop/types"
+	"chop/ui"
 
 	tea "github.com/charmbracelet/bubbletea"
 )

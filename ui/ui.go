@@ -1,8 +1,8 @@
 package ui
 
 import (
-	"chop/internal/config"
-	"chop/internal/types"
+	"chop/config"
+	"chop/types"
 	"fmt"
 	"strings"
 

@@ -1,13 +1,13 @@
 package app
 
 import (
-	"chop/internal/config"
-	"chop/internal/core/bytecode"
-	"chop/internal/core/evm"
-	"chop/internal/core/state"
-	"chop/internal/core/utils"
-	"chop/internal/types"
-	"chop/internal/ui"
+	"chop/config"
+	"chop/core/bytecode"
+	"chop/core/evm"
+	"chop/core/state"
+	"chop/core/utils"
+	"chop/types"
+	"chop/ui"
 	"fmt"
 	"time"
 

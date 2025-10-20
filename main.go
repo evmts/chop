@@ -1,7 +1,7 @@
 package main
 
 import (
-	"chop/internal/app"
+	"chop/app"
 	"fmt"
 	"log"
 	"os"

@@ -1,7 +1,7 @@
 package history
 
 import (
-	"chop/internal/types"
+	"chop/types"
 	"fmt"
 	"sync"
 )

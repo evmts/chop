@@ -1,7 +1,7 @@
 package evm
 
 import (
-	"chop/internal/types"
+	"chop/types"
 )
 
 // VMManager manages the EVM instance (stubbed for now)

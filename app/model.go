@@ -1,10 +1,10 @@
 package app
 
 import (
-	"chop/internal/core/bytecode"
-	"chop/internal/core/evm"
-	"chop/internal/core/history"
-	"chop/internal/types"
+	"chop/core/bytecode"
+	"chop/core/evm"
+	"chop/core/history"
+	"chop/types"
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"

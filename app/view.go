@@ -1,10 +1,10 @@
 package app
 
 import (
-	"chop/internal/config"
-	logs "chop/internal/core"
-	"chop/internal/types"
-	"chop/internal/ui"
+	"chop/config"
+	logs "chop/core"
+	"chop/types"
+	"chop/ui"
 
 	"github.com/charmbracelet/lipgloss"
 )

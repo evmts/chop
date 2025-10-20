@@ -1,7 +1,7 @@
 package config
 
 import (
-	"chop/internal/types"
+	"chop/types"
 
 	"github.com/charmbracelet/lipgloss"
 )

@@ -8,7 +8,7 @@ pub fn build(b: *std.Build) void {
     // Chop Module (our Zig code)
     // ========================================
     const chop_mod = b.addModule("chop", .{
-        .root_source_file = b.path("src/root.zig"),
+        .root_source_file = b.path("evm/root.zig"),
         .target = target,
     });
 
@@ -18,7 +18,7 @@ pub fn build(b: *std.Build) void {
     const exe = b.addExecutable(.{
         .name = "chop",
         .root_module = b.createModule(.{
-            .root_source_file = b.path("src/main.zig"),
+            .root_source_file = b.path("evm/main.zig"),
             .target = target,
             .optimize = optimize,
             .imports = &.{

@@ -1,7 +1,7 @@
 package core
 
 import (
-	"chop/internal/types"
+	"chop/types"
 )
 
 // HasLogs checks if a call result has logs

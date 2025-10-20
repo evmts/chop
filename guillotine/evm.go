@@ -5,6 +5,12 @@ import (
 	"fmt"
 )
 
+// Address represents a 20-byte Ethereum address
+type Address [20]byte
+
+// U256 represents a 32-byte unsigned integer
+type U256 [32]byte
+
 // EVM represents a Guillotine EVM instance
 type EVM struct {
 	handle evmHandle

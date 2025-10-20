@@ -1,12 +1,12 @@
 package app
 
 import (
-	"chop/internal/config"
-	"chop/internal/core/evm"
-	"chop/internal/core/history"
-	"chop/internal/core/state"
-	"chop/internal/types"
-	"chop/internal/ui"
+	"chop/config"
+	"chop/core/evm"
+	"chop/core/history"
+	"chop/core/state"
+	"chop/types"
+	"chop/ui"
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"

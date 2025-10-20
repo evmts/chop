@@ -1,8 +1,8 @@
 package app
 
 import (
-	"chop/internal/config"
-	"chop/internal/types"
+	"chop/config"
+	"chop/types"
 )
 
 // GetCallParams returns the list of parameters based on call type
