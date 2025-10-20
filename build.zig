@@ -1,41 +1,14 @@
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
-    const optimize = b.standardOptimizeOption(.{});
+    // Check if guillotine-mini submodule is initialized
+    const submodule_path = "lib/guillotine-mini/build.zig";
+    _ = std.fs.cwd().statFile(submodule_path) catch {
+        std.debug.print("Error: guillotine-mini submodule not initialized\n", .{});
+        std.debug.print("Run: git submodule update --init --recursive\n", .{});
+        std.process.exit(1);
+    };
 
-    // ========================================
-    // Chop Module (our Zig code)
-    // ========================================
-    const chop_mod = b.addModule("chop", .{
-        .root_source_file = b.path("evm/root.zig"),
-        .target = target,
-    });
-
-    // ========================================
-    // Chop Executable
-    // ========================================
-    const exe = b.addExecutable(.{
-        .name = "chop",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("evm/main.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "chop", .module = chop_mod },
-            },
-        }),
-    });
-    b.installArtifact(exe);
-
-    const run_cmd = b.addRunArtifact(exe);
-    run_cmd.step.dependOn(b.getInstallStep());
-    if (b.args) |args| {
-        run_cmd.addArgs(args);
-    }
-
-    const run_step = b.step("run", "Run the chop app");
-    run_step.dependOn(&run_cmd.step);
 
     // ========================================
     // Guillotine-mini Submodule Build
@@ -57,7 +30,7 @@ pub fn build(b: *std.Build) void {
     // Go Build
     // ========================================
 
-    // Build Go binary
+    // Build Go binary (without CGo by default)
     const go_build = b.addSystemCommand(&.{
         "go",
         "build",
@@ -65,16 +38,28 @@ pub fn build(b: *std.Build) void {
         "zig-out/bin/chop-go",
         "./main.go",
     });
+    go_build.setEnvironmentVariable("CGO_ENABLED", "0");
 
     const go_step = b.step("go", "Build Go application");
     go_step.dependOn(&go_build.step);
 
-    // Go tests
+    // Run the Go application
+    const go_run = b.addSystemCommand(&.{"zig-out/bin/chop-go"});
+    go_run.step.dependOn(&go_build.step);
+    if (b.args) |args| {
+        go_run.addArgs(args);
+    }
+
+    const run_step = b.step("run", "Run the Go application");
+    run_step.dependOn(&go_run.step);
+
+    // Go tests (without CGo by default)
     const go_test = b.addSystemCommand(&.{
         "go",
         "test",
         "./...",
     });
+    go_test.setEnvironmentVariable("CGO_ENABLED", "0");
 
     const go_test_step = b.step("go-test", "Run Go tests");
     go_test_step.dependOn(&go_test.step);
@@ -83,9 +68,8 @@ pub fn build(b: *std.Build) void {
     // Unified Build Steps
     // ========================================
 
-    // Build all: Zig executable, Go binary, and guillotine-mini
-    const build_all = b.step("all", "Build everything (Zig, Go, and guillotine-mini)");
-    build_all.dependOn(&exe.step);          // Zig executable
+    // Build all: Go binary and guillotine-mini
+    const build_all = b.step("all", "Build everything (Go and guillotine-mini)");
     build_all.dependOn(guillotine_step);    // guillotine-mini WASM
     build_all.dependOn(go_step);            // Go binary
 
@@ -97,20 +81,7 @@ pub fn build(b: *std.Build) void {
     // Tests
     // ========================================
 
-    // Zig tests
-    const chop_tests = b.addTest(.{
-        .root_module = chop_mod,
-    });
-    const run_chop_tests = b.addRunArtifact(chop_tests);
-
-    const exe_tests = b.addTest(.{
-        .root_module = exe.root_module,
-    });
-    const run_exe_tests = b.addRunArtifact(exe_tests);
-
-    const test_step = b.step("test", "Run all tests (Zig and Go)");
-    test_step.dependOn(&run_chop_tests.step);
-    test_step.dependOn(&run_exe_tests.step);
+    const test_step = b.step("test", "Run all tests (Go only)");
     test_step.dependOn(go_test_step);
 
     // ========================================
