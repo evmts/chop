@@ -1,6 +1,6 @@
 // +build cgo
 
-package guillotine
+package evm
 
 // #cgo LDFLAGS: -L${SRCDIR}/../../lib/guillotine-mini/zig-out/bin -lwasm
 // #include <stdint.h>

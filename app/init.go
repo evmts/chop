@@ -5,8 +5,8 @@ import (
 	"chop/core/evm"
 	"chop/core/history"
 	"chop/core/state"
+	"chop/tui"
 	"chop/types"
-	"chop/ui"
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -35,9 +35,9 @@ func InitialModel() Model {
 		callParams:     NewCallParameters(),
 		vmManager:      vmMgr,
 		historyManager: historyMgr,
-		historyTable:   ui.CreateHistoryTable(),
-		contractsTable: ui.CreateContractsTable(),
-		logsTable:      ui.CreateLogsTable(10),
+		historyTable:   tui.CreateHistoryTable(),
+		contractsTable: tui.CreateContractsTable(),
+		logsTable:      tui.CreateLogsTable(10),
 	}
 }
 

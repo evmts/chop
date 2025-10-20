@@ -3,8 +3,8 @@ package app
 import (
 	"chop/core/bytecode"
 	logs "chop/core"
+	"chop/tui"
 	"chop/types"
-	"chop/ui"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -29,7 +29,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Populate logs table if there are logs
 		if logs.HasLogs(msg.result) {
-			rows := ui.ConvertLogsToRows(msg.result.Logs)
+			rows := tui.ConvertLogsToRows(msg.result.Logs)
 			m.logsTable.SetRows(rows)
 		}
 
@@ -62,12 +62,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if tableHeight < 8 {
 					tableHeight = 8
 				}
-				m.instructionsTable = ui.CreateInstructionsTable(tableHeight)
+				m.instructionsTable = tui.CreateInstructionsTable(tableHeight)
 
 				// Load instructions for the first block
 				instructions, _, err := bytecode.GetInstructionsForBlock(m.disassemblyResult, m.currentBlockIndex)
 				if err == nil && len(instructions) > 0 {
-					rows := ui.ConvertInstructionsToRows(instructions, m.disassemblyResult.Analysis.JumpDests)
+					rows := tui.ConvertInstructionsToRows(instructions, m.disassemblyResult.Analysis.JumpDests)
 					m.instructionsTable.SetRows(rows)
 				}
 			}

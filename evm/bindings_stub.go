@@ -1,6 +1,6 @@
 // +build !cgo
 
-package guillotine
+package evm
 
 import "fmt"
 

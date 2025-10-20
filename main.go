@@ -2,7 +2,7 @@ package main
 
 import (
 	"chop/app"
-	"chop/guillotine"
+	"chop/evm"
 	"encoding/hex"
 	"fmt"
 	"log"
@@ -44,8 +44,8 @@ func parseHexOrDecimal(s string) (*big.Int, error) {
 }
 
 // parseAddress parses a hex address string into an Address
-func parseAddress(s string) (guillotine.Address, error) {
-	var addr guillotine.Address
+func parseAddress(s string) (evm.Address, error) {
+	var addr evm.Address
 	if !strings.HasPrefix(s, "0x") && !strings.HasPrefix(s, "0X") {
 		return addr, fmt.Errorf("address must start with 0x")
 	}
@@ -61,8 +61,8 @@ func parseAddress(s string) (guillotine.Address, error) {
 }
 
 // parseU256 parses a hex or decimal string into a U256
-func parseU256(s string) (guillotine.U256, error) {
-	var u256 guillotine.U256
+func parseU256(s string) (evm.U256, error) {
+	var u256 evm.U256
 	value, err := parseHexOrDecimal(s)
 	if err != nil {
 		return u256, err
@@ -120,45 +120,45 @@ func runCall(c *cli.Context) error {
 
 	// Parse log level
 	logLevelStr := c.String("log-level")
-	var logLevel guillotine.LogLevel
+	var logLevel evm.LogLevel
 	switch strings.ToLower(logLevelStr) {
 	case "none":
-		logLevel = guillotine.LogLevelNone
+		logLevel = evm.LogLevelNone
 	case "error":
-		logLevel = guillotine.LogLevelError
+		logLevel = evm.LogLevelError
 	case "warn":
-		logLevel = guillotine.LogLevelWarn
+		logLevel = evm.LogLevelWarn
 	case "info":
-		logLevel = guillotine.LogLevelInfo
+		logLevel = evm.LogLevelInfo
 	case "debug":
-		logLevel = guillotine.LogLevelDebug
+		logLevel = evm.LogLevelDebug
 	default:
 		return fmt.Errorf("invalid log level: %s (must be none, error, warn, info, or debug)", logLevelStr)
 	}
 
 	// Create EVM instance
-	evm, err := guillotine.NewEVM(c.String("hardfork"), logLevel)
+	evmInstance, err := evm.NewEVM(c.String("hardfork"), logLevel)
 	if err != nil {
 		return fmt.Errorf("failed to create EVM: %w", err)
 	}
-	defer evm.Close()
+	defer evmInstance.Close()
 
 	// Set bytecode
 	if len(bytecode) > 0 {
-		if err := evm.SetBytecode(bytecode); err != nil {
+		if err := evmInstance.SetBytecode(bytecode); err != nil {
 			return fmt.Errorf("failed to set bytecode: %w", err)
 		}
 	}
 
 	// Set execution context
-	execCtx := guillotine.ExecutionContext{
+	execCtx := evm.ExecutionContext{
 		Gas:      gas,
 		Caller:   caller,
 		Address:  address,
 		Value:    value,
 		Calldata: calldata,
 	}
-	if err := evm.SetExecutionContext(execCtx); err != nil {
+	if err := evmInstance.SetExecutionContext(execCtx); err != nil {
 		return fmt.Errorf("failed to set execution context: %w", err)
 	}
 
@@ -194,7 +194,7 @@ func runCall(c *cli.Context) error {
 			return fmt.Errorf("invalid blob-base-fee: %w", err)
 		}
 
-		blockCtx := guillotine.BlockContext{
+		blockCtx := evm.BlockContext{
 			ChainID:        chainID,
 			BlockNumber:    c.Uint64("block-number"),
 			BlockTimestamp: c.Uint64("block-timestamp"),
@@ -205,11 +205,11 @@ func runCall(c *cli.Context) error {
 			BaseFee:        baseFee,
 			BlobBaseFee:    blobBaseFee,
 		}
-		evm.SetBlockchainContext(blockCtx)
+		evmInstance.SetBlockchainContext(blockCtx)
 	}
 
 	// Execute
-	result, err := evm.Execute()
+	result, err := evmInstance.Execute()
 	if err != nil {
 		return fmt.Errorf("execution failed: %w", err)
 	}

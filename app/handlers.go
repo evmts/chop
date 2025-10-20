@@ -6,8 +6,8 @@ import (
 	"chop/core/evm"
 	"chop/core/state"
 	"chop/core/utils"
+	"chop/tui"
 	"chop/types"
-	"chop/ui"
 	"fmt"
 	"time"
 
@@ -79,7 +79,7 @@ func (m Model) handleCallParamSelect() (tea.Model, tea.Cmd) {
 		}
 		m.state = types.StateCallTypeEdit
 	} else {
-		m.textInput = ui.CreateTextInput(param.Name, param.Value)
+		m.textInput = tui.CreateTextInput(param.Name, param.Value)
 		m.state = types.StateCallParameterEdit
 	}
 
@@ -284,7 +284,7 @@ func (m Model) handleCopy() (tea.Model, tea.Cmd) {
 	content := m.getCopyContent()
 
 	if content != "" {
-		msg, _ := ui.CopyWithFeedback(content)
+		msg, _ := tui.CopyWithFeedback(content)
 		m.showCopyFeedback = true
 		m.copyFeedbackMsg = msg
 		return m, tea.Tick(time.Second*2, func(time.Time) tea.Msg {
@@ -409,7 +409,7 @@ func (m *Model) handleCallParamEditNavigation(msgStr string, msg tea.KeyMsg) (te
 	// Handle paste specially to get clipboard content
 	if config.IsKey(msgStr, config.KeyPaste) {
 		if m.editingParam != config.CallParamCallType {
-			if content, err := ui.GetClipboard(); err == nil {
+			if content, err := tui.GetClipboard(); err == nil {
 				// Clean multi-line content for single-line input
 				cleanedContent := utils.CleanMultilineForInput(content)
 				m.textInput.SetValue(cleanedContent)
@@ -500,7 +500,7 @@ func (m *Model) handleCallHistoryNavigation(msgStr string, msg tea.KeyMsg) (tea.
 			// Populate logs table for the history entry
 			entry := &history[m.historyTable.Cursor()]
 			if entry.Result != nil && len(entry.Result.Logs) > 0 {
-				rows := ui.ConvertLogsToRows(entry.Result.Logs)
+				rows := tui.ConvertLogsToRows(entry.Result.Logs)
 				m.logsTable.SetRows(rows)
 			}
 		}
@@ -632,7 +632,7 @@ func (m *Model) updateInstructionsTable() {
 	}
 
 	if len(instructions) > 0 {
-		rows := ui.ConvertInstructionsToRows(instructions, m.disassemblyResult.Analysis.JumpDests)
+		rows := tui.ConvertInstructionsToRows(instructions, m.disassemblyResult.Analysis.JumpDests)
 		m.instructionsTable.SetRows(rows)
 		// Reset cursor to top when changing blocks
 		m.instructionsTable.SetCursor(0)
