@@ -1,6 +1,3 @@
-[submodule "guillotine-mini"]
-	path = guillotine-mini
-	url = https://github.com/evmts/guillotine-mini
 [submodule "lib/guillotine-mini"]
 	path = lib/guillotine-mini
 	url = https://github.com/evmts/guillotine-mini
