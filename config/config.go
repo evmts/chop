@@ -44,6 +44,7 @@ const (
 const (
 	MenuMakeCall    = "Make EVM Call"
 	MenuCallHistory = "Call History"
+	MenuFixtures    = "Saved Fixtures"
 	MenuContracts   = "Deployed Contracts"
 	MenuResetState  = "Reset State"
 	MenuExit        = "Exit"
@@ -121,6 +122,7 @@ func GetMenuItems() []string {
 	return []string{
 		MenuMakeCall,
 		MenuCallHistory,
+		MenuFixtures,
 		MenuContracts,
 		MenuResetState,
 		MenuExit,

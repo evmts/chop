@@ -54,6 +54,7 @@ func InitialModel() Model {
 		historyTable:   tui.CreateHistoryTable(),
 		contractsTable: tui.CreateContractsTable(),
 		logsTable:      tui.CreateLogsTable(10),
+		fixturesTable:  tui.CreateFixturesTable(),
 
 		// New managers
 		accountManager:  accountMgr,

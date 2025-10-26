@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"chop/core/state"
+	"chop/fixtures"
 	"chop/types"
 
 	"github.com/charmbracelet/bubbles/table"
@@ -121,5 +122,44 @@ func (m *Model) updateTransactionsTable() {
 	m.transactionsTable.SetRows(rows)
 	if len(rows) > 0 {
 		m.transactionsTable.SetCursor(0)
+	}
+}
+
+// updateFixturesTable updates the fixtures table with current data
+func (m *Model) updateFixturesTable() {
+	// Call fixtures.List() to get fixture names
+	names, err := fixtures.List()
+	if err != nil {
+		// Show error in feedback
+		m.feedbackMessage = fmt.Sprintf("Failed to list fixtures: %s", err.Error())
+		m.feedbackTimer = 0
+		return
+	}
+
+	rows := []table.Row{}
+	for _, name := range names {
+		// Load each fixture to get metadata
+		fx, err := fixtures.Load(name)
+		if err != nil {
+			// Skip invalid fixtures
+			continue
+		}
+
+		// Format bytecode size
+		bytecodeSize := "-"
+		if fx.Bytecode != "" && len(fx.Bytecode) > 2 {
+			bytecodeSize = fmt.Sprintf("%d bytes", (len(fx.Bytecode)-2)/2)
+		}
+
+		rows = append(rows, table.Row{
+			name,
+			bytecodeSize,
+			fmt.Sprintf("%d", fx.GasLimit),
+		})
+	}
+
+	m.fixturesTable.SetRows(rows)
+	if len(rows) > 0 {
+		m.fixturesTable.SetCursor(0)
 	}
 }
