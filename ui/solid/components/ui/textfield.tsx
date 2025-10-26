@@ -12,12 +12,24 @@ import type { ValidComponent, VoidProps } from 'solid-js'
 import { splitProps } from 'solid-js'
 import { cn } from '~/lib/cn'
 
-type textFieldProps<T extends ValidComponent = 'div'> = TextFieldRootProps<T> & {
+export type TextFieldRootProps<T extends ValidComponent = 'div'> = import('@kobalte/core/text-field').TextFieldRootProps<T> & {
 	class?: string
 }
 
-export const TextFieldRoot = <T extends ValidComponent = 'div'>(props: PolymorphicProps<T, textFieldProps<T>>) => {
-	const [local, rest] = splitProps(props as textFieldProps, ['class'])
+/**
+ * TextFieldRoot - Root container for the text field component.
+ *
+ * @example
+ * ```tsx
+ * <TextFieldRoot>
+ *   <TextFieldLabel>Email</TextFieldLabel>
+ *   <TextFieldInput type="email" placeholder="Enter email..." />
+ *   <TextFieldDescription>We'll never share your email.</TextFieldDescription>
+ * </TextFieldRoot>
+ * ```
+ */
+export const TextFieldRoot = <T extends ValidComponent = 'div'>(props: PolymorphicProps<T, TextFieldRootProps<T>>) => {
+	const [local, rest] = splitProps(props as TextFieldRootProps, ['class'])
 
 	return <TextFieldPrimitive class={cn('space-y-1', local.class)} {...rest} />
 }
@@ -39,38 +51,47 @@ export const textfieldLabel = cva('text-sm data-[disabled]:cursor-not-allowed da
 	},
 })
 
-type textFieldLabelProps<T extends ValidComponent = 'label'> = TextFieldLabelProps<T> & {
+export type TextFieldLabelProps<T extends ValidComponent = 'label'> = import('@kobalte/core/text-field').TextFieldLabelProps<T> & {
 	class?: string
 }
 
+/**
+ * TextFieldLabel - Label for the text field.
+ */
 export const TextFieldLabel = <T extends ValidComponent = 'label'>(
-	props: PolymorphicProps<T, textFieldLabelProps<T>>,
+	props: PolymorphicProps<T, TextFieldLabelProps<T>>,
 ) => {
-	const [local, rest] = splitProps(props as textFieldLabelProps, ['class'])
+	const [local, rest] = splitProps(props as TextFieldLabelProps, ['class'])
 
 	return <TextFieldPrimitive.Label class={cn(textfieldLabel(), local.class)} {...rest} />
 }
 
-type textFieldErrorMessageProps<T extends ValidComponent = 'div'> = TextFieldErrorMessageProps<T> & {
+export type TextFieldErrorMessageProps<T extends ValidComponent = 'div'> = import('@kobalte/core/text-field').TextFieldErrorMessageProps<T> & {
 	class?: string
 }
 
+/**
+ * TextFieldErrorMessage - Error message for the text field.
+ */
 export const TextFieldErrorMessage = <T extends ValidComponent = 'div'>(
-	props: PolymorphicProps<T, textFieldErrorMessageProps<T>>,
+	props: PolymorphicProps<T, TextFieldErrorMessageProps<T>>,
 ) => {
-	const [local, rest] = splitProps(props as textFieldErrorMessageProps, ['class'])
+	const [local, rest] = splitProps(props as TextFieldErrorMessageProps, ['class'])
 
 	return <TextFieldPrimitive.ErrorMessage class={cn(textfieldLabel({ error: true }), local.class)} {...rest} />
 }
 
-type textFieldDescriptionProps<T extends ValidComponent = 'div'> = TextFieldDescriptionProps<T> & {
+export type TextFieldDescriptionProps<T extends ValidComponent = 'div'> = import('@kobalte/core/text-field').TextFieldDescriptionProps<T> & {
 	class?: string
 }
 
+/**
+ * TextFieldDescription - Helper text for the text field.
+ */
 export const TextFieldDescription = <T extends ValidComponent = 'div'>(
-	props: PolymorphicProps<T, textFieldDescriptionProps<T>>,
+	props: PolymorphicProps<T, TextFieldDescriptionProps<T>>,
 ) => {
-	const [local, rest] = splitProps(props as textFieldDescriptionProps, ['class'])
+	const [local, rest] = splitProps(props as TextFieldDescriptionProps, ['class'])
 
 	return (
 		<TextFieldPrimitive.Description
@@ -80,14 +101,36 @@ export const TextFieldDescription = <T extends ValidComponent = 'div'>(
 	)
 }
 
-type textFieldInputProps<T extends ValidComponent = 'input'> = VoidProps<
-	TextFieldInputProps<T> & {
+export type TextFieldInputProps<T extends ValidComponent = 'input'> = VoidProps<
+	import('@kobalte/core/text-field').TextFieldInputProps<T> & {
 		class?: string
 	}
 >
 
-export const TextField = <T extends ValidComponent = 'input'>(props: PolymorphicProps<T, textFieldInputProps<T>>) => {
-	const [local, rest] = splitProps(props as textFieldInputProps, ['class'])
+/**
+ * TextFieldInput - The actual text input element.
+ *
+ * @example Basic usage
+ * ```tsx
+ * <TextFieldRoot>
+ *   <TextFieldLabel>Username</TextFieldLabel>
+ *   <TextFieldInput placeholder="Enter username..." />
+ * </TextFieldRoot>
+ * ```
+ *
+ * @example With icons (use wrapper div)
+ * ```tsx
+ * <TextFieldRoot>
+ *   <TextFieldLabel>Search</TextFieldLabel>
+ *   <div class="relative">
+ *     <SearchIcon class="absolute left-3 top-1/2 -translate-y-1/2" />
+ *     <TextFieldInput class="pl-10" placeholder="Search..." />
+ *   </div>
+ * </TextFieldRoot>
+ * ```
+ */
+export const TextFieldInput = <T extends ValidComponent = 'input'>(props: PolymorphicProps<T, TextFieldInputProps<T>>) => {
+	const [local, rest] = splitProps(props as TextFieldInputProps, ['class'])
 
 	return (
 		<TextFieldPrimitive.Input
@@ -99,3 +142,8 @@ export const TextField = <T extends ValidComponent = 'input'>(props: Polymorphic
 		/>
 	)
 }
+
+/**
+ * @deprecated Use TextFieldInput instead. This will be removed in a future version.
+ */
+export const TextField = TextFieldInput

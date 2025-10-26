@@ -4,7 +4,7 @@ import { type ComponentProps, splitProps } from 'solid-js'
 import { cn } from '~/lib/cn'
 
 export const badgeVariants = cva(
-	'inline-flex items-center rounded-sm border px-2.5 py-0.5 text-xs font-semibold transition-shadow focus-visible:outline-none focus-visible:ring-[1.5px] focus-visible:ring-ring',
+	'inline-flex items-center rounded-sm border font-semibold transition-shadow focus-visible:outline-none focus-visible:ring-[1.5px] focus-visible:ring-ring',
 	{
 		variants: {
 			variant: {
@@ -13,21 +13,40 @@ export const badgeVariants = cva(
 				destructive: 'border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80',
 				outline: 'text-foreground',
 			},
+			size: {
+				sm: 'px-2 py-0.5 text-xs',
+				md: 'px-2.5 py-0.5 text-xs',
+				lg: 'px-3 py-1 text-sm',
+			},
 		},
 		defaultVariants: {
 			variant: 'default',
+			size: 'md',
 		},
 	},
 )
 
-export const Badge = (props: ComponentProps<'div'> & VariantProps<typeof badgeVariants>) => {
-	const [local, rest] = splitProps(props, ['class', 'variant'])
+/**
+ * Badge component for displaying small pieces of information like tags or statuses.
+ *
+ * @example
+ * ```tsx
+ * <Badge>Default</Badge>
+ * <Badge variant="secondary">Secondary</Badge>
+ * <Badge variant="destructive" size="lg">Error</Badge>
+ * ```
+ */
+export type BadgeProps = VariantProps<typeof badgeVariants> & ComponentProps<'span'>
+
+export const Badge = (props: BadgeProps) => {
+	const [local, rest] = splitProps(props, ['class', 'variant', 'size'])
 
 	return (
-		<div
+		<span
 			class={cn(
 				badgeVariants({
 					variant: local.variant,
+					size: local.size,
 				}),
 				local.class,
 			)}

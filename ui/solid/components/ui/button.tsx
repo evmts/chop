@@ -3,7 +3,8 @@ import { Button as ButtonPrimitive } from '@kobalte/core/button'
 import type { PolymorphicProps } from '@kobalte/core/polymorphic'
 import type { VariantProps } from 'class-variance-authority'
 import { cva } from 'class-variance-authority'
-import type { ValidComponent } from 'solid-js'
+import { Loader2 } from 'lucide-solid'
+import { Show, type ValidComponent } from 'solid-js'
 import { splitProps } from 'solid-js'
 import { cn } from '~/lib/cn'
 
@@ -33,13 +34,25 @@ export const buttonVariants = cva(
 	},
 )
 
-type buttonProps<T extends ValidComponent = 'button'> = ButtonRootProps<T> &
+/**
+ * Button component with Kobalte integration for accessibility.
+ *
+ * @example
+ * ```tsx
+ * <Button>Click me</Button>
+ * <Button variant="destructive" size="lg">Delete</Button>
+ * <Button loading>Loading...</Button>
+ * ```
+ */
+export type ButtonProps<T extends ValidComponent = 'button'> = ButtonRootProps<T> &
 	VariantProps<typeof buttonVariants> & {
 		class?: string
+		/** Shows a loading spinner and disables the button */
+		loading?: boolean
 	}
 
-export const Button = <T extends ValidComponent = 'button'>(props: PolymorphicProps<T, buttonProps<T>>) => {
-	const [local, rest] = splitProps(props as buttonProps, ['class', 'variant', 'size'])
+export const Button = <T extends ValidComponent = 'button'>(props: PolymorphicProps<T, ButtonProps<T>>) => {
+	const [local, rest] = splitProps(props as ButtonProps, ['class', 'variant', 'size', 'loading', 'children'])
 
 	return (
 		<ButtonPrimitive
@@ -50,7 +63,13 @@ export const Button = <T extends ValidComponent = 'button'>(props: PolymorphicPr
 				}),
 				local.class,
 			)}
+			disabled={local.loading || rest.disabled}
 			{...rest}
-		/>
+		>
+			<Show when={local.loading}>
+				<Loader2 class="mr-2 h-4 w-4 animate-spin" />
+			</Show>
+			{local.children}
+		</ButtonPrimitive>
 	)
 }

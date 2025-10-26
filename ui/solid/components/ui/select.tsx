@@ -5,6 +5,31 @@ import type { ParentProps, ValidComponent } from 'solid-js'
 import { splitProps } from 'solid-js'
 import { cn } from '~/lib/cn'
 
+/**
+ * Select - Root component for dropdown selection.
+ *
+ * @example
+ * ```tsx
+ * <Select>
+ *   <SelectTrigger>
+ *     <SelectValue placeholder="Select an option" />
+ *   </SelectTrigger>
+ *   <SelectContent>
+ *     <SelectItem value="option1">Option 1</SelectItem>
+ *     <SelectItem value="option2">Option 2</SelectItem>
+ *   </SelectContent>
+ * </Select>
+ * ```
+ *
+ * @component Keyboard Navigation:
+ * - Space/Enter: Open select and activate item
+ * - ArrowDown: Move to next item
+ * - ArrowUp: Move to previous item
+ * - Home: Move to first item
+ * - End: Move to last item
+ * - Escape: Close select
+ * - Type ahead: Jump to items by typing
+ */
 export const Select = SelectPrimitive
 export const SelectValue = SelectPrimitive.Value
 export const SelectDescription = SelectPrimitive.Description
@@ -12,13 +37,21 @@ export const SelectErrorMessage = SelectPrimitive.ErrorMessage
 export const SelectItemDescription = SelectPrimitive.ItemDescription
 export const SelectHiddenSelect = SelectPrimitive.HiddenSelect
 export const SelectSection = SelectPrimitive.Section
+export const SelectLabel = SelectPrimitive.Label
+export const SelectPortal = SelectPrimitive.Portal
+export const SelectIcon = SelectPrimitive.Icon
 
-type selectTriggerProps<T extends ValidComponent = 'button'> = ParentProps<SelectTriggerProps<T> & { class?: string }>
+export type SelectTriggerProps<T extends ValidComponent = 'button'> = ParentProps<
+	import('@kobalte/core/select').SelectTriggerProps<T> & { class?: string }
+>
 
+/**
+ * SelectTrigger - Button that opens the select dropdown.
+ */
 export const SelectTrigger = <T extends ValidComponent = 'button'>(
-	props: PolymorphicProps<T, selectTriggerProps<T>>,
+	props: PolymorphicProps<T, SelectTriggerProps<T>>,
 ) => {
-	const [local, rest] = splitProps(props as selectTriggerProps, ['class', 'children'])
+	const [local, rest] = splitProps(props as SelectTriggerProps, ['class', 'children'])
 
 	return (
 		<SelectPrimitive.Trigger
@@ -50,12 +83,15 @@ export const SelectTrigger = <T extends ValidComponent = 'button'>(
 	)
 }
 
-type selectContentProps<T extends ValidComponent = 'div'> = SelectContentProps<T> & {
+export type SelectContentProps<T extends ValidComponent = 'div'> = import('@kobalte/core/select').SelectContentProps<T> & {
 	class?: string
 }
 
-export const SelectContent = <T extends ValidComponent = 'div'>(props: PolymorphicProps<T, selectContentProps<T>>) => {
-	const [local, rest] = splitProps(props as selectContentProps, ['class'])
+/**
+ * SelectContent - Container for select options.
+ */
+export const SelectContent = <T extends ValidComponent = 'div'>(props: PolymorphicProps<T, SelectContentProps<T>>) => {
+	const [local, rest] = splitProps(props as SelectContentProps, ['class'])
 
 	return (
 		<SelectPrimitive.Portal>
@@ -72,10 +108,15 @@ export const SelectContent = <T extends ValidComponent = 'div'>(props: Polymorph
 	)
 }
 
-type selectItemProps<T extends ValidComponent = 'li'> = ParentProps<SelectItemProps<T> & { class?: string }>
+export type SelectItemProps<T extends ValidComponent = 'li'> = ParentProps<
+	import('@kobalte/core/select').SelectItemProps<T> & { class?: string }
+>
 
-export const SelectItem = <T extends ValidComponent = 'li'>(props: PolymorphicProps<T, selectItemProps<T>>) => {
-	const [local, rest] = splitProps(props as selectItemProps, ['class', 'children'])
+/**
+ * SelectItem - Individual option in the select dropdown.
+ */
+export const SelectItem = <T extends ValidComponent = 'li'>(props: PolymorphicProps<T, SelectItemProps<T>>) => {
+	const [local, rest] = splitProps(props as SelectItemProps, ['class', 'children'])
 
 	return (
 		<SelectPrimitive.Item

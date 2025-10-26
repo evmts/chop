@@ -1,16 +1,41 @@
 import type { PolymorphicProps } from '@kobalte/core/polymorphic'
 import type { TooltipContentProps, TooltipRootProps } from '@kobalte/core/tooltip'
 import { Tooltip as TooltipPrimitive } from '@kobalte/core/tooltip'
-import { mergeProps, splitProps, type ValidComponent } from 'solid-js'
+import { mergeProps, splitProps, type ParentProps, type ValidComponent } from 'solid-js'
 import { cn } from '~/lib/cn'
 
+/**
+ * Tooltip primitive components from Kobalte.
+ */
 export const TooltipTrigger = TooltipPrimitive.Trigger
+export const TooltipArrow = TooltipPrimitive.Arrow
 
+/**
+ * Tooltip root component with configurable delays.
+ *
+ * @example
+ * ```tsx
+ * <Tooltip>
+ *   <TooltipTrigger>Hover me</TooltipTrigger>
+ *   <TooltipContent>
+ *     Helpful information
+ *     <TooltipArrow />
+ *   </TooltipContent>
+ * </Tooltip>
+ *
+ * <Tooltip openDelay={500} closeDelay={200}>
+ *   <TooltipTrigger>Custom delays</TooltipTrigger>
+ *   <TooltipContent>Slower open, faster close</TooltipContent>
+ * </Tooltip>
+ * ```
+ */
 export const Tooltip = (props: TooltipRootProps) => {
 	const merge = mergeProps<TooltipRootProps[]>(
 		{
 			gutter: 4,
 			flip: false,
+			openDelay: 700,
+			closeDelay: 300,
 		},
 		props,
 	)
@@ -18,14 +43,19 @@ export const Tooltip = (props: TooltipRootProps) => {
 	return <TooltipPrimitive {...merge} />
 }
 
-type tooltipContentProps<T extends ValidComponent = 'div'> = TooltipContentProps<T> & {
-	class?: string
-}
+/**
+ * TooltipContent component for the tooltip popup.
+ */
+export type TooltipContentProps<T extends ValidComponent = 'div'> = ParentProps<
+	TooltipContentProps<T> & {
+		class?: string
+	}
+>
 
 export const TooltipContent = <T extends ValidComponent = 'div'>(
-	props: PolymorphicProps<T, tooltipContentProps<T>>,
+	props: PolymorphicProps<T, TooltipContentProps<T>>,
 ) => {
-	const [local, rest] = splitProps(props as tooltipContentProps, ['class'])
+	const [local, rest] = splitProps(props as TooltipContentProps, ['class', 'children'])
 
 	return (
 		<TooltipPrimitive.Portal>
@@ -35,7 +65,9 @@ export const TooltipContent = <T extends ValidComponent = 'div'>(
 					local.class,
 				)}
 				{...rest}
-			/>
+			>
+				{local.children}
+			</TooltipPrimitive.Content>
 		</TooltipPrimitive.Portal>
 	)
 }

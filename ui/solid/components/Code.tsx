@@ -1,13 +1,35 @@
 import type { VariantProps } from 'class-variance-authority'
-import type { ComponentProps } from 'solid-js'
+import { type ComponentProps, splitProps } from 'solid-js'
 import { cn } from '~/lib/cn'
-import { Badge, type badgeVariants } from './ui/badge'
+import { badgeVariants } from './ui/badge'
 
-const Code = (props: ComponentProps<'div'> & VariantProps<typeof badgeVariants>) => {
+/**
+ * Code component for displaying inline code snippets.
+ * Uses semantic HTML `<code>` element with badge styling.
+ *
+ * @example
+ * ```tsx
+ * <Code>const x = 42</Code>
+ * <Code variant="default">0x1234</Code>
+ * ```
+ */
+export type CodeProps = ComponentProps<'code'> & VariantProps<typeof badgeVariants>
+
+const Code = (props: CodeProps) => {
+	const [local, rest] = splitProps(props, ['class', 'variant', 'size'])
+
 	return (
-		<Badge {...props} variant={props.variant ?? 'secondary'} class={cn('px-1 font-medium font-mono', props.class)}>
-			{props.children}
-		</Badge>
+		<code
+			class={cn(
+				badgeVariants({
+					variant: local.variant ?? 'secondary',
+					size: local.size,
+				}),
+				'px-1 font-medium font-mono',
+				local.class,
+			)}
+			{...rest}
+		/>
 	)
 }
 

@@ -5,12 +5,33 @@ import type { ValidComponent } from 'solid-js'
 import { splitProps } from 'solid-js'
 import { cn } from '~/lib/cn'
 
-type separatorProps<T extends ValidComponent = 'hr'> = SeparatorRootProps<T> & {
+export type SeparatorProps<T extends ValidComponent = 'hr'> = SeparatorRootProps<T> & {
 	class?: string
 }
 
-export const Separator = <T extends ValidComponent = 'hr'>(props: PolymorphicProps<T, separatorProps<T>>) => {
-	const [local, rest] = splitProps(props as separatorProps, ['class'])
+/**
+ * Separator - A visual divider between content sections.
+ *
+ * @example Horizontal separator
+ * ```tsx
+ * <div>
+ *   <p>Section 1</p>
+ *   <Separator orientation="horizontal" />
+ *   <p>Section 2</p>
+ * </div>
+ * ```
+ *
+ * @example Vertical separator
+ * ```tsx
+ * <div class="flex">
+ *   <span>Item 1</span>
+ *   <Separator orientation="vertical" class="mx-2" />
+ *   <span>Item 2</span>
+ * </div>
+ * ```
+ */
+export const Separator = <T extends ValidComponent = 'hr'>(props: PolymorphicProps<T, SeparatorProps<T>>) => {
+	const [local, rest] = splitProps(props as SeparatorProps, ['class'])
 
 	return (
 		<SeparatorPrimitive

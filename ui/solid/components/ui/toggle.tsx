@@ -28,13 +28,30 @@ export const toggleVariants = cva(
 	},
 )
 
-type toggleButtonProps<T extends ValidComponent = 'button'> = ToggleButtonRootProps<T> &
+export type ToggleButtonProps<T extends ValidComponent = 'button'> = ToggleButtonRootProps<T> &
 	VariantProps<typeof toggleVariants> & {
 		class?: string
 	}
 
-export const ToggleButton = <T extends ValidComponent = 'button'>(props: PolymorphicProps<T, toggleButtonProps<T>>) => {
-	const [local, rest] = splitProps(props as toggleButtonProps, ['class', 'variant', 'size'])
+/**
+ * ToggleButton - A two-state button that can be toggled on or off.
+ *
+ * @example
+ * ```tsx
+ * <ToggleButton pressed={isPressed()} onChange={setIsPressed}>
+ *   <BoldIcon />
+ * </ToggleButton>
+ * ```
+ *
+ * @example With variants
+ * ```tsx
+ * <ToggleButton variant="outline" size="sm">
+ *   Toggle me
+ * </ToggleButton>
+ * ```
+ */
+export const ToggleButton = <T extends ValidComponent = 'button'>(props: PolymorphicProps<T, ToggleButtonProps<T>>) => {
+	const [local, rest] = splitProps(props as ToggleButtonProps, ['class', 'variant', 'size'])
 
 	return (
 		<ToggleButtonPrimitive
@@ -43,3 +60,16 @@ export const ToggleButton = <T extends ValidComponent = 'button'>(props: Polymor
 		/>
 	)
 }
+
+/**
+ * Toggle namespace for related components.
+ */
+export const Toggle = Object.assign(ToggleButton, {
+	Label: ToggleButtonPrimitive.Label,
+	ErrorMessage: ToggleButtonPrimitive.ErrorMessage,
+	Description: ToggleButtonPrimitive.Description,
+})
+
+export const ToggleLabel = ToggleButtonPrimitive.Label
+export const ToggleErrorMessage = ToggleButtonPrimitive.ErrorMessage
+export const ToggleDescription = ToggleButtonPrimitive.Description
