@@ -1,30 +1,26 @@
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
-    // Check if guillotine-mini submodule is initialized
-    const submodule_path = "lib/guillotine-mini/build.zig";
-    _ = std.fs.cwd().statFile(submodule_path) catch {
-        std.debug.print("Error: guillotine-mini submodule not initialized\n", .{});
-        std.debug.print("Run: git submodule update --init --recursive\n", .{});
-        std.process.exit(1);
-    };
-
-
     // ========================================
-    // Guillotine-mini Submodule Build
+    // Guillotine-mini Dependency Build
     // ========================================
 
-    // Build guillotine-mini WASM library
-    const guillotine_build = b.addSystemCommand(&.{
-        "zig",
-        "build",
-        "wasm",
-        "-Doptimize=ReleaseSmall",
+    // Get guillotine-mini as a dependency
+    const guillotine_dep = b.dependency("guillotine_mini", .{
+        .target = b.resolveTargetQuery(.{
+            .cpu_arch = .wasm32,
+            .os_tag = .freestanding,
+        }),
+        .optimize = .ReleaseSmall,
     });
-    guillotine_build.setCwd(b.path("lib/guillotine-mini"));
+
+    // Get the WASM artifact from guillotine-mini
+    const guillotine_wasm = guillotine_dep.artifact("guillotine-mini");
+
+    const guillotine_install = b.addInstallArtifact(guillotine_wasm, .{});
 
     const guillotine_step = b.step("guillotine", "Build guillotine-mini WASM library");
-    guillotine_step.dependOn(&guillotine_build.step);
+    guillotine_step.dependOn(&guillotine_install.step);
 
     // ========================================
     // Go Build
@@ -93,15 +89,9 @@ pub fn build(b: *std.Build) void {
         "-rf",
         "zig-out",
         "zig-cache",
-    });
-
-    const clean_guillotine = b.addSystemCommand(&.{
-        "sh",
-        "-c",
-        "cd lib/guillotine-mini && rm -rf zig-out zig-cache",
+        ".zig-cache",
     });
 
     const clean_step = b.step("clean", "Remove all build artifacts");
     clean_step.dependOn(&clean_zig.step);
-    clean_step.dependOn(&clean_guillotine.step);
 }
