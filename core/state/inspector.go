@@ -8,23 +8,36 @@ import (
 	"chop/types"
 )
 
-// Inspector provides methods for inspecting blockchain state
+// Inspector provides methods for inspecting blockchain state.
+//
+// Storage Limitations:
+// Currently, this inspector does not track contract storage slots. The Account type
+// has a StorageRoot field (representing the root hash of a storage trie), but the
+// actual storage data is not maintained. Storage-related methods (GetStorageAt,
+// GetAllStorageSlots) return empty/zero values as placeholders.
+//
+// To implement storage tracking, the following would be needed:
+//   - Add a Storage map[string]string field to the Account type in types/types.go
+//   - Implement storage trie or simple key-value storage in the account manager
+//   - Integrate with EVM SLOAD/SSTORE operations to persist storage changes
+//   - Update the Inspector methods to read from actual storage data
 type Inspector struct {
 	accountManager *accounts.Manager
-	// In a full implementation, this would also have access to:
-	// - Storage trie
-	// - Contract storage
-	// - EVM state
 }
 
-// NewInspector creates a new state inspector
+// NewInspector creates a new state inspector that uses the provided account manager.
+// The inspector provides read-only access to account state and storage.
 func NewInspector(accountManager *accounts.Manager) *Inspector {
 	return &Inspector{
 		accountManager: accountManager,
 	}
 }
 
-// InspectAddress inspects the full state of an address
+// InspectAddress inspects the full state of an address.
+//
+// Note: Storage slots are not currently tracked. The StorageSlots field will
+// always be empty. See the Inspector type documentation for details on the
+// storage limitation and what would be required to implement it.
 func (i *Inspector) InspectAddress(address string) (*types.AccountState, error) {
 	// Get account from manager
 	account, err := i.accountManager.GetAccount(address)
@@ -39,21 +52,16 @@ func (i *Inspector) InspectAddress(address string) (*types.AccountState, error) 
 		Nonce:        account.Nonce,
 		Code:         account.Code,
 		CodeSize:     len(account.Code),
-		StorageSlots: make(map[string]string),
+		StorageSlots: make(map[string]string), // Empty - storage not tracked
 		IsContract:   len(account.Code) > 0,
 	}
-
-	// TODO: In a full implementation, fetch storage slots from state trie
-	// For now, return empty storage
-	// This would typically involve:
-	// 1. Fetching storage root from account
-	// 2. Traversing storage trie
-	// 3. Collecting non-zero storage slots
 
 	return state, nil
 }
 
-// GetBalance returns the balance of an address
+// GetBalance returns the balance of an address in wei.
+// Returns a new big.Int instance that is safe to modify.
+// Returns an error if the account cannot be retrieved.
 func (i *Inspector) GetBalance(address string) (*big.Int, error) {
 	account, err := i.accountManager.GetAccount(address)
 	if err != nil {
@@ -63,7 +71,9 @@ func (i *Inspector) GetBalance(address string) (*big.Int, error) {
 	return new(big.Int).Set(account.Balance), nil
 }
 
-// GetNonce returns the nonce of an address
+// GetNonce returns the transaction nonce of an address.
+// The nonce represents the number of transactions sent from this address.
+// Returns an error if the account cannot be retrieved.
 func (i *Inspector) GetNonce(address string) (uint64, error) {
 	account, err := i.accountManager.GetAccount(address)
 	if err != nil {
@@ -73,7 +83,9 @@ func (i *Inspector) GetNonce(address string) (uint64, error) {
 	return account.Nonce, nil
 }
 
-// GetCode returns the bytecode at an address
+// GetCode returns the contract bytecode at an address.
+// Returns nil for externally owned accounts (EOAs) with no code.
+// Returns a copy of the code to prevent external modification.
 func (i *Inspector) GetCode(address string) ([]byte, error) {
 	account, err := i.accountManager.GetAccount(address)
 	if err != nil {
@@ -91,7 +103,9 @@ func (i *Inspector) GetCode(address string) ([]byte, error) {
 	return code, nil
 }
 
-// IsContract checks if an address is a contract
+// IsContract checks if an address is a contract by examining if it has code.
+// Returns true if the address has associated bytecode, false otherwise.
+// An account is considered a contract if it has non-empty code.
 func (i *Inspector) IsContract(address string) (bool, error) {
 	account, err := i.accountManager.GetAccount(address)
 	if err != nil {
@@ -101,28 +115,54 @@ func (i *Inspector) IsContract(address string) (bool, error) {
 	return len(account.Code) > 0, nil
 }
 
-// GetStorageAt returns the value at a specific storage slot (stubbed)
+// GetStorageAt returns the value at a specific storage slot for an address.
+//
+// Storage Limitation: This method currently returns a zero value for all slots
+// because storage is not tracked. Contract storage changes from SSTORE operations
+// are not persisted. To implement this, storage would need to be tracked in the
+// Account type and updated during EVM execution.
+//
+// Parameters:
+//   - address: The contract address to query
+//   - slot: The storage slot key (32-byte hex string)
+//
+// Returns: Always returns the zero value (32 zero bytes as hex string)
 func (i *Inspector) GetStorageAt(address string, slot string) (string, error) {
-	// TODO: Implement storage slot lookup
-	// This would involve:
-	// 1. Getting account storage root
-	// 2. Looking up slot in storage trie
-	// 3. Returning value
+	// Verify account exists (for consistency with other methods)
+	_, err := i.accountManager.GetAccount(address)
+	if err != nil {
+		return "", fmt.Errorf("failed to get account: %w", err)
+	}
 
-	// For now, return zero value
+	// Storage not tracked - return zero value for all slots
 	return "0x0000000000000000000000000000000000000000000000000000000000000000", nil
 }
 
-// GetAllStorageSlots returns all non-zero storage slots for an address (stubbed)
+// GetAllStorageSlots returns all non-zero storage slots for an address.
+//
+// Storage Limitation: This method currently returns an empty map because storage
+// is not tracked. In a full implementation, this would traverse the storage trie
+// or iterate over stored key-value pairs to return all non-zero storage slots
+// for the given contract address.
+//
+// Parameters:
+//   - address: The contract address to query
+//
+// Returns: Always returns an empty map since storage is not tracked
 func (i *Inspector) GetAllStorageSlots(address string) (map[string]string, error) {
-	// TODO: Implement full storage enumeration
-	// This would involve traversing the entire storage trie for the account
+	// Verify account exists (for consistency with other methods)
+	_, err := i.accountManager.GetAccount(address)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get account: %w", err)
+	}
 
-	// For now, return empty map
+	// Storage not tracked - return empty map
 	return make(map[string]string), nil
 }
 
-// FormatBalance formats a balance in wei to ETH with proper formatting
+// FormatBalance formats a balance in wei to ETH with decimal precision.
+// Shows up to 2 decimal places if there's a fractional component.
+// Returns "0 ETH" for nil input.
 func FormatBalance(balance *big.Int) string {
 	if balance == nil {
 		return "0 ETH"
@@ -149,7 +189,9 @@ func FormatBalance(balance *big.Int) string {
 	return fmt.Sprintf("%s.%02d ETH", eth.String(), decimals.Int64())
 }
 
-// FormatBalanceShort formats a balance in a compact form
+// FormatBalanceShort formats a balance in compact form without the "ETH" suffix.
+// Shows up to 1 decimal place for fractional ETH amounts.
+// Returns "0" for nil input. Useful for space-constrained displays.
 func FormatBalanceShort(balance *big.Int) string {
 	if balance == nil {
 		return "0"
