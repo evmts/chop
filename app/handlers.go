@@ -7,9 +7,11 @@ import (
     "chop/core/evm"
     "chop/core/state"
     "chop/core/utils"
+    "chop/fixtures"
     "chop/tui"
     "chop/types"
     "fmt"
+    "strconv"
     "strings"
     "time"
 
@@ -47,6 +49,10 @@ func (m Model) handleMainMenuSelect() (tea.Model, tea.Cmd) {
 	case config.MenuCallHistory:
 		m.state = types.StateCallHistory
 		m.updateHistoryTable()
+		return m, nil
+	case config.MenuFixtures:
+		m.state = types.StateFixturesList
+		m.updateFixturesTable()
 		return m, nil
 	case config.MenuContracts:
 		m.state = types.StateContracts
@@ -371,6 +377,9 @@ func (m *Model) handleStateNavigation(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case types.StateConfirmReset:
 		return m.handleConfirmResetNavigation(msgStr)
 
+	case types.StateFixturesList:
+		return m.handleFixturesListNavigation(msgStr, msg)
+
 	// New tab-based states
 	case types.StateDashboard:
 		return m.handleDashboardNavigation(msgStr)
@@ -398,6 +407,9 @@ func (m *Model) handleStateNavigation(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case types.StateTransactionDetail:
 		return m.handleTransactionDetailNavigation(msgStr, msg)
+
+	case types.StateGotoPC:
+		return m.handleGotoPCNavigation(msgStr, msg)
 	}
 
 	return m, nil
@@ -505,7 +517,7 @@ func (m *Model) handleCallTypeEditNavigation(msgStr string) (tea.Model, tea.Cmd)
 
 // handleCallResultNavigation handles navigation in call result state
 func (m *Model) handleCallResultNavigation(msgStr string, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	hasLogs := m.callResult != nil && len(m.callResult.Logs) > 0
+    hasLogs := m.callResult != nil && len(m.callResult.Logs) > 0
 
 	if hasLogs {
 		// Direct log navigation - no activation needed
@@ -525,11 +537,45 @@ func (m *Model) handleCallResultNavigation(msgStr string, msg tea.KeyMsg) (tea.M
 		}
 	}
 
-	// Non-log navigation (only back is allowed)
-	if config.IsKey(msgStr, config.KeyBack) {
-		m.state = types.StateCallParameterList
-		return m, nil
-	}
+    // Save current result as fixture
+    if msgStr == "f" && m.callResult != nil {
+        // Create a simple name with timestamp if none selected; here we prompt-less save with timestamp
+        name := fmt.Sprintf("fixture-%d", time.Now().Unix())
+
+        // Prepare fixture
+        gasLimit := m.blockchainChain.GetGasLimit()
+        // Prefer input data as call/calldata or deployment bytecode
+        bytecodeHex := m.callParams.InputData
+
+        fx := fixtures.Fixture{
+            Name:     name,
+            Bytecode: bytecodeHex,
+            Calldata: m.callParams.InputData,
+            Caller:   m.callParams.Caller,
+            Value:    m.callParams.Value,
+            GasLimit: gasLimit,
+        }
+        if m.callResult != nil {
+            used := uint64(0)
+            if gasLimit > 0 && m.callResult.GasLeft <= gasLimit {
+                used = gasLimit - m.callResult.GasLeft
+            }
+            fx.ExpectedResult = &fixtures.FixtureExpectedResult{Success: m.callResult.Success, GasUsed: used}
+        }
+        if path, err := fixtures.Save(fx); err != nil {
+            m.feedbackMessage = "Failed to save fixture: " + err.Error()
+        } else {
+            m.feedbackMessage = "Fixture saved: " + path
+        }
+        m.feedbackTimer = time.Now().Add(3 * time.Second).Unix()
+        return m, nil
+    }
+
+    // Non-log navigation (only back is allowed)
+    if config.IsKey(msgStr, config.KeyBack) {
+        m.state = types.StateCallParameterList
+        return m, nil
+    }
 
 	return m, nil
 }
@@ -628,6 +674,13 @@ func (m *Model) handleContractDetailNavigation(msgStr string, msg tea.KeyMsg) (t
 		// Jump to destination when 'g' is pressed on a jump instruction
 		if config.IsKey(msgStr, config.KeyJumpToDestination) {
 			m.handleJumpToDestination()
+			return m, nil
+		}
+
+		// Goto PC prompt when 'G' is pressed (shift+g)
+		if msgStr == "G" {
+			m.gotoPCInput = tui.CreateTextInput("Enter PC (hex or decimal)", "")
+			m.state = types.StateGotoPC
 			return m, nil
 		}
 
@@ -937,11 +990,11 @@ func (m *Model) handleSettingsNavigation(msgStr string) (tea.Model, tea.Cmd) {
         if m.settingsSelectedOption > 0 {
             m.settingsSelectedOption--
         } else {
-            m.settingsSelectedOption = 3 // Wrap to bottom (0-3 = 4 options)
+            m.settingsSelectedOption = 4 // Wrap to bottom (0-4 = 5 options)
         }
         return m, nil
     } else if config.IsKey(msgStr, config.KeyDown) {
-        if m.settingsSelectedOption < 3 {
+        if m.settingsSelectedOption < 4 {
             m.settingsSelectedOption++
         } else {
             m.settingsSelectedOption = 0 // Wrap to top
@@ -967,6 +1020,23 @@ func (m *Model) handleSettingsNavigation(msgStr string) (tea.Model, tea.Cmd) {
             return m, nil
         case 3: // Gas limit (just show feedback, adjust with [/])
             // No action on Enter for gas limit
+            return m, nil
+        case 4: // Save config
+            // Build config snapshot from current model state
+            cfg := types.DefaultAppConfig()
+            // Persist current gas limit
+            cfg.GasLimit = m.blockchainChain.GetGasLimit()
+            // Retain default hardfork; could be made dynamic in future
+            // Accounts settings
+            cfg.Accounts.Count = m.accountManager.GetAccountCount()
+            // Keep default 100 ETH balance unless customized
+
+            if path, err := config.Save(cfg); err != nil {
+                m.feedbackMessage = "Failed to save config: " + err.Error()
+            } else {
+                m.feedbackMessage = "Config saved to: " + path
+            }
+            m.feedbackTimer = time.Now().Add(3 * time.Second).Unix()
             return m, nil
         }
     }
@@ -1077,6 +1147,90 @@ func (m *Model) handleBlockDetailNavigation(msgStr string) (tea.Model, tea.Cmd) 
 	return m, nil
 }
 
+// handleGotoPCNavigation handles navigation in goto PC input state
+func (m *Model) handleGotoPCNavigation(msgStr string, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Handle Enter key - process the PC input
+	if config.IsKey(msgStr, config.KeySelect) {
+		inputStr := strings.TrimSpace(m.gotoPCInput.Value())
+		if inputStr == "" {
+			m.feedbackMessage = "Please enter a PC value"
+			m.feedbackTimer = time.Now().Add(2 * time.Second).Unix()
+			return m, nil
+		}
+
+		// Parse as hex (0x...) or decimal
+		var pc int
+		var parseErr error
+		if strings.HasPrefix(inputStr, "0x") || strings.HasPrefix(inputStr, "0X") {
+			// Parse as hex
+			hexStr := strings.TrimPrefix(strings.TrimPrefix(inputStr, "0x"), "0X")
+			var parsed int64
+			parsed, parseErr = strconv.ParseInt(hexStr, 16, 64)
+			pc = int(parsed)
+		} else {
+			// Parse as decimal
+			var parsed int64
+			parsed, parseErr = strconv.ParseInt(inputStr, 10, 64)
+			pc = int(parsed)
+		}
+
+		if parseErr != nil {
+			m.feedbackMessage = "Invalid PC format. Use decimal (e.g., 42) or hex (e.g., 0x2a)"
+			m.feedbackTimer = time.Now().Add(3 * time.Second).Unix()
+			return m, nil
+		}
+
+		// Find block containing PC
+		if m.disassemblyResult == nil {
+			m.feedbackMessage = "No disassembly available"
+			m.feedbackTimer = time.Now().Add(2 * time.Second).Unix()
+			m.state = types.StateContractDetail
+			return m, nil
+		}
+
+		blockIndex := bytecode.FindBlockContainingPC(m.disassemblyResult.Analysis, pc)
+		if blockIndex == -1 {
+			m.feedbackMessage = fmt.Sprintf("PC %d not found in bytecode", pc)
+			m.feedbackTimer = time.Now().Add(3 * time.Second).Unix()
+			return m, nil
+		}
+
+		// Get instructions for the block to find the exact instruction
+		instructions, _, err := bytecode.GetInstructionsForBlock(m.disassemblyResult, blockIndex)
+		if err != nil {
+			m.feedbackMessage = "Error loading block instructions"
+			m.feedbackTimer = time.Now().Add(2 * time.Second).Unix()
+			m.state = types.StateContractDetail
+			return m, nil
+		}
+
+		instIndex := bytecode.FindInstructionIndexByPC(instructions, pc)
+		if instIndex == -1 {
+			m.feedbackMessage = fmt.Sprintf("PC %d not found in block", pc)
+			m.feedbackTimer = time.Now().Add(3 * time.Second).Unix()
+			return m, nil
+		}
+
+		// Navigate to the target block and instruction
+		m.currentBlockIndex = blockIndex
+		m.updateInstructionsTable()
+		m.instructionsTable.SetCursor(instIndex)
+		m.state = types.StateContractDetail
+		return m, nil
+	}
+
+	// Handle Escape key - cancel
+	if config.IsKey(msgStr, config.KeyBack) {
+		m.state = types.StateContractDetail
+		return m, nil
+	}
+
+	// Pass all other keys to text input
+	var cmd tea.Cmd
+	m.gotoPCInput, cmd = m.gotoPCInput.Update(msg)
+	return m, cmd
+}
+
 // handleTransactionDetailNavigation handles navigation in transaction detail state
 func (m *Model) handleTransactionDetailNavigation(msgStr string, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
     // Get transaction to check for logs
@@ -1127,4 +1281,60 @@ func (m *Model) handleTransactionDetailNavigation(msgStr string, msg tea.KeyMsg)
     }
 
     return m, nil
+}
+
+// handleFixturesListNavigation handles navigation in fixtures list state
+func (m *Model) handleFixturesListNavigation(msgStr string, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if config.IsKey(msgStr, config.KeySelect) {
+		// Get selected fixture name
+		selectedRow := m.fixturesTable.SelectedRow()
+		if len(selectedRow) == 0 {
+			return m, nil
+		}
+
+		fixtureName := selectedRow[0]
+
+		// Load fixture
+		fx, err := fixtures.Load(fixtureName)
+		if err != nil {
+			m.feedbackMessage = fmt.Sprintf("Failed to load fixture: %s", err.Error())
+			m.feedbackTimer = time.Now().Add(3 * time.Second).Unix()
+			return m, nil
+		}
+
+		// Convert fixture to CallParametersStrings
+		m.callParams = fixtureToCallParams(fx)
+
+		// Execute the call
+		m.state = types.StateCallExecuting
+		return m, m.executeCallCmd(m.callParams)
+
+	} else if config.IsKey(msgStr, config.KeyBack) {
+		m.state = types.StateMainMenu
+		return m, nil
+	} else {
+		// Let table handle up/down navigation
+		var cmd tea.Cmd
+		m.fixturesTable, cmd = m.fixturesTable.Update(msg)
+		return m, cmd
+	}
+}
+
+// fixtureToCallParams converts a fixture to call parameters
+func fixtureToCallParams(fx fixtures.Fixture) types.CallParametersStrings {
+	// Use bytecode for CREATE calls, calldata for regular calls
+	inputData := fx.Bytecode
+	if fx.Calldata != "" && fx.Calldata != "0x" {
+		inputData = fx.Calldata
+	}
+
+	return types.CallParametersStrings{
+		CallType:  "CALL",
+		Caller:    fx.Caller,
+		Target:    config.DefaultTarget,
+		Value:     fx.Value,
+		GasLimit:  fmt.Sprintf("%d", fx.GasLimit),
+		InputData: inputData,
+		Salt:      "",
+	}
 }
