@@ -32,8 +32,14 @@ func (m Model) View() string {
 	}
 
 	switch m.state {
-	case types.StateDashboard:
-		header := tui.RenderHeader("Chop Dashboard", "Local EVM Development Environment", config.TitleStyle, config.SubtitleStyle)
+    case types.StateDashboard:
+        header := tui.RenderHeader("Chop Dashboard", "Local EVM Development Environment", config.TitleStyle, config.SubtitleStyle)
+        // Auto-refresh indicator
+        refreshStyle := lipgloss.NewStyle().Foreground(config.Muted)
+        if m.autoRefresh {
+            refreshStyle = lipgloss.NewStyle().Foreground(config.Success)
+        }
+        refreshLine := refreshStyle.Render(fmt.Sprintf("Auto-refresh: %s", map[bool]string{true: "Enabled", false: "Disabled"}[m.autoRefresh]))
 		// Get real blockchain data (with defensive nil checks)
 		stats := m.blockchainChain.GetStats()
 		if stats == nil {
@@ -47,10 +53,10 @@ func (m Model) View() string {
 		if recentTxs == nil {
 			recentTxs = []*types.Transaction{} // Provide empty slice as fallback
 		}
-		dashboard := tui.RenderDashboard(stats, recentBlocks, recentTxs)
-		help := tui.RenderHelp(types.StateDashboard)
-		content := layout.ComposeVertical(tabBar, header, dashboard, help)
-		return layout.RenderWithBox(content)
+        dashboard := tui.RenderDashboard(stats, recentBlocks, recentTxs)
+        help := tui.RenderHelp(types.StateDashboard)
+        content := layout.ComposeVertical(tabBar, header, refreshLine, dashboard, help)
+        return layout.RenderWithBox(content)
 
 	case types.StateAccountsList:
 		header := tui.RenderHeader("Accounts", "Pre-funded Test Accounts", config.TitleStyle, config.SubtitleStyle)

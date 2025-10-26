@@ -77,9 +77,10 @@ type Model struct {
 	currentBlockIndex int
 	instructionsTable table.Model
 
-	// UI state
-	showCopyFeedback         bool
-	copyFeedbackMsg          string
-	showPrivateKey           bool
-	awaitingPrivateKeyConfirm bool
+    // UI state
+    showCopyFeedback         bool
+    copyFeedbackMsg          string
+    showPrivateKey           bool
+    awaitingPrivateKeyConfirm bool
+    awaitingRegenerateConfirm bool
 }
