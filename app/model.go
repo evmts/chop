@@ -78,7 +78,8 @@ type Model struct {
 	instructionsTable table.Model
 
 	// UI state
-	showCopyFeedback bool
-	copyFeedbackMsg  string
-	showPrivateKey   bool
+	showCopyFeedback         bool
+	copyFeedbackMsg          string
+	showPrivateKey           bool
+	awaitingPrivateKeyConfirm bool
 }

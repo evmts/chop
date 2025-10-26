@@ -30,7 +30,7 @@ func updateAccountsTable(m *Model) {
 }
 
 // renderAccountDetail renders the account detail view
-func renderAccountDetail(account *types.Account, showPrivateKey bool, width int) string {
+func renderAccountDetail(account *types.Account, showPrivateKey bool, awaitingConfirm bool, width int) string {
 	if account == nil {
 		return "Account not found"
 	}
@@ -57,6 +57,11 @@ func renderAccountDetail(account *types.Account, showPrivateKey bool, width int)
 		s += labelStyle.Render("Private Key: ")
 		if showPrivateKey {
 			s += valueStyle.Render(account.PrivateKey) + "\n"
+			warningStyle := lipgloss.NewStyle().Foreground(config.Error).Italic(true)
+			s += warningStyle.Render("(Press 'p' to hide)") + "\n"
+		} else if awaitingConfirm {
+			confirmStyle := lipgloss.NewStyle().Foreground(config.Amber).Bold(true)
+			s += confirmStyle.Render("[Reveal private key? Press 'y' to confirm, any other key to cancel]") + "\n"
 		} else {
 			mutedStyle := lipgloss.NewStyle().Foreground(config.Muted)
 			s += mutedStyle.Render("[Press 'p' to reveal private key]") + "\n"
