@@ -97,6 +97,8 @@ func RenderHelp(state types.AppState) string {
 		helpText = "esc: back"
 	case types.StateTransactionsList:
 		helpText = "↑/↓: navigate • esc: back"
+	case types.StateTransactionDetail:
+		helpText = "esc: back"
 	case types.StateStateInspector:
 		helpText = "enter: inspect • esc: back"
 	case types.StateSettings:
