@@ -6,6 +6,7 @@ import (
     "chop/tui"
     "chop/types"
     "fmt"
+    "time"
 
     "github.com/charmbracelet/lipgloss"
 )

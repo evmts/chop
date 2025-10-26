@@ -94,25 +94,6 @@ func renderTransactionDetail(tx *types.Transaction, width int) string {
 
     infoSection := sectionStyle.Render(info.String())
 
-    // Logs section
-    var logsSection string
-    if len(tx.Logs) > 0 {
-        var sb strings.Builder
-        title := lipgloss.NewStyle().Bold(true).Foreground(config.Primary).Render(fmt.Sprintf("LOGS (%d)", len(tx.Logs)))
-        sb.WriteString(title + "\n\n")
-        for i, lg := range tx.Logs {
-            line := fmt.Sprintf("[%d] %s  topics:%d", i, lg.Address, len(lg.Topics))
-            sb.WriteString(line)
-            if i < len(tx.Logs)-1 {
-                sb.WriteString("\n")
-            }
-        }
-        logsSection = sectionStyle.Render(sb.String())
-    }
-
-    if logsSection != "" {
-        return infoSection + "\n\n" + logsSection
-    }
     return infoSection
 }
 

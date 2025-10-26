@@ -10,6 +10,9 @@ chop-*
 
 # Go
 vendor/
+dist/
+coverage.txt
+*.coverprofile
 
 # IDE
 .vscode/
