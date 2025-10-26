@@ -236,6 +236,31 @@ func (m Model) View() string {
 		content := layout.ComposeVertical(tabBar, header, inspectorView, help)
 		return layout.RenderWithBox(content)
 
+	case types.StateBlocksList:
+		header := tui.RenderHeader("Blocks", "Block Explorer", config.TitleStyle, config.SubtitleStyle)
+		updateBlocksTable(&m)
+		tableView := m.blocksTable.View()
+		help := tui.RenderHelp(types.StateBlocksList)
+		content := layout.ComposeVertical(tabBar, header, tableView, help)
+		return layout.RenderWithBox(content)
+
+	case types.StateBlockDetail:
+		header := tui.RenderHeader("Block Detail", "Block Information", config.TitleStyle, config.SubtitleStyle)
+		block, err := m.blockchainChain.GetBlockByNumber(m.selectedBlock)
+		if err != nil {
+			errorMsg := lipgloss.NewStyle().
+				Foreground(config.Error).
+				Render("Error: " + err.Error())
+			help := tui.RenderHelp(types.StateBlockDetail)
+			content := layout.ComposeVertical(tabBar, header, errorMsg, help)
+			return layout.RenderWithBox(content)
+		}
+		transactions := m.blockchainChain.GetTransactionsByBlock(m.selectedBlock)
+		detail := renderBlockDetail(block, transactions, m.width-4)
+		help := tui.RenderHelp(types.StateBlockDetail)
+		content := layout.ComposeVertical(tabBar, header, detail, help)
+		return layout.RenderWithBox(content)
+
 	default:
 		return "Invalid state"
 	}
