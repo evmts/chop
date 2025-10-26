@@ -7,7 +7,7 @@ const host = process.env.TAURI_DEV_HOST
 
 // https://vitejs.dev/config/
 export default defineConfig(async () => ({
-	plugins: [solid(), tsconfigPaths()],
+	plugins: [solid({ dev: true }), tsconfigPaths()],
 
 	// Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
 	//
@@ -35,6 +35,21 @@ export default defineConfig(async () => ({
 			// path alias for tree-shaking lucide-solid icons
 			// see: https://christopher.engineering/en/blog/lucide-icons-with-vite-dev-server/
 			'lucide-solid/icons': fileURLToPath(new URL('./node_modules/lucide-solid/dist/source/icons', import.meta.url)),
+		},
+	},
+	test: {
+		globals: true,
+		environment: 'happy-dom',
+		setupFiles: ['./solid/test-setup.ts'],
+		coverage: {
+			provider: 'v8',
+			reporter: ['text', 'json', 'html'],
+			exclude: [
+				'node_modules/',
+				'solid/test-setup.ts',
+				'**/*.test.{ts,tsx}',
+				'**/types.ts',
+			],
 		},
 	},
 }))
