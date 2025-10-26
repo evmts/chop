@@ -1,20 +1,20 @@
-package guillotine_test
+package evm_test
 
 import (
 	"fmt"
 	"log"
 
-	"github.com/yourusername/chop/internal/guillotine"
+	"chop/evm"
 )
 
 // Example: Simple EVM execution (synchronous)
 func ExampleEVM_Execute_simple() {
 	// Create EVM instance for Cancun hardfork
-	evm, err := guillotine.NewEVM(guillotine.HardforkCancun.String(), guillotine.LogLevelError)
+	evmInstance, err := evm.NewEVM(evm.HardforkCancun.String(), evm.LogLevelError)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer evm.Close()
+	defer evmInstance.Close()
 
 	// Simple bytecode: PUSH1 0x01, PUSH1 0x02, ADD, PUSH1 0x00, MSTORE, PUSH1 0x20, PUSH1 0x00, RETURN
 	// This adds 1 + 2 and returns the result
