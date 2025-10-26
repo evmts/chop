@@ -1,3 +1,11 @@
+//go:build integration
+// +build integration
+
+// Package evm_test contains examples for the EVM package.
+// These tests require a working guillotine-mini integration (WASM or native library).
+// Run with: go test -tags=integration ./evm/...
+//
+// See evm/INTEGRATION_NOTES.md for setup instructions.
 package evm_test
 
 import (
@@ -18,41 +26,41 @@ func ExampleEVM_Execute_simple() {
 
 	// Simple bytecode: PUSH1 0x01, PUSH1 0x02, ADD, PUSH1 0x00, MSTORE, PUSH1 0x20, PUSH1 0x00, RETURN
 	// This adds 1 + 2 and returns the result
-	bytecode := guillotine.MustParseBytecode("60016002016000526020600​0f3")
+	bytecode := evm.MustParseBytecode("60016002016000526020600​0f3")
 
 	// Set bytecode
-	if err := evm.SetBytecode(bytecode); err != nil {
+	if err := evmInstance.SetBytecode(bytecode); err != nil {
 		log.Fatal(err)
 	}
 
 	// Set execution context
-	ctx := guillotine.ExecutionContext{
+	ctx := evm.ExecutionContext{
 		Gas:      1000000, // 1M gas
-		Caller:   guillotine.ZeroAddress,
-		Address:  guillotine.MustAddressFromHex("0x1000000000000000000000000000000000000000"),
-		Value:    guillotine.ZeroU256,
+		Caller:   evm.ZeroAddress,
+		Address:  evm.MustAddressFromHex("0x1000000000000000000000000000000000000000"),
+		Value:    evm.ZeroU256,
 		Calldata: nil,
 	}
-	if err := evm.SetExecutionContext(ctx); err != nil {
+	if err := evmInstance.SetExecutionContext(ctx); err != nil {
 		log.Fatal(err)
 	}
 
 	// Set blockchain context
-	blockCtx := guillotine.BlockContext{
-		ChainID:        guillotine.U256FromUint64(1), // Mainnet
+	blockCtx := evm.BlockContext{
+		ChainID:        evm.U256FromUint64(1), // Mainnet
 		BlockNumber:    1000000,
 		BlockTimestamp: 1234567890,
-		Difficulty:     guillotine.ZeroU256,
-		Prevrandao:     guillotine.ZeroU256,
-		Coinbase:       guillotine.ZeroAddress,
+		Difficulty:     evm.ZeroU256,
+		Prevrandao:     evm.ZeroU256,
+		Coinbase:       evm.ZeroAddress,
 		GasLimit:       30000000,
-		BaseFee:        guillotine.U256FromUint64(1000000000), // 1 gwei
-		BlobBaseFee:    guillotine.U256FromUint64(1),
+		BaseFee:        evm.U256FromUint64(1000000000), // 1 gwei
+		BlobBaseFee:    evm.U256FromUint64(1),
 	}
-	evm.SetBlockchainContext(blockCtx)
+	evmInstance.SetBlockchainContext(blockCtx)
 
 	// Execute
-	result, err := evm.Execute()
+	result, err := evmInstance.Execute()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -64,53 +72,55 @@ func ExampleEVM_Execute_simple() {
 
 // Example: EVM with pre-loaded state
 func ExampleEVM_Execute_withState() {
-	evm, err := guillotine.NewEVM(guillotine.HardforkCancun.String(), guillotine.LogLevelError)
+	evmInstance, err := evm.NewEVM(evm.HardforkCancun.String(), evm.LogLevelError)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer evm.Close()
+	defer evmInstance.Close()
 
 	// Contract that reads from storage slot 0 and returns it
 	// PUSH1 0x00, SLOAD, PUSH1 0x00, MSTORE, PUSH1 0x20, PUSH1 0x00, RETURN
-	bytecode := guillotine.MustParseBytecode("6000546000526020600​0f3")
+	bytecode := evm.MustParseBytecode("6000546000526020600​0f3")
 
-	contractAddr := guillotine.MustAddressFromHex("0x1000000000000000000000000000000000000001")
+	contractAddr := evm.MustAddressFromHex("0x1000000000000000000000000000000000000001")
 
 	// Pre-load storage: slot 0 = 42
-	slot := guillotine.ZeroU256
-	value := guillotine.U256FromUint64(42)
-	if err := evm.SetStorage(contractAddr, slot, value); err != nil {
+	slot := evm.ZeroU256
+	value := evm.U256FromUint64(42)
+	if err := evmInstance.SetStorage(contractAddr, slot, value); err != nil {
 		log.Fatal(err)
 	}
 
 	// Set bytecode and execute
-	if err := evm.SetBytecode(bytecode); err != nil {
+	if err := evmInstance.SetBytecode(bytecode); err != nil {
 		log.Fatal(err)
 	}
 
-	ctx := guillotine.ExecutionContext{
+	ctx := evm.ExecutionContext{
 		Gas:     1000000,
-		Caller:  guillotine.ZeroAddress,
+		Caller:  evm.ZeroAddress,
 		Address: contractAddr,
-		Value:   guillotine.ZeroU256,
+		Value:   evm.ZeroU256,
 	}
-	if err := evm.SetExecutionContext(ctx); err != nil {
+	if err := evmInstance.SetExecutionContext(ctx); err != nil {
 		log.Fatal(err)
 	}
 
-	blockCtx := guillotine.BlockContext{
-		ChainID:     guillotine.U256FromUint64(1),
+	blockCtx := evm.BlockContext{
+		ChainID:     evm.U256FromUint64(1),
 		BlockNumber: 1000000,
 		GasLimit:    30000000,
 	}
-	evm.SetBlockchainContext(blockCtx)
+	evmInstance.SetBlockchainContext(blockCtx)
 
-	result, err := evm.Execute()
+	result, err := evmInstance.Execute()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Output: %d\n", guillotine.U256FromBig(result.Output).Uint64())
+	// Convert output bytes to U256 and print
+	outputU256, _ := evm.U256FromBytes(result.Output)
+	fmt.Printf("Output: %d\n", outputU256.Uint64())
 	// Output: 42
 }
 
@@ -118,66 +128,67 @@ func ExampleEVM_Execute_withState() {
 func ExampleEVM_ExecuteAsync() {
 	// Create a simple in-memory state backend
 	backend := &SimpleStateBackend{
-		storage:  make(map[string]map[string]guillotine.U256),
-		balances: make(map[string]guillotine.U256),
+		storage:  make(map[string]map[string]evm.U256),
+		balances: make(map[string]evm.U256),
 		code:     make(map[string][]byte),
 		nonces:   make(map[string]uint64),
 	}
 
 	// Pre-populate some state
-	contractAddr := guillotine.MustAddressFromHex("0x1000000000000000000000000000000000000001")
-	backend.SetStorage(contractAddr, guillotine.ZeroU256, guillotine.U256FromUint64(100))
+	contractAddr := evm.MustAddressFromHex("0x1000000000000000000000000000000000000001")
+	backend.SetStorage(contractAddr, evm.ZeroU256, evm.U256FromUint64(100))
 
 	// Create EVM
-	evm, err := guillotine.NewEVM(guillotine.HardforkCancun.String(), guillotine.LogLevelError)
+	evmInstance, err := evm.NewEVM(evm.HardforkCancun.String(), evm.LogLevelError)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer evm.Close()
+	defer evmInstance.Close()
 
 	// Contract that reads storage and returns it
-	bytecode := guillotine.MustParseBytecode("6000546000526020600​0f3")
+	bytecode := evm.MustParseBytecode("6000546000526020600​0f3")
 
-	if err := evm.SetBytecode(bytecode); err != nil {
+	if err := evmInstance.SetBytecode(bytecode); err != nil {
 		log.Fatal(err)
 	}
 
-	ctx := guillotine.ExecutionContext{
+	ctx := evm.ExecutionContext{
 		Gas:     1000000,
-		Caller:  guillotine.ZeroAddress,
+		Caller:  evm.ZeroAddress,
 		Address: contractAddr,
-		Value:   guillotine.ZeroU256,
+		Value:   evm.ZeroU256,
 	}
-	if err := evm.SetExecutionContext(ctx); err != nil {
+	if err := evmInstance.SetExecutionContext(ctx); err != nil {
 		log.Fatal(err)
 	}
 
-	blockCtx := guillotine.BlockContext{
-		ChainID:     guillotine.U256FromUint64(1),
+	blockCtx := evm.BlockContext{
+		ChainID:     evm.U256FromUint64(1),
 		BlockNumber: 1000000,
 		GasLimit:    30000000,
 	}
-	evm.SetBlockchainContext(blockCtx)
+	evmInstance.SetBlockchainContext(blockCtx)
 
 	// Execute with async state loading
-	result, err := evm.ExecuteAsync(backend)
+	result, err := evmInstance.ExecuteAsync(backend)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	fmt.Printf("Success: %v\n", result.Success)
-	fmt.Printf("Output value: %d\n", guillotine.U256FromBytes(result.Output).Uint64())
+	outputU256, _ := evm.U256FromBytes(result.Output)
+	fmt.Printf("Output value: %d\n", outputU256.Uint64())
 }
 
 // SimpleStateBackend is a simple in-memory state backend for testing
 type SimpleStateBackend struct {
-	storage  map[string]map[string]guillotine.U256 // address -> slot -> value
-	balances map[string]guillotine.U256
+	storage  map[string]map[string]evm.U256 // address -> slot -> value
+	balances map[string]evm.U256
 	code     map[string][]byte
 	nonces   map[string]uint64
 }
 
-func (b *SimpleStateBackend) GetStorage(address guillotine.Address, slot guillotine.U256) (guillotine.U256, error) {
+func (b *SimpleStateBackend) GetStorage(address evm.Address, slot evm.U256) (evm.U256, error) {
 	addrKey := address.Hex()
 	slotKey := slot.Hex()
 
@@ -186,34 +197,34 @@ func (b *SimpleStateBackend) GetStorage(address guillotine.Address, slot guillot
 			return value, nil
 		}
 	}
-	return guillotine.ZeroU256, nil
+	return evm.ZeroU256, nil
 }
 
-func (b *SimpleStateBackend) SetStorage(address guillotine.Address, slot guillotine.U256, value guillotine.U256) {
+func (b *SimpleStateBackend) SetStorage(address evm.Address, slot evm.U256, value evm.U256) {
 	addrKey := address.Hex()
 	slotKey := slot.Hex()
 
 	if _, ok := b.storage[addrKey]; !ok {
-		b.storage[addrKey] = make(map[string]guillotine.U256)
+		b.storage[addrKey] = make(map[string]evm.U256)
 	}
 	b.storage[addrKey][slotKey] = value
 }
 
-func (b *SimpleStateBackend) GetBalance(address guillotine.Address) (guillotine.U256, error) {
+func (b *SimpleStateBackend) GetBalance(address evm.Address) (evm.U256, error) {
 	if balance, ok := b.balances[address.Hex()]; ok {
 		return balance, nil
 	}
-	return guillotine.ZeroU256, nil
+	return evm.ZeroU256, nil
 }
 
-func (b *SimpleStateBackend) GetCode(address guillotine.Address) ([]byte, error) {
+func (b *SimpleStateBackend) GetCode(address evm.Address) ([]byte, error) {
 	if code, ok := b.code[address.Hex()]; ok {
 		return code, nil
 	}
 	return nil, nil
 }
 
-func (b *SimpleStateBackend) GetNonce(address guillotine.Address) (uint64, error) {
+func (b *SimpleStateBackend) GetNonce(address evm.Address) (uint64, error) {
 	if nonce, ok := b.nonces[address.Hex()]; ok {
 		return nonce, nil
 	}
@@ -228,30 +239,31 @@ func (b *SimpleStateBackend) CommitStateChanges(changesJSON []byte) error {
 
 // Example: Using EIP-2930 access lists
 func ExampleEVM_SetAccessList() {
-	evm, err := guillotine.NewEVM(guillotine.HardforkBerlin.String(), guillotine.LogLevelError)
+	evmInstance, err := evm.NewEVM(evm.HardforkBerlin.String(), evm.LogLevelError)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer evm.Close()
+	defer evmInstance.Close()
 
 	// Create access list
-	accessList := &guillotine.AccessList{
-		Addresses: []guillotine.Address{
-			guillotine.MustAddressFromHex("0x1000000000000000000000000000000000000001"),
-			guillotine.MustAddressFromHex("0x2000000000000000000000000000000000000002"),
+	accessList := &evm.AccessList{
+		Addresses: []evm.Address{
+			evm.MustAddressFromHex("0x1000000000000000000000000000000000000001"),
+			evm.MustAddressFromHex("0x2000000000000000000000000000000000000002"),
 		},
-		StorageKeys: []guillotine.StorageKey{
+		StorageKeys: []evm.StorageKey{
 			{
-				Address: guillotine.MustAddressFromHex("0x1000000000000000000000000000000000000001"),
-				Slot:    guillotine.ZeroU256,
+				Address: evm.MustAddressFromHex("0x1000000000000000000000000000000000000001"),
+				Slot:    evm.ZeroU256,
 			},
 		},
 	}
 
-	if err := evm.SetAccessList(accessList); err != nil {
+	if err := evmInstance.SetAccessList(accessList); err != nil {
 		log.Fatal(err)
 	}
 
 	// Now execute with the access list set
 	// Accessing these addresses/slots will be cheaper (warm access)
+	fmt.Println("Access list configured successfully")
 }
