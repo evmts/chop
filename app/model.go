@@ -4,6 +4,8 @@ import (
 	"chop/core/bytecode"
 	"chop/core/evm"
 	"chop/core/history"
+	"chop/fork"
+	"chop/server"
 	"chop/types"
 
 	"github.com/charmbracelet/bubbles/table"
@@ -44,6 +46,17 @@ type Model struct {
 	blockchainChain  *blockchain.Chain
 	eventBus         *events.Bus
 	stateInspector   *state.Inspector
+
+	// Server integration
+	Server        *server.Server
+	ServerRunning bool
+
+	// Forking integration
+	Forker *fork.Forker
+
+	// Exported aliases for external access
+	Accounts *accounts.Manager
+	Chain    *blockchain.Chain
 
 	// View states (existing)
 	historyTable      table.Model

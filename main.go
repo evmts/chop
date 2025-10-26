@@ -3,12 +3,18 @@ package main
 import (
 	"chop/app"
 	"chop/evm"
+	"chop/fork"
+	"chop/server"
+	"context"
 	"encoding/hex"
 	"fmt"
 	"log"
 	"math/big"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/urfave/cli/v2"
@@ -227,6 +233,108 @@ func runCall(c *cli.Context) error {
 	return nil
 }
 
+func runServe(c *cli.Context) error {
+	// Create a model with server enabled
+	model := app.InitialModel()
+
+	// Handle forking if --fork is provided
+	if c.String("fork") != "" {
+		forkConfig := fork.Config{
+			URL:         c.String("fork"),
+			BlockNumber: c.Uint64("fork-block"),
+			CacheSize:   1000,
+		}
+
+		forker, err := fork.NewForker(forkConfig)
+		if err != nil {
+			// Check if it's the "not supported" error
+			if err == fork.ErrForkingNotSupported {
+				fmt.Printf("⚠️  Warning: %s\n", err)
+				fmt.Println("   Continuing without forking support...")
+				fmt.Println("   See guillotine-mini PR for forking implementation status")
+			} else {
+				return fmt.Errorf("failed to initialize forking: %w", err)
+			}
+		} else {
+			// This branch won't be reached until forking is implemented
+			model.Forker = forker
+			fmt.Printf("✓ Forked from %s at block %d\n", forkConfig.URL, forkConfig.BlockNumber)
+		}
+	}
+
+	// Configure server
+	config := &server.Config{
+		Port:    c.Int("port"),
+		Host:    c.String("host"),
+		Verbose: c.Bool("verbose"),
+		LogSize: 100,
+	}
+
+	// Create server instance
+	srv := server.NewServer(model.Chain, model.Accounts, config)
+	model.Server = srv
+	model.ServerRunning = true
+
+	// If headless mode, just run the server without TUI
+	if c.Bool("headless") {
+		fmt.Printf("Starting Chop JSON-RPC server on %s:%d\n", config.Host, config.Port)
+		fmt.Println("Press Ctrl+C to stop")
+
+		// Start server in goroutine
+		go func() {
+			if err := srv.Start(config); err != nil {
+				log.Printf("Server error: %v", err)
+			}
+		}()
+
+		// Wait for interrupt signal
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+		<-sigChan
+
+		// Graceful shutdown
+		fmt.Println("\nShutting down server...")
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := srv.Stop(ctx); err != nil {
+			return fmt.Errorf("error stopping server: %w", err)
+		}
+
+		fmt.Println("Server stopped")
+		return nil
+	}
+
+	// Otherwise, run TUI with server
+	// Start server in background
+	go func() {
+		if err := srv.Start(config); err != nil {
+			log.Printf("Server error: %v", err)
+		}
+	}()
+
+	p := tea.NewProgram(
+		model,
+		tea.WithAltScreen(),
+	)
+	if _, err := p.Run(); err != nil {
+		// Try to stop server on TUI error
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		srv.Stop(ctx)
+		return fmt.Errorf("error running program: %w", err)
+	}
+
+	// Stop server after TUI exits
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Stop(ctx); err != nil {
+		return fmt.Errorf("error stopping server: %w", err)
+	}
+
+	return nil
+}
+
 func main() {
 	// Build version string with additional information
 	versionInfo := version
@@ -246,6 +354,52 @@ func main() {
 		Version: versionInfo,
 		Action:  runTUI,
 		Commands: []*cli.Command{
+			{
+				Name:    "serve",
+				Aliases: []string{"s"},
+				Usage:   "Start JSON-RPC server (with optional TUI)",
+				Action:  runServe,
+				Flags: []cli.Flag{
+					&cli.IntFlag{
+						Name:    "port",
+						Aliases: []string{"p"},
+						Usage:   "Server port",
+						Value:   8545,
+						EnvVars: []string{"CHOP_PORT"},
+					},
+					&cli.StringFlag{
+						Name:  "host",
+						Usage: "Server host",
+						Value: "127.0.0.1",
+						EnvVars: []string{"CHOP_HOST"},
+					},
+					&cli.BoolFlag{
+						Name:    "verbose",
+						Aliases: []string{"v"},
+						Usage:   "Enable verbose JSON-RPC logging",
+						Value:   false,
+						EnvVars: []string{"CHOP_VERBOSE"},
+					},
+					&cli.BoolFlag{
+						Name:  "headless",
+						Usage: "Run server without TUI",
+						Value: false,
+					},
+					&cli.StringFlag{
+						Name:    "fork",
+						Aliases: []string{"f"},
+						Usage:   "Fork from a remote Ethereum RPC (e.g., https://eth-mainnet.g.alchemy.com/v2/...)",
+						Value:   "",
+						EnvVars: []string{"CHOP_FORK"},
+					},
+					&cli.Uint64Flag{
+						Name:    "fork-block",
+						Usage:   "Block number to fork from (0 = latest)",
+						Value:   0,
+						EnvVars: []string{"CHOP_FORK_BLOCK"},
+					},
+				},
+			},
 			{
 				Name:    "call",
 				Aliases: []string{"c"},

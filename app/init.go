@@ -61,6 +61,14 @@ func InitialModel() Model {
 		eventBus:        eventBus,
 		stateInspector:  stateInspector,
 
+		// Server integration
+		Server:        nil, // Initialized externally when server is enabled
+		ServerRunning: false,
+
+		// Exported aliases for external access
+		Accounts: accountMgr,
+		Chain:    blockchainChain,
+
 		// New tables (will be created on demand)
 		accountsTable:     tui.CreateAccountsTable(),
 		blocksTable:       tui.CreateBlocksTable(),
