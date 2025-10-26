@@ -1,3 +1,5 @@
+// Package blockchain provides core blockchain functionality including block creation and management.
+// It handles block hashing, genesis block creation, and utility functions for block display.
 package blockchain
 
 import (
@@ -9,7 +11,9 @@ import (
 	"chop/types"
 )
 
-// CreateGenesisBlock creates the initial block (block 0)
+// CreateGenesisBlock creates the initial block (block 0) of the blockchain.
+// The genesis block has no parent hash and serves as the foundation for all subsequent blocks.
+// It is initialized with a zero hash parent, 30M gas limit, and no transactions.
 func CreateGenesisBlock() *types.Block {
 	now := time.Now()
 
@@ -32,7 +36,9 @@ func CreateGenesisBlock() *types.Block {
 	return genesisBlock
 }
 
-// CreateBlock creates a new block with the given parameters
+// CreateBlock creates a new block with the specified parameters.
+// The block hash is automatically calculated from the block's contents.
+// The block size is estimated based on the number of transactions.
 func CreateBlock(number uint64, parentHash string, transactions []string, gasUsed, gasLimit uint64, miner string) *types.Block {
 	block := &types.Block{
 		Number:       number,
@@ -53,7 +59,9 @@ func CreateBlock(number uint64, parentHash string, transactions []string, gasUse
 	return block
 }
 
-// CalculateBlockHash calculates the hash of a block
+// CalculateBlockHash calculates the SHA256 hash of a block.
+// The hash is computed from the block number, parent hash, state root, timestamp, gas parameters,
+// and all transaction IDs. Returns the hash as a hex string with "0x" prefix.
 func CalculateBlockHash(block *types.Block) string {
 	// Create a string representation of the block for hashing
 	data := fmt.Sprintf(
@@ -86,7 +94,9 @@ func calculateBlockSize(transactions []string) uint64 {
 	return baseSize + txSize
 }
 
-// FormatBlockHash formats a block hash for display (shortened)
+// FormatBlockHash formats a block hash for compact display by showing only the first and last characters.
+// Returns the hash in format "0xABCD...WXYZ" for easier reading in UI.
+// If the hash is shorter than 10 characters, it is returned unchanged.
 func FormatBlockHash(hash string) string {
 	if len(hash) < 10 {
 		return hash
@@ -94,7 +104,9 @@ func FormatBlockHash(hash string) string {
 	return hash[:6] + "..." + hash[len(hash)-4:]
 }
 
-// FormatTimestamp formats a timestamp relative to now
+// FormatTimestamp formats a timestamp as a relative time string ("5s ago", "3m ago", etc.).
+// For times more than 24 hours ago, returns an absolute timestamp.
+// This is useful for displaying block times in a user-friendly way.
 func FormatTimestamp(t time.Time) string {
 	duration := time.Since(t)
 
@@ -109,7 +121,9 @@ func FormatTimestamp(t time.Time) string {
 	return t.Format("2006-01-02 15:04:05")
 }
 
-// FormatGasUsage formats gas usage as a percentage and progress bar
+// FormatGasUsage formats gas usage as a percentage and a 10-character visual progress bar.
+// Returns both the percentage value and a string representation using block characters.
+// The progress bar uses "▓" for filled portions and "░" for empty portions.
 func FormatGasUsage(gasUsed, gasLimit uint64) (percentage float64, bar string) {
 	if gasLimit == 0 {
 		return 0, "░░░░░░░░░░"

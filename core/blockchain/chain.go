@@ -8,7 +8,9 @@ import (
 	"chop/types"
 )
 
-// Chain manages the blockchain state
+// Chain manages the blockchain state including blocks, transactions, and their relationships.
+// It provides thread-safe access to blockchain data and maintains indices for efficient lookups.
+// Chain is safe for concurrent use.
 type Chain struct {
 	blocks       []*types.Block
 	transactions map[string]*types.Transaction // txID -> transaction
@@ -17,7 +19,9 @@ type Chain struct {
 	mu           sync.RWMutex
 }
 
-// NewChain creates a new blockchain with genesis block
+// NewChain creates a new blockchain initialized with a genesis block.
+// The genesis block is automatically added as block 0.
+// Default gas limit is set to 30M (similar to Ganache).
 func NewChain() *Chain {
 	c := &Chain{
 		blocks:       []*types.Block{},
@@ -33,7 +37,9 @@ func NewChain() *Chain {
 	return c
 }
 
-// GetLatestBlock returns the most recent block
+// GetLatestBlock returns the most recently added block in the chain.
+// Returns nil if the chain is empty (though this should never happen after initialization).
+// This method is safe for concurrent use.
 func (c *Chain) GetLatestBlock() *types.Block {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -45,7 +51,10 @@ func (c *Chain) GetLatestBlock() *types.Block {
 	return c.blocks[len(c.blocks)-1]
 }
 
-// GetBlockByNumber returns a block by its number
+// GetBlockByNumber returns a block by its block number.
+// Block numbers start at 0 (genesis block) and increment sequentially.
+// Returns an error if the block number does not exist in the chain.
+// This method is safe for concurrent use.
 func (c *Chain) GetBlockByNumber(number uint64) (*types.Block, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -57,7 +66,10 @@ func (c *Chain) GetBlockByNumber(number uint64) (*types.Block, error) {
 	return c.blocks[number], nil
 }
 
-// GetBlockByHash returns a block by its hash
+// GetBlockByHash returns a block by its hash value.
+// The hash lookup requires scanning all blocks, so GetBlockByNumber is more efficient when possible.
+// Returns an error if no block with the specified hash is found.
+// This method is safe for concurrent use.
 func (c *Chain) GetBlockByHash(hash string) (*types.Block, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -71,7 +83,9 @@ func (c *Chain) GetBlockByHash(hash string) (*types.Block, error) {
 	return nil, fmt.Errorf("block with hash %s not found", hash)
 }
 
-// GetAllBlocks returns all blocks in order
+// GetAllBlocks returns a copy of all blocks in the chain in chronological order.
+// The returned slice is a copy and safe to modify without affecting the chain.
+// This method is safe for concurrent use.
 func (c *Chain) GetAllBlocks() []*types.Block {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -83,7 +97,10 @@ func (c *Chain) GetAllBlocks() []*types.Block {
 	return blocks
 }
 
-// GetRecentBlocks returns the last N blocks
+// GetRecentBlocks returns the most recent N blocks in reverse chronological order (newest first).
+// If count exceeds the total number of blocks, all blocks are returned.
+// This is useful for displaying recent blockchain activity.
+// This method is safe for concurrent use.
 func (c *Chain) GetRecentBlocks(count int) []*types.Block {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -104,7 +121,11 @@ func (c *Chain) GetRecentBlocks(count int) []*types.Block {
 	return blocks
 }
 
-// AddBlock adds a new block to the chain
+// AddBlock creates and adds a new block to the chain with the specified transactions.
+// The block is automatically linked to the previous block via parent hash.
+// Block number is auto-incremented and the block hash is calculated automatically.
+// Transaction-to-block mappings are updated for efficient transaction lookups.
+// This method is safe for concurrent use.
 func (c *Chain) AddBlock(transactions []string, gasUsed uint64, miner string) (*types.Block, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -132,7 +153,9 @@ func (c *Chain) AddBlock(transactions []string, gasUsed uint64, miner string) (*
 	return newBlock, nil
 }
 
-// AddTransaction adds a transaction to the chain
+// AddTransaction adds a transaction to the chain's transaction store.
+// Transactions are stored separately from blocks for efficient lookup by transaction ID.
+// This method is safe for concurrent use.
 func (c *Chain) AddTransaction(tx *types.Transaction) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -142,7 +165,9 @@ func (c *Chain) AddTransaction(tx *types.Transaction) error {
 	return nil
 }
 
-// GetTransaction returns a transaction by ID
+// GetTransaction returns a transaction by its unique transaction ID.
+// Returns an error if the transaction is not found in the chain.
+// This method is safe for concurrent use.
 func (c *Chain) GetTransaction(txID string) (*types.Transaction, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -155,7 +180,9 @@ func (c *Chain) GetTransaction(txID string) (*types.Transaction, error) {
 	return tx, nil
 }
 
-// GetAllTransactions returns all transactions
+// GetAllTransactions returns all transactions in the chain sorted by timestamp (newest first).
+// The returned slice contains pointers to transaction objects.
+// This method is safe for concurrent use.
 func (c *Chain) GetAllTransactions() []*types.Transaction {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -177,7 +204,9 @@ func (c *Chain) GetAllTransactions() []*types.Transaction {
 	return txs
 }
 
-// GetRecentTransactions returns the last N transactions
+// GetRecentTransactions returns the most recent N transactions sorted by timestamp.
+// If count exceeds the total number of transactions, all transactions are returned.
+// This method is safe for concurrent use.
 func (c *Chain) GetRecentTransactions(count int) []*types.Transaction {
 	allTxs := c.GetAllTransactions()
 
@@ -188,7 +217,9 @@ func (c *Chain) GetRecentTransactions(count int) []*types.Transaction {
 	return allTxs[:count]
 }
 
-// GetTransactionsByBlock returns all transactions in a block
+// GetTransactionsByBlock returns all transactions included in a specific block.
+// Returns an empty slice if the block has no transactions or doesn't exist.
+// This method is safe for concurrent use.
 func (c *Chain) GetTransactionsByBlock(blockNumber uint64) []*types.Transaction {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -206,7 +237,9 @@ func (c *Chain) GetTransactionsByBlock(blockNumber uint64) []*types.Transaction 
 	return txs
 }
 
-// GetStats returns blockchain statistics
+// GetStats returns comprehensive blockchain statistics including block and transaction counts,
+// gas usage, and success/failure rates. This is useful for dashboard displays and monitoring.
+// This method is safe for concurrent use.
 func (c *Chain) GetStats() *types.BlockchainStats {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -239,7 +272,9 @@ func (c *Chain) GetStats() *types.BlockchainStats {
 	return stats
 }
 
-// GetBlockHeight returns the current block height
+// GetBlockHeight returns the current block height (the block number of the latest block).
+// The block height starts at 0 for the genesis block.
+// This method is safe for concurrent use.
 func (c *Chain) GetBlockHeight() uint64 {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -251,7 +286,9 @@ func (c *Chain) GetBlockHeight() uint64 {
 	return c.blocks[len(c.blocks)-1].Number
 }
 
-// GetTransactionCount returns the total number of transactions
+// GetTransactionCount returns the total number of transactions in the chain.
+// This includes both successful and failed transactions.
+// This method is safe for concurrent use.
 func (c *Chain) GetTransactionCount() int {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -259,7 +296,9 @@ func (c *Chain) GetTransactionCount() int {
 	return len(c.transactions)
 }
 
-// GetGasLimit returns the gas limit for new blocks
+// GetGasLimit returns the gas limit used for new blocks.
+// This represents the maximum gas that can be consumed by all transactions in a single block.
+// This method is safe for concurrent use.
 func (c *Chain) GetGasLimit() uint64 {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -267,7 +306,9 @@ func (c *Chain) GetGasLimit() uint64 {
 	return c.gasLimit
 }
 
-// SetGasLimit sets the gas limit for new blocks
+// SetGasLimit sets the gas limit for new blocks.
+// This affects all blocks created after this call.
+// This method is safe for concurrent use.
 func (c *Chain) SetGasLimit(gasLimit uint64) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -275,7 +316,10 @@ func (c *Chain) SetGasLimit(gasLimit uint64) {
 	c.gasLimit = gasLimit
 }
 
-// Reset resets the blockchain to genesis state
+// Reset resets the blockchain to its initial state with only the genesis block.
+// All blocks except genesis and all transactions are removed.
+// This is useful for testing or starting fresh without creating a new Chain instance.
+// This method is safe for concurrent use.
 func (c *Chain) Reset() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
