@@ -1,10 +1,58 @@
 import type { EvmState } from '~/lib/types'
 
+/**
+ * EVM memory word size in bytes.
+ * The EVM operates on 256-bit (32-byte) words.
+ */
+export const EVM_WORD_SIZE_BYTES = 32
+
+/**
+ * Maximum execution speed in milliseconds (slowest).
+ */
+export const MAX_EXECUTION_SPEED_MS = 5000
+
+/**
+ * Minimum execution speed in milliseconds (fastest).
+ */
+export const MIN_EXECUTION_SPEED_MS = 10
+
+/**
+ * Default execution speed in milliseconds.
+ */
+export const DEFAULT_EXECUTION_SPEED_MS = 200
+
+/**
+ * Validates that a string is a valid hexadecimal bytecode string.
+ *
+ * @param bytecode - String to validate
+ * @returns True if valid hex bytecode, false otherwise
+ */
+function isValidBytecode(bytecode: string): boolean {
+	if (!bytecode || typeof bytecode !== 'string') return false
+	const hex = bytecode.startsWith('0x') ? bytecode.slice(2) : bytecode
+	return /^[0-9a-fA-F]*$/.test(hex) && hex.length % 2 === 0
+}
+
+/**
+ * Loads EVM bytecode into the debugger.
+ * Validates bytecode format before sending to the backend.
+ *
+ * @example
+ * ```typescript
+ * await loadBytecode('0x6005600a01') // Valid
+ * await loadBytecode('0xZZZZ') // Throws error
+ * ```
+ *
+ * @param bytecodeHex - Hexadecimal bytecode string (with or without 0x prefix)
+ * @throws {Error} If bytecode is invalid or loading fails
+ */
 export async function loadBytecode(bytecodeHex: string): Promise<void> {
+	if (!isValidBytecode(bytecodeHex)) {
+		throw new Error('Invalid bytecode format. Must be a valid hexadecimal string.')
+	}
+
 	try {
-		console.log('load_bytecode', { bytecodeHex })
 		const response = await window.load_bytecode(bytecodeHex)
-		console.log('load_bytecode response:', response)
 
 		// Check if response contains error
 		if (typeof response === 'string') {
@@ -14,15 +62,27 @@ export async function loadBytecode(bytecodeHex: string): Promise<void> {
 			}
 		}
 	} catch (err) {
-		throw new Error(`Failed to load bytecode: ${err}`)
+		const message = err instanceof Error ? err.message : String(err)
+		throw new Error(`Failed to load bytecode: ${message}`)
 	}
 }
 
+/**
+ * Resets the EVM to its initial state with fresh bytecode.
+ * Clears stack, memory, storage, and resets the program counter.
+ *
+ * @example
+ * ```typescript
+ * const initialState = await resetEvm()
+ * console.log(initialState.gasLeft) // Fresh gas allocation
+ * ```
+ *
+ * @returns Promise resolving to the initial EVM state
+ * @throws {Error} If reset fails or backend returns an error
+ */
 export async function resetEvm(): Promise<EvmState> {
 	try {
-		console.log('reset_evm')
 		const response = await window.reset_evm()
-		console.log('reset_evm response:', response)
 
 		if (typeof response === 'string') {
 			const parsed = JSON.parse(response)
@@ -33,15 +93,27 @@ export async function resetEvm(): Promise<EvmState> {
 		}
 		return response
 	} catch (err) {
-		throw new Error(`Failed to reset EVM: ${err}`)
+		const message = err instanceof Error ? err.message : String(err)
+		throw new Error(`Failed to reset EVM: ${message}`)
 	}
 }
 
+/**
+ * Steps forward one EVM instruction and returns the updated state.
+ * Executes a single opcode and updates stack, memory, storage, etc.
+ *
+ * @example
+ * ```typescript
+ * const newState = await stepEvm()
+ * console.log(newState.currentInstructionIndex) // Incremented by 1
+ * ```
+ *
+ * @returns Promise resolving to the updated EVM state after stepping
+ * @throws {Error} If step execution fails or EVM encounters an error
+ */
 export async function stepEvm(): Promise<EvmState> {
 	try {
-		console.log('step_evm')
 		const response = await window.step_evm()
-		console.log('step_evm response:', response)
 
 		if (typeof response === 'string') {
 			const parsed = JSON.parse(response)
@@ -52,25 +124,45 @@ export async function stepEvm(): Promise<EvmState> {
 		}
 		return response
 	} catch (err) {
-		throw new Error(`Failed to step: ${err}`)
+		const message = err instanceof Error ? err.message : String(err)
+		throw new Error(`Failed to step: ${message}`)
 	}
 }
 
+/**
+ * Toggles between running and paused execution modes.
+ * Currently returns current state; continuous execution handled in App.tsx.
+ *
+ * @returns Promise resolving to the current EVM state
+ * @throws {Error} If state retrieval fails
+ */
 export async function toggleRunPause(): Promise<EvmState> {
 	try {
-		console.log('toggle_run_pause')
 		// For now, just get the current state since we don't have continuous execution yet
 		return await getEvmState()
 	} catch (err) {
-		throw new Error(`Failed to toggle run/pause: ${err}`)
+		const message = err instanceof Error ? err.message : String(err)
+		throw new Error(`Failed to toggle run/pause: ${message}`)
 	}
 }
 
+/**
+ * Gets the current EVM state without advancing execution.
+ * Maps backend JSON response to frontend EvmState interface.
+ *
+ * @example
+ * ```typescript
+ * const state = await getEvmState()
+ * console.log(`Gas left: ${state.gasLeft}`)
+ * console.log(`Stack depth: ${state.stack.length}`)
+ * ```
+ *
+ * @returns Promise resolving to the current EVM state
+ * @throws {Error} If state retrieval fails or response is invalid
+ */
 export async function getEvmState(): Promise<EvmState> {
 	try {
-		console.log('get_evm_state')
 		const response = await window.get_evm_state()
-		console.log('get_evm_state response:', response)
 
 		if (typeof response === 'string') {
 			const parsed = JSON.parse(response)
@@ -78,10 +170,10 @@ export async function getEvmState(): Promise<EvmState> {
 				throw new Error(parsed.error)
 			}
 
-			// Map fields from Zig JSON to frontend state
+			// Map fields from Zig JSON to frontend state with safe defaults
 			return {
-				gasLeft: parsed.gasLeft,
-				depth: parsed.depth,
+				gasLeft: parsed.gasLeft ?? 0,
+				depth: parsed.depth ?? 0,
 				stack: parsed.stack || [],
 				memory: parsed.memory || '0x',
 				storage: parsed.storage || [],
@@ -95,14 +187,46 @@ export async function getEvmState(): Promise<EvmState> {
 		}
 		return response
 	} catch (err) {
-		throw new Error(`Failed to get state: ${err}`)
+		const message = err instanceof Error ? err.message : String(err)
+		throw new Error(`Failed to get state: ${message}`)
 	}
 }
 
+/**
+ * Copies text to the system clipboard using the Clipboard API.
+ * Silently fails if clipboard access is not available.
+ *
+ * @example
+ * ```typescript
+ * copyToClipboard('0x1234567890abcdef')
+ * copyToClipboard(JSON.stringify(state, null, 2))
+ * ```
+ *
+ * @param text - Text to copy to clipboard
+ */
 export const copyToClipboard = (text: string): void => {
-	navigator.clipboard.writeText(text)
+	if (!text || typeof text !== 'string') return
+	navigator.clipboard.writeText(text).catch(() => {
+		// Silently fail if clipboard access denied
+	})
 }
 
+/**
+ * Maps an EVM opcode byte value to its mnemonic string representation.
+ * Includes all standard EVM opcodes from the Yellow Paper.
+ *
+ * @example
+ * ```typescript
+ * opcodeToString(0x01) // Returns: 'ADD'
+ * opcodeToString(0x60) // Returns: 'PUSH1'
+ * opcodeToString(0xF3) // Returns: 'RETURN'
+ * opcodeToString(0xFF) // Returns: 'SELFDESTRUCT'
+ * opcodeToString(0x99) // Returns: 'UNKNOWN'
+ * ```
+ *
+ * @param opcode - Opcode byte value (0-255)
+ * @returns Opcode mnemonic string or 'UNKNOWN' if not recognized
+ */
 export const opcodeToString = (opcode: number): string => {
 	const opcodes: Record<number, string> = {
 		0: 'STOP',

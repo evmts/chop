@@ -1,31 +1,105 @@
+/**
+ * Represents a block of EVM bytecode instructions.
+ * Blocks are groups of instructions between JUMPDEST opcodes or control flow boundaries.
+ *
+ * @example
+ * ```typescript
+ * const block: BlockJson = {
+ *   beginIndex: 0,
+ *   gasCost: 10,
+ *   stackReq: 0,
+ *   stackMaxGrowth: 2,
+ *   pcs: [0, 1, 2],
+ *   opcodes: ['PUSH1', 'PUSH1', 'ADD'],
+ *   hex: ['60', '05', '01'],
+ *   data: ['05', '', '']
+ * }
+ * ```
+ */
 export interface BlockJson {
+	/** Index where this block begins in the bytecode */
 	beginIndex: number
+	/** Total gas cost for executing this block */
 	gasCost: number
+	/** Number of stack items required by this block */
 	stackReq: number
+	/** Maximum number of items this block adds to the stack */
 	stackMaxGrowth: number
+	/** Program counter values for each instruction in this block */
 	pcs: number[]
+	/** Opcode mnemonics (e.g., 'PUSH1', 'ADD', 'JUMPDEST') */
 	opcodes: string[]
+	/** Hexadecimal representation of each opcode byte */
 	hex: string[]
+	/** Additional data bytes for instructions like PUSH (empty string if none) */
 	data: string[]
 }
 
+/**
+ * Complete state of the Ethereum Virtual Machine at a given execution point.
+ * Contains all the runtime information needed to visualize and debug EVM execution.
+ *
+ * @example
+ * ```typescript
+ * const state: EvmState = {
+ *   gasLeft: 999990,
+ *   depth: 1,
+ *   stack: ['0x05', '0x0a'],
+ *   memory: '0xdeadbeef...',
+ *   storage: [{ key: '0x00', value: '0x01' }],
+ *   logs: [],
+ *   returnData: '0x',
+ *   completed: false,
+ *   currentInstructionIndex: 3,
+ *   currentBlockStartIndex: 0,
+ *   blocks: []
+ * }
+ * ```
+ */
 export interface EvmState {
+	/** Remaining gas available for execution */
 	gasLeft: number
+	/** Current call depth (0 for top-level, increments with CALL/DELEGATECALL) */
 	depth: number
+	/** Stack items from bottom to top, each as hexadecimal string */
 	stack: string[]
+	/** Memory contents as a single hexadecimal string (0x prefix) */
 	memory: string
+	/** Storage slots that have been written, as key-value pairs */
 	storage: Array<{ key: string; value: string }>
+	/** Event logs emitted by LOG0-LOG4 opcodes */
 	logs: string[]
+	/** Data returned by RETURN or REVERT opcodes */
 	returnData: string
+	/** Whether execution has completed (reached STOP, RETURN, REVERT, or ran out of gas) */
 	completed: boolean
+	/** Index of the current instruction being executed */
 	currentInstructionIndex: number
+	/** Index of the start of the current basic block */
 	currentBlockStartIndex: number
+	/** All basic blocks parsed from the bytecode */
 	blocks: BlockJson[]
 }
 
+/**
+ * Sample EVM bytecode contract with metadata.
+ * Used for quick testing and demonstration purposes.
+ *
+ * @example
+ * ```typescript
+ * const contract: SampleContract = {
+ *   name: 'Basic Arithmetic',
+ *   description: 'Adds 5 + 10',
+ *   bytecode: '0x6005600a01'
+ * }
+ * ```
+ */
 export interface SampleContract {
+	/** Human-readable name of the contract */
 	name: string
+	/** Description of what the bytecode does */
 	description: string
+	/** Hexadecimal bytecode string (with 0x prefix) */
 	bytecode: string
 }
 
@@ -126,18 +200,46 @@ export const sampleContracts: SampleContract[] = [
 	},
 ]
 
+/**
+ * Formats a hexadecimal string for display by truncating long values.
+ * Shows first 6 and last 4 characters with ellipsis for values longer than 10 chars.
+ *
+ * @example
+ * ```typescript
+ * formatHex('0x1234') // Returns: '0x1234'
+ * formatHex('0x1234567890abcdef') // Returns: '0x1234...cdef'
+ * formatHex('1234') // Returns: '1234' (no 0x prefix, returns as-is)
+ * ```
+ *
+ * @param hex - Hexadecimal string, typically with 0x prefix
+ * @returns Formatted string, truncated if longer than 10 characters
+ */
 export const formatHex = (hex: string): string => {
 	if (!hex.startsWith('0x')) return hex
 	return hex.length > 10 ? `${hex.slice(0, 6)}...${hex.slice(-4)}` : hex
 }
 
+/**
+ * Formats EVM memory into 32-byte (64 hex character) chunks for display.
+ * Each chunk represents one EVM word (256 bits).
+ *
+ * @example
+ * ```typescript
+ * formatMemory('0x') // Returns: []
+ * formatMemory('0xdeadbeef') // Returns: ['deadbeef']
+ * formatMemory('0x' + 'ff'.repeat(64)) // Returns: ['ff...ff' (64 chars)]
+ * ```
+ *
+ * @param memory - Memory contents as hexadecimal string (with 0x prefix)
+ * @returns Array of 64-character hex strings, each representing 32 bytes
+ */
 export const formatMemory = (memory: string): string[] => {
 	if (memory === '0x' || memory.length <= 2) return []
 
 	// Remove 0x prefix
 	const hex = memory.slice(2)
 
-	// Group by 32 bytes (64 chars) for readability
+	// Group by 32 bytes (64 chars) for readability - EVM word size
 	const chunks: string[] = []
 	for (let i = 0; i < hex.length; i += 64) {
 		chunks.push(hex.slice(i, i + 64))
