@@ -5,6 +5,7 @@ zig-cache/
 
 # Build artifacts
 chop
+chop-*
 *.wasm
 
 # Go
