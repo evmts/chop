@@ -219,6 +219,28 @@ This removes:
 - `lib/guillotine-mini/zig-out/` (submodule artifacts)
 - `lib/guillotine-mini/zig-cache/` (submodule cache)
 
+## Go TUI Usage (Chop)
+
+Build and run the Go TUI directly:
+
+```bash
+CGO_ENABLED=0 go build -o chop .
+./chop
+```
+
+Tabs:
+- [1] Dashboard: Stats, recent blocks/txs (auto-refresh status shown)
+- [2] Accounts: Enter to view; 'p' to reveal private key
+- [3] Blocks: Enter to view block detail
+- [4] Transactions: Enter for transaction detail; in detail view press 'b' to open block
+- [5] Contracts: Enter to view details; 'c' copies address
+- [6] State Inspector: Type/paste address (ctrl+v), Enter to inspect
+- [7] Settings: 'r' reset blockchain, 'g' regenerate accounts (confirmation), 't' toggle auto-refresh
+
+Global:
+- Number keys 1–7 switch tabs; esc goes back; q or ctrl+c quits
+- 'c' in detail views copies the primary identifier (e.g., tx hash)
+
 ## Why Zig Build?
 
 We use Zig's build system as the orchestrator because:
