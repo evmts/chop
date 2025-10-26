@@ -14,6 +14,14 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+// Version information - injected by goreleaser at build time
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+	builtBy = "unknown"
+)
+
 func runTUI(c *cli.Context) error {
 	p := tea.NewProgram(
 		app.InitialModel(),
@@ -220,10 +228,22 @@ func runCall(c *cli.Context) error {
 }
 
 func main() {
+	// Build version string with additional information
+	versionInfo := version
+	if commit != "none" {
+		versionInfo += fmt.Sprintf(" (commit: %s)", commit)
+	}
+	if date != "unknown" {
+		versionInfo += fmt.Sprintf(" (built: %s)", date)
+	}
+	if builtBy != "unknown" {
+		versionInfo += fmt.Sprintf(" (by: %s)", builtBy)
+	}
+
 	cliApp := &cli.App{
 		Name:    "chop",
 		Usage:   "Guillotine EVM CLI - Interactive EVM execution environment",
-		Version: "0.1.0",
+		Version: versionInfo,
 		Action:  runTUI,
 		Commands: []*cli.Command{
 			{
