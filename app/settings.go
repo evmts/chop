@@ -69,39 +69,56 @@ func renderSettingsView(m *Model, width int) string {
 	s.WriteString(sectionTitleStyle.Render("📝 AVAILABLE ACTIONS"))
 	s.WriteString("\n\n")
 
-	optionStyle := lipgloss.NewStyle().
+	// Define styles for options
+	normalStyle := lipgloss.NewStyle().
 		Foreground(config.Muted)
+
+	selectedStyle := lipgloss.NewStyle().
+		Foreground(config.Primary).
+		Bold(true)
 
 	keyStyle := lipgloss.NewStyle().
 		Foreground(config.Primary).
 		Bold(true)
 
-	s.WriteString(optionStyle.Render("Press "))
-	s.WriteString(keyStyle.Render("'r'"))
-	s.WriteString(optionStyle.Render(" to reset blockchain"))
-	s.WriteString("\n")
+	// Render each option with cursor and highlighting
+	options := []struct {
+		key         string
+		description string
+	}{
+		{"r", "Reset blockchain to genesis"},
+		{"g", "Regenerate accounts (new seed)"},
+		{"t", "Toggle auto-refresh"},
+		{"[/]", "Adjust gas limit (±1M)"},
+	}
 
-	s.WriteString(optionStyle.Render("Press "))
-	s.WriteString(keyStyle.Render("'g'"))
-	s.WriteString(optionStyle.Render(" to regenerate accounts"))
-	s.WriteString("\n")
+	for i, opt := range options {
+		cursor := "  "
+		style := normalStyle
+		if i == m.settingsSelectedOption {
+			cursor = "> "
+			style = selectedStyle
+		}
 
-	s.WriteString(optionStyle.Render("Press "))
-	s.WriteString(keyStyle.Render("'t'"))
-	s.WriteString(optionStyle.Render(" to toggle auto-refresh"))
-	s.WriteString("\n")
-
-	// Gas limit adjustment
-	s.WriteString(optionStyle.Render("Press "))
-	s.WriteString(keyStyle.Render("'['/']'"))
-	s.WriteString(optionStyle.Render(" to adjust gas limit"))
-	s.WriteString("\n")
+		s.WriteString(cursor)
+		s.WriteString(keyStyle.Render(opt.key))
+		s.WriteString(" - ")
+		s.WriteString(style.Render(opt.description))
+		s.WriteString("\n")
+	}
 
     // Confirmation prompts
     if m.awaitingRegenerateConfirm {
         confirmStyle := lipgloss.NewStyle().Foreground(config.Amber).Bold(true)
         s.WriteString("\n")
-        s.WriteString(confirmStyle.Render("Confirm regenerate accounts? Press 'y' to confirm, any other key to cancel."))
+        s.WriteString(confirmStyle.Render("⚠  Regenerate accounts? This will create a new seed and reset all test accounts. (y/n)"))
+        s.WriteString("\n")
+    }
+
+    if m.awaitingResetConfirm {
+        confirmStyle := lipgloss.NewStyle().Foreground(config.Amber).Bold(true)
+        s.WriteString("\n")
+        s.WriteString(confirmStyle.Render("⚠  Reset blockchain? This will delete all blocks and transaction history. (y/n)"))
         s.WriteString("\n")
     }
 

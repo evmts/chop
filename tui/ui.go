@@ -99,11 +99,11 @@ func RenderHelp(state types.AppState) string {
     case types.StateTransactionsList:
         helpText = "↑/↓: navigate • enter: view details • esc: back"
     case types.StateTransactionDetail:
-        helpText = "b: open block • c: copy • esc: back"
+        helpText = "↑/↓: select log • enter: view log • b: open block • c: copy • esc: back"
 	case types.StateStateInspector:
 		helpText = "enter: inspect • esc: back"
     case types.StateSettings:
-        helpText = "r: reset • g: regenerate • t: toggle refresh • [/]: gas limit • esc: back"
+        helpText = "↑/↓: navigate • enter: select • r/g/t: shortcuts • [/]: gas limit • esc: back"
 	default:
 		helpText = "q: quit"
 	}

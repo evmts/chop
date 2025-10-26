@@ -83,4 +83,8 @@ type Model struct {
     showPrivateKey           bool
     awaitingPrivateKeyConfirm bool
     awaitingRegenerateConfirm bool
+    awaitingResetConfirm      bool
+    settingsSelectedOption    int  // 0-3 for settings menu options
+    feedbackMessage           string
+    feedbackTimer             int64 // Unix timestamp when feedback expires
 }

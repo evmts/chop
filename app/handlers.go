@@ -29,6 +29,13 @@ type disassemblyResultMsg struct {
 	result *bytecode.DisassemblyResult
 	error  error
 }
+type persistenceErrorMsg struct {
+	error string
+}
+type feedbackMsg struct {
+	message  string
+	duration time.Duration
+}
 
 // handleMainMenuSelect handles menu item selection on the main menu
 func (m Model) handleMainMenuSelect() (tea.Model, tea.Cmd) {
@@ -150,13 +157,12 @@ func (m *Model) executeCallCmd(params types.CallParametersStrings) tea.Cmd {
 		// Create timestamp once for both persistence and history
 		executionTime := time.Now()
 
-		// Persist call parameters after execution (non-blocking)
+		// Persist call parameters after execution (best effort, errors shown as feedback)
 		persistedCall := state.ConvertFromCallParameters(params, executionTime)
-		go func() {
-			if err := state.AppendCall(state.GetStateFilePath(), persistedCall); err != nil {
-				fmt.Printf("Warning: Failed to persist call: %v\n", err)
-			}
-		}()
+		if err := state.AppendCall(state.GetStateFilePath(), persistedCall); err != nil {
+			// Don't block on persistence failure, just log (could add feedback message if needed)
+			fmt.Printf("Warning: Failed to persist call: %v\n", err)
+		}
 
 		entry := types.CallHistoryEntry{
 			Parameters: params,
@@ -391,7 +397,7 @@ func (m *Model) handleStateNavigation(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleBlockDetailNavigation(msgStr)
 
 	case types.StateTransactionDetail:
-		return m.handleTransactionDetailNavigation(msgStr)
+		return m.handleTransactionDetailNavigation(msgStr, msg)
 	}
 
 	return m, nil
@@ -451,6 +457,10 @@ func (m *Model) handleCallParamEditNavigation(msgStr string, msg tea.KeyMsg) (te
 				m.textInput.SetValue(cleanedContent)
 				// IMPORTANT: Also update the cursor position to the end
 				m.textInput.CursorEnd()
+			} else {
+				// Show clipboard error feedback
+				m.feedbackMessage = "Clipboard unavailable"
+				m.feedbackTimer = time.Now().Add(2 * time.Second).Unix()
 			}
 		}
 		return m, nil
@@ -689,10 +699,14 @@ func (m *Model) handleConfirmResetNavigation(msgStr string) (tea.Model, tea.Cmd)
 // handleLogDetailNavigation handles navigation in log detail state
 func (m *Model) handleLogDetailNavigation(msgStr string) (tea.Model, tea.Cmd) {
 	if config.IsKey(msgStr, config.KeyBack) {
-		// Return to previous state
-		if m.state == types.StateLogDetail {
-			// Determine which state to return to based on context
-			if m.selectedHistoryID != "" {
+		// Use navigation stack for proper back navigation
+		if prevState, _ := m.navStack.Pop(); prevState != types.AppState(0) {
+			m.state = prevState
+		} else {
+			// Fallback: determine which state to return to based on context
+			if m.selectedTransaction != "" {
+				m.state = types.StateTransactionDetail
+			} else if m.selectedHistoryID != "" {
 				m.state = types.StateCallHistoryDetail
 			} else {
 				m.state = types.StateCallResult
@@ -852,6 +866,10 @@ func (m *Model) handleStateInspectorNavigation(msgStr string, msg tea.KeyMsg) (t
             cleanedContent := utils.CleanMultilineForInput(content)
             m.inspectorInput.SetValue(cleanedContent)
             m.inspectorInput.CursorEnd()
+        } else {
+            // Show clipboard error feedback
+            m.feedbackMessage = "Clipboard unavailable"
+            m.feedbackTimer = time.Now().Add(2 * time.Second).Unix()
         }
         return m, nil
     }
@@ -902,33 +920,78 @@ func (m *Model) handleSettingsNavigation(msgStr string) (tea.Model, tea.Cmd) {
         m.awaitingRegenerateConfirm = false
         return m, nil
     }
-    // Handle 'r' - Reset blockchain
-    if msgStr == "r" {
-        // Clear blockchain, reset to genesis
-        m.blockchainChain.Reset()
-        // Clear history
-        m.historyManager.Clear()
+
+    // Awaiting confirm for reset blockchain
+    if m.awaitingResetConfirm {
+        if msgStr == "y" || msgStr == "Y" {
+            // Confirm reset
+            m.blockchainChain.Reset()
+            m.historyManager.Clear()
+        }
+        m.awaitingResetConfirm = false
         return m, nil
     }
 
-    // Handle 'g' - Regenerate accounts (with confirmation)
+    // Handle up/down navigation
+    if config.IsKey(msgStr, config.KeyUp) {
+        if m.settingsSelectedOption > 0 {
+            m.settingsSelectedOption--
+        } else {
+            m.settingsSelectedOption = 3 // Wrap to bottom (0-3 = 4 options)
+        }
+        return m, nil
+    } else if config.IsKey(msgStr, config.KeyDown) {
+        if m.settingsSelectedOption < 3 {
+            m.settingsSelectedOption++
+        } else {
+            m.settingsSelectedOption = 0 // Wrap to top
+        }
+        return m, nil
+    }
+
+    // Handle Enter to select highlighted option
+    if config.IsKey(msgStr, config.KeySelect) {
+        switch m.settingsSelectedOption {
+        case 0: // Reset blockchain
+            m.awaitingResetConfirm = true
+            return m, nil
+        case 1: // Regenerate accounts
+            m.awaitingRegenerateConfirm = true
+            return m, nil
+        case 2: // Toggle auto-refresh
+            wasDisabled := !m.autoRefresh
+            m.autoRefresh = !m.autoRefresh
+            if wasDisabled && m.autoRefresh {
+                return m, tickCmd()
+            }
+            return m, nil
+        case 3: // Gas limit (just show feedback, adjust with [/])
+            // No action on Enter for gas limit
+            return m, nil
+        }
+    }
+
+    // Legacy keyboard shortcuts still work
+    if msgStr == "r" {
+        m.awaitingResetConfirm = true
+        return m, nil
+    }
+
     if msgStr == "g" {
         m.awaitingRegenerateConfirm = true
         return m, nil
     }
 
-    // Handle 't' - Toggle auto-refresh
     if msgStr == "t" {
         wasDisabled := !m.autoRefresh
         m.autoRefresh = !m.autoRefresh
         if wasDisabled && m.autoRefresh {
-            // Restart ticker
             return m, tickCmd()
         }
         return m, nil
     }
 
-    // Optional: Adjust gas limit with '[' / ']' by ±1,000,000
+    // Adjust gas limit with '[' / ']' by ±1,000,000
     if msgStr == "]" {
         gl := m.blockchainChain.GetGasLimit()
         m.blockchainChain.SetGasLimit(gl + 1_000_000)
@@ -942,11 +1005,7 @@ func (m *Model) handleSettingsNavigation(msgStr string) (tea.Model, tea.Cmd) {
         return m, nil
     }
 
-    if config.IsKey(msgStr, config.KeyUp) {
-        // TODO: Navigate through settings options
-    } else if config.IsKey(msgStr, config.KeyDown) {
-        // TODO: Navigate through settings options
-    } else if config.IsKey(msgStr, config.KeyBack) {
+    if config.IsKey(msgStr, config.KeyBack) {
         m.currentTab = types.TabDashboard
         m.state = types.StateDashboard
         return m, nil
@@ -1019,31 +1078,41 @@ func (m *Model) handleBlockDetailNavigation(msgStr string) (tea.Model, tea.Cmd) 
 }
 
 // handleTransactionDetailNavigation handles navigation in transaction detail state
-func (m *Model) handleTransactionDetailNavigation(msgStr string) (tea.Model, tea.Cmd) {
-    // Navigate to block detail
-    if msgStr == "b" {
-        if m.selectedTransaction != "" {
-            if tx, err := m.blockchainChain.GetTransaction(m.selectedTransaction); err == nil && tx != nil {
-                m.selectedBlock = tx.BlockNumber
+func (m *Model) handleTransactionDetailNavigation(msgStr string, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+    // Get transaction to check for logs
+    var tx *types.Transaction
+    if m.selectedTransaction != "" {
+        tx, _ = m.blockchainChain.GetTransaction(m.selectedTransaction)
+    }
+    hasLogs := tx != nil && len(tx.Logs) > 0
+
+    // Handle log navigation if logs exist
+    if hasLogs {
+        if config.IsKey(msgStr, config.KeyUp) || config.IsKey(msgStr, config.KeyDown) {
+            var cmd tea.Cmd
+            m.logsTable, cmd = m.logsTable.Update(msg)
+            return m, cmd
+        }
+
+        // Enter on a log opens log detail
+        if config.IsKey(msgStr, config.KeySelect) {
+            if m.logsTable.Cursor() < len(tx.Logs) {
+                m.selectedLogIndex = m.logsTable.Cursor()
                 m.navStack.Push(types.StateTransactionDetail, nil)
-                m.state = types.StateBlockDetail
+                m.state = types.StateLogDetail
                 return m, nil
             }
         }
     }
 
-    // Enter on a log opens log detail
-    if config.IsKey(msgStr, config.KeySelect) {
-        if m.selectedTransaction != "" {
-            if tx, err := m.blockchainChain.GetTransaction(m.selectedTransaction); err == nil && tx != nil && len(tx.Logs) > 0 {
-                if m.logsTable.Cursor() < len(tx.Logs) {
-                    m.selectedLogIndex = m.logsTable.Cursor()
-                    m.state = types.StateLogDetail
-                    return m, nil
-                }
-            }
+    // Navigate to block detail
+    if msgStr == "b" {
+        if tx != nil {
+            m.selectedBlock = tx.BlockNumber
+            m.navStack.Push(types.StateTransactionDetail, nil)
+            m.state = types.StateBlockDetail
+            return m, nil
         }
-        return m, nil
     }
 
     if config.IsKey(msgStr, config.KeyBack) {

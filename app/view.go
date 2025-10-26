@@ -100,8 +100,16 @@ func (m Model) View() string {
 	case types.StateCallParameterEdit, types.StateCallTypeEdit:
 		header := tui.RenderHeader(config.CallEditTitle, config.CallEditSubtitle, config.TitleStyle, config.SubtitleStyle)
 		editView := tui.RenderCallEdit(m.editingParam, m.textInput, m.validationError, m.callTypeSelector)
+
+		// Show feedback message if active
+		var feedback string
+		if m.feedbackMessage != "" && time.Now().Unix() < m.feedbackTimer {
+			feedbackStyle := lipgloss.NewStyle().Foreground(config.Amber).Bold(true)
+			feedback = feedbackStyle.Render(m.feedbackMessage)
+		}
+
 		help := tui.RenderHelp(m.state)
-		content := layout.ComposeVertical(header, editView, help)
+		content := layout.ComposeVertical(header, editView, feedback, help)
 		return layout.RenderWithBox(content)
 
 	case types.StateCallExecuting:
@@ -191,15 +199,22 @@ func (m Model) View() string {
 		// Get transaction using selected ID
 		tx, err := m.blockchainChain.GetTransaction(m.selectedTransaction)
 		var detailView string
+		var logsSection string
 		if err != nil {
 			errorStyle := lipgloss.NewStyle().Foreground(config.Error).Bold(true)
 			detailView = errorStyle.Render(fmt.Sprintf("Error: %v", err))
 		} else {
 			detailView = renderTransactionDetail(tx, m.width-4)
+
+			// Add logs table if logs exist
+			if tx != nil && len(tx.Logs) > 0 {
+				logsTitle := lipgloss.NewStyle().Bold(true).Foreground(config.Primary).Render(fmt.Sprintf("\nLOGS (%d)", len(tx.Logs)))
+				logsSection = logsTitle + "\n" + m.logsTable.View()
+			}
 		}
 
 		help := tui.RenderHelp(types.StateTransactionDetail)
-		content := layout.ComposeVertical(tabBar, header, detailView, help)
+		content := layout.ComposeVertical(tabBar, header, detailView, logsSection, help)
 		return layout.RenderWithBox(content)
 
 	case types.StateContractDetail:
@@ -249,13 +264,24 @@ func (m Model) View() string {
 	case types.StateLogDetail:
 		header := tui.RenderHeader(config.LogDetailTitle, config.LogDetailSubtitle, config.TitleStyle, config.SubtitleStyle)
 
-		// Get log using core domain logic
-		var selectedHistoryEntry *types.CallHistoryEntry
-		if m.selectedHistoryID != "" {
-			selectedHistoryEntry = m.historyManager.GetCall(m.selectedHistoryID)
+		// Get log from different sources based on context
+		var log *types.Log
+		if m.selectedTransaction != "" {
+			// Get log from transaction
+			if tx, err := m.blockchainChain.GetTransaction(m.selectedTransaction); err == nil && tx != nil {
+				if m.selectedLogIndex >= 0 && m.selectedLogIndex < len(tx.Logs) {
+					log = &tx.Logs[m.selectedLogIndex]
+				}
+			}
+		} else {
+			// Get log from call result or history entry (existing logic)
+			var selectedHistoryEntry *types.CallHistoryEntry
+			if m.selectedHistoryID != "" {
+				selectedHistoryEntry = m.historyManager.GetCall(m.selectedHistoryID)
+			}
+			log = logs.GetSelectedLog(m.callResult, selectedHistoryEntry, m.selectedLogIndex)
 		}
 
-		log := logs.GetSelectedLog(m.callResult, selectedHistoryEntry, m.selectedLogIndex)
 		detail := tui.RenderLogDetail(log, m.selectedLogIndex, m.width-4)
 		help := tui.RenderHelp(types.StateLogDetail)
 		content := layout.ComposeVertical(header, detail, help)
@@ -277,8 +303,16 @@ func (m Model) View() string {
 		}
 
 		inspectorView := renderStateInspectorView(m.inspectorInput, m.inspectorResult, m.inspectorError, m.width-4)
+
+		// Show feedback message if active
+		var feedback string
+		if m.feedbackMessage != "" && time.Now().Unix() < m.feedbackTimer {
+			feedbackStyle := lipgloss.NewStyle().Foreground(config.Amber).Bold(true)
+			feedback = feedbackStyle.Render(m.feedbackMessage)
+		}
+
 		help := tui.RenderHelp(types.StateStateInspector)
-		content := layout.ComposeVertical(tabBar, header, inspectorView, help)
+		content := layout.ComposeVertical(tabBar, header, inspectorView, feedback, help)
 		return layout.RenderWithBox(content)
 
 	case types.StateBlocksList:
