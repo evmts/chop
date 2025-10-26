@@ -1,0 +1,264 @@
+# golangci-lint configuration for chop
+# Documentation: https://golangci-lint.run/usage/configuration/
+
+run:
+  # Timeout for analysis
+  timeout: 5m
+
+  # Include test files in analysis
+  tests: true
+
+  # Modules download mode (readonly, vendor, or mod)
+  modules-download-mode: readonly
+
+  # Allow multiple parallel golangci-lint instances
+  allow-parallel-runners: true
+
+# Output configuration
+output:
+  # Format: colored-line-number|line-number|json|tab|checkstyle|code-climate|html|junit-xml|github-actions
+  formats:
+    - format: colored-line-number
+
+  # Print lines of code with issue
+  print-issued-lines: true
+
+  # Print linter name in issue line
+  print-linter-name: true
+
+  # Make issues output unique by line
+  uniq-by-line: true
+
+  # Sort results by: filepath, line, and column
+  sort-results: true
+
+# Linters configuration
+linters:
+  # Disable all linters by default
+  disable-all: true
+
+  # Enable specific linters
+  enable:
+    # Default linters
+    - errcheck      # Check for unchecked errors
+    - gosimple      # Simplify code suggestions
+    - govet         # Official Go static analyzer
+    - ineffassign   # Detect ineffectual assignments
+    - staticcheck   # Go static analysis with checks
+    - unused        # Check for unused code
+
+    # Additional recommended linters
+    - gofmt         # Check code formatting
+    - goimports     # Check import formatting
+    - misspell      # Check for commonly misspelled words
+    - revive        # Fast, configurable, extensible, flexible linter
+    - typecheck     # Type-check Go code
+    - gosec         # Inspect for security issues
+    - gocritic      # Comprehensive Go source code linter
+    - gocyclo       # Check cyclomatic complexity
+    - dupl          # Check for code duplication
+    - unparam       # Check for unused function parameters
+    - unconvert     # Remove unnecessary type conversions
+    - prealloc      # Find slice declarations that could be preallocated
+    - nilerr        # Find code that returns nil even if it checks that error is not nil
+    - nilnil        # Check that there is no simultaneous return of nil error and an invalid value
+    - bodyclose     # Check HTTP response body is closed
+    - exportloopref # Check for pointers to enclosing loop variables
+    - goconst       # Find repeated strings that could be replaced by a constant
+    - nakedret      # Find naked returns in functions greater than a specified length
+
+# Linter-specific settings
+linters-settings:
+  # errcheck configuration
+  errcheck:
+    # Report about not checking errors in type assertions: `a := b.(MyStruct)`
+    check-type-assertions: true
+    # Report about assignment of errors to blank identifier: `_ = err`
+    check-blank: true
+    # Exclude functions to skip
+    exclude-functions:
+      - (*github.com/charmbracelet/bubbletea.Program).Send
+      - (*github.com/charmbracelet/bubbletea.Program).Quit
+
+  # govet configuration
+  govet:
+    # Enable all analyzers
+    enable-all: true
+    # Disable specific analyzers
+    disable:
+      - fieldalignment  # Too strict for this project
+      - shadow         # Can be noisy
+
+  # gocyclo configuration
+  gocyclo:
+    # Minimal cyclomatic complexity to report (default 30)
+    min-complexity: 15
+
+  # gocritic configuration
+  gocritic:
+    # Enable multiple checks by tags
+    enabled-tags:
+      - diagnostic
+      - style
+      - performance
+    disabled-checks:
+      - unnamedResult
+      - hugeParam
+      - rangeValCopy
+
+  # revive configuration
+  revive:
+    # Minimal confidence for issues (0.0 to 1.0)
+    confidence: 0.8
+    rules:
+      # Enable specific rules
+      - name: blank-imports
+      - name: context-as-argument
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: exported
+        disabled: true  # Can be too strict
+      - name: if-return
+      - name: increment-decrement
+      - name: var-naming
+      - name: package-comments
+        disabled: true  # Can be too strict for all packages
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: indent-error-flow
+      - name: errorf
+      - name: empty-block
+      - name: superfluous-else
+      - name: unused-parameter
+        disabled: true  # Can be noisy for interface implementations
+      - name: unreachable-code
+      - name: redefines-builtin-id
+
+  # misspell configuration
+  misspell:
+    # Locale to use
+    locale: US
+    # Ignore words list
+    ignore-words:
+      - guillotine
+
+  # gosec configuration
+  gosec:
+    # Exclude specific security checks
+    excludes:
+      - G404  # Use of weak random number generator - OK for non-crypto uses
+
+  # gofmt configuration
+  gofmt:
+    # Simplify code
+    simplify: true
+
+  # goimports configuration
+  goimports:
+    # Put imports beginning with prefix after 3rd-party packages
+    local-prefixes: chop
+
+  # goconst configuration
+  goconst:
+    # Minimal length of string constant
+    min-len: 3
+    # Minimum occurrences to report
+    min-occurrences: 3
+
+  # dupl configuration
+  dupl:
+    # Tokens count to trigger issue
+    threshold: 150
+
+  # nakedret configuration
+  nakedret:
+    # Make an issue if func has more lines of code than this setting
+    max-func-lines: 30
+
+  # unparam configuration
+  unparam:
+    # Check exported functions
+    check-exported: false
+
+# Issues configuration
+issues:
+  # Maximum issues count per one linter
+  max-issues-per-linter: 0
+
+  # Maximum count of issues with the same text
+  max-same-issues: 0
+
+  # Show only new issues
+  new: false
+
+  # Fix found issues (if supported by linter)
+  fix: false
+
+  # Exclude rules
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+        - goconst
+
+    # Exclude some staticcheck messages
+    - linters:
+        - staticcheck
+      text: "SA9003:"  # Empty branch
+
+    # Exclude lll issues for long lines with go:generate
+    - linters:
+        - lll
+      source: "^//go:generate "
+
+    # Allow TODO comments (don't fail on them)
+    - linters:
+        - godox
+      text: "TODO"
+
+    # Ignore certain errors in specific files
+    - path: evm/bindings_stub\.go
+      linters:
+        - unused
+        - deadcode
+
+    # Exclude shadow checking on error variables
+    - linters:
+        - govet
+      text: 'shadow: declaration of "err"'
+
+  # Exclude known issues from exclude list
+  exclude-use-default: false
+
+  # Exclude directories
+  exclude-dirs:
+    - lib
+    - zig-out
+    - zig-cache
+    - vendor
+
+  # Exclude files
+  exclude-files:
+    - ".*\\.pb\\.go$"
+    - ".*\\.gen\\.go$"
+
+severity:
+  # Default severity for all issues
+  default-severity: warning
+
+  # Rules for severity assignment
+  rules:
+    - linters:
+        - errcheck
+        - govet
+        - staticcheck
+        - typecheck
+      severity: error
