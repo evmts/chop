@@ -69,6 +69,9 @@ const (
 	DefaultValue      = "0"
 	DefaultInputData  = "0x"
 	DefaultSalt       = "0x0000000000000000000000000000000000000000000000000000000000000000"
+
+	// Dashboard configuration
+	DashboardRecentItemsCount = 5 // Number of recent blocks/transactions to show
 )
 
 // Keyboard shortcuts

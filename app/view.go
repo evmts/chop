@@ -1,12 +1,13 @@
 package app
 
 import (
-	"chop/config"
-	logs "chop/core"
-	"chop/tui"
-	"chop/types"
+    "chop/config"
+    logs "chop/core"
+    "chop/tui"
+    "chop/types"
+    "fmt"
 
-	"github.com/charmbracelet/lipgloss"
+    "github.com/charmbracelet/lipgloss"
 )
 
 func (m Model) View() string {
@@ -33,7 +34,20 @@ func (m Model) View() string {
 	switch m.state {
 	case types.StateDashboard:
 		header := tui.RenderHeader("Chop Dashboard", "Local EVM Development Environment", config.TitleStyle, config.SubtitleStyle)
-		dashboard := tui.RenderDashboard(nil, nil, nil)
+		// Get real blockchain data (with defensive nil checks)
+		stats := m.blockchainChain.GetStats()
+		if stats == nil {
+			stats = &types.BlockchainStats{} // Provide empty stats as fallback
+		}
+		recentBlocks := m.blockchainChain.GetRecentBlocks(config.DashboardRecentItemsCount)
+		if recentBlocks == nil {
+			recentBlocks = []*types.Block{} // Provide empty slice as fallback
+		}
+		recentTxs := m.blockchainChain.GetRecentTransactions(config.DashboardRecentItemsCount)
+		if recentTxs == nil {
+			recentTxs = []*types.Transaction{} // Provide empty slice as fallback
+		}
+		dashboard := tui.RenderDashboard(stats, recentBlocks, recentTxs)
 		help := tui.RenderHelp(types.StateDashboard)
 		content := layout.ComposeVertical(tabBar, header, dashboard, help)
 		return layout.RenderWithBox(content)
@@ -48,8 +62,16 @@ func (m Model) View() string {
 
 	case types.StateAccountDetail:
 		header := tui.RenderHeader("Account Detail", "Account Information", config.TitleStyle, config.SubtitleStyle)
-		account, _ := m.accountManager.GetAccount(m.selectedAccount)
-		detail := renderAccountDetail(account, m.showPrivateKey, m.width-4)
+		account, err := m.accountManager.GetAccount(m.selectedAccount)
+		if err != nil {
+			errorMsg := lipgloss.NewStyle().
+				Foreground(config.Error).
+				Render("Error: " + err.Error())
+			help := tui.RenderHelp(types.StateAccountDetail)
+			content := layout.ComposeVertical(tabBar, header, errorMsg, help)
+			return layout.RenderWithBox(content)
+		}
+		detail := renderAccountDetail(account, m.showPrivateKey, m.awaitingPrivateKeyConfirm, m.width-4)
 		help := tui.RenderHelp(types.StateAccountDetail)
 		content := layout.ComposeVertical(tabBar, header, detail, help)
 		return layout.RenderWithBox(content)
@@ -155,6 +177,23 @@ func (m Model) View() string {
 		tableView := m.transactionsTable.View()
 		help := tui.RenderHelp(types.StateTransactionsList)
 		content := layout.ComposeVertical(tabBar, header, tableView, help)
+		return layout.RenderWithBox(content)
+
+	case types.StateTransactionDetail:
+		header := tui.RenderHeader("Transaction Detail", "Transaction Information", config.TitleStyle, config.SubtitleStyle)
+
+		// Get transaction using selected ID
+		tx, err := m.blockchainChain.GetTransaction(m.selectedTransaction)
+		var detailView string
+		if err != nil {
+			errorStyle := lipgloss.NewStyle().Foreground(config.Error).Bold(true)
+			detailView = errorStyle.Render(fmt.Sprintf("Error: %v", err))
+		} else {
+			detailView = renderTransactionDetail(tx, m.width-4)
+		}
+
+		help := tui.RenderHelp(types.StateTransactionDetail)
+		content := layout.ComposeVertical(tabBar, header, detailView, help)
 		return layout.RenderWithBox(content)
 
 	case types.StateContractDetail:
