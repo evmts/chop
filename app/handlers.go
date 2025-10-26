@@ -10,6 +10,7 @@ import (
     "chop/tui"
     "chop/types"
     "fmt"
+    "strings"
     "time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -863,7 +864,7 @@ func (m *Model) handleStateInspectorNavigation(msgStr string, msg tea.KeyMsg) (t
 
     // Enter triggers inspection
     if config.IsKey(msgStr, config.KeySelect) {
-        address := m.inspectorInput.Value()
+        address := strings.TrimSpace(m.inspectorInput.Value())
         if address != "" {
             // Optional validation
             if !(len(address) == 42 && len(address) > 1 && address[:2] == "0x") {
