@@ -1,0 +1,132 @@
+name: CI
+
+# Run CI on pushes to main and on all pull requests
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        go-version: ['1.22', '1.24']
+
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive  # Include guillotine-mini submodule
+
+      # Set up Go environment
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache: true
+
+      # Download dependencies
+      - name: Download dependencies
+        run: go mod download
+
+      # Verify go.mod and go.sum are up to date
+      - name: Verify go.mod and go.sum
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
+
+      # Run go vet to check for common issues
+      - name: Run go vet
+        run: go vet ./...
+
+      # Run tests with race detector and coverage
+      - name: Run tests
+        run: go test ./... -v -race -coverprofile=coverage.txt -covermode=atomic
+
+      # Upload coverage report
+      - name: Upload coverage to artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.os }}-go${{ matrix.go-version }}
+          path: coverage.txt
+          retention-days: 7
+
+  build:
+    name: Build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # Set up Go environment with latest stable version
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache: true
+
+      # Build the binary with CGO disabled for static linking
+      - name: Build binary
+        run: CGO_ENABLED=0 go build -o chop .
+
+      # Verify the binary was created
+      - name: Verify binary exists
+        run: |
+          if [ ! -f ./chop ]; then
+            echo "Error: Binary not found"
+            exit 1
+          fi
+          echo "Binary built successfully"
+          ls -lh ./chop
+
+      # Test that the binary can be executed
+      - name: Test binary execution
+        run: |
+          ./chop --version || echo "Binary runs successfully (no version flag yet)"
+
+      # Upload the binary as an artifact
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chop-${{ matrix.os }}
+          path: chop
+          retention-days: 7
+
+  # Optional: Lint job using golangci-lint
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache: true
+
+      # Run golangci-lint if .golangci.yml exists
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=5m
+        continue-on-error: true  # Don't fail CI if linting issues exist

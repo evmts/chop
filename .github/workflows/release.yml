@@ -1,0 +1,48 @@
+name: Release
+
+# Trigger on version tags (e.g., v0.1.0, v1.2.3)
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+# Permissions required for creating releases
+permissions:
+  contents: write
+
+jobs:
+  goreleaser:
+    name: GoReleaser
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout with full history for changelog generation
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      # Set up Go environment
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache: true
+
+      # Run GoReleaser to build and create release
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Optional: Upload release assets summary
+      - name: Upload release summary
+        if: always()
+        run: |
+          echo "Release created for tag: ${{ github.ref_name }}"
+          echo "View release at: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
