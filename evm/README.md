@@ -292,16 +292,28 @@ See `examples_test.go` for comprehensive examples:
 - Access lists
 - Custom state backends
 
+**Note:** The example tests are tagged with `//go:build integration` and require a working guillotine-mini integration to run. They are automatically skipped during normal test runs.
+
 ## Building
 
-The package uses CGO to link against the guillotine-mini WASM library. Ensure it's built:
+The package uses CGO to link against the guillotine-mini library. The integration is currently **in progress** (see `INTEGRATION_NOTES.md` for details).
+
+To run integration tests (once the native library is built):
 
 ```bash
-# From project root
+# Build the native library first (not yet implemented)
 zig build guillotine
+
+# Run integration tests
+go test -tags=integration ./evm/...
 ```
 
-This creates `lib/guillotine-mini/zig-out/bin/guillotine_mini.wasm`, which the Go bindings link against.
+To run regular tests (without EVM examples):
+
+```bash
+# This will skip the integration-tagged tests
+go test ./...
+```
 
 ## Troubleshooting
 

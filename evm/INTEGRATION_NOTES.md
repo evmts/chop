@@ -4,6 +4,8 @@
 
 The Go bindings have been created but require a **native shared library** to work with CGO. Currently, guillotine-mini only builds as WASM.
 
+**Working Solution:** The package includes stub implementations that allow building and testing without the native library. Build with `CGO_ENABLED=0` to use the stubs. Integration tests are tagged with `//go:build integration` and can be run once the native library is available.
+
 ## Two Integration Approaches
 
 ### Approach 1: WASM Runtime (Recommended for Now)
@@ -145,31 +147,39 @@ Build guillotine-mini as a native `.so`/`.dylib`/`.dll` for CGO linking.
    - Verify CGO bindings work
    - Update build system integration
 
-## Testing Without Full Integration
+## Building and Testing
 
-You can still test the high-level Go API design by:
+### Building Without Native Library
 
-1. Temporarily commenting out CGO import in `bindings.go`
-2. Implementing stub functions that return mock data
-3. Testing API ergonomics with mock backend
+The package includes stub implementations for development without the native library:
 
-Example:
-```go
-// bindings_mock.go
-// +build mock
+```bash
+# Build with stub implementations (no CGO required)
+CGO_ENABLED=0 go build ./...
 
-package guillotine
-
-type evmHandle uintptr
-
-func evmCreate(hardfork string, logLevel LogLevel) evmHandle {
-    return evmHandle(1) // Mock handle
-}
-
-// ... other mock implementations
+# Run tests with stub implementations
+CGO_ENABLED=0 go test ./...
 ```
 
-Build with: `go build -tags=mock`
+The stubs are defined in `bindings_stub.go` with the build tag `// +build !cgo`.
+
+### Building With Native Library
+
+Once the native library is available:
+
+```bash
+# Build with CGO enabled (default)
+go build ./...
+
+# Run integration tests
+go test -tags=integration ./evm/...
+```
+
+### Why Two Build Modes?
+
+- **Stub mode (CGO_ENABLED=0)**: For development and CI without native dependencies
+- **Native mode (CGO_ENABLED=1)**: For actual EVM execution with the guillotine-mini library
+- **Integration tests**: Tagged separately to run only when native library is available
 
 ## Resources
 
