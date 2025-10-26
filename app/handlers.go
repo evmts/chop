@@ -375,6 +375,15 @@ func (m *Model) handleStateNavigation(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case types.StateSettings:
 		return m.handleSettingsNavigation(msgStr)
+
+	case types.StateAccountDetail:
+		return m.handleAccountDetailNavigation(msgStr)
+
+	case types.StateBlockDetail:
+		return m.handleBlockDetailNavigation(msgStr)
+
+	case types.StateTransactionDetail:
+		return m.handleTransactionDetailNavigation(msgStr)
 	}
 
 	return m, nil
@@ -792,21 +801,21 @@ func (m *Model) handleBlocksListNavigation(msgStr string, msg tea.KeyMsg) (tea.M
 
 // handleTransactionsListNavigation handles navigation in transactions list state
 func (m *Model) handleTransactionsListNavigation(msgStr string, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	if config.IsKey(msgStr, config.KeySelect) {
-		selectedRow := m.transactionsTable.SelectedRow()
-		if len(selectedRow) > 0 && m.transactionsTable.Cursor() < len(selectedRow) {
-			// Extract transaction hash from first column
-			m.selectedTransaction = selectedRow[0]
-			m.navStack.Push(types.StateTransactionsList, nil)
-			m.state = types.StateTransactionDetail
-			return m, nil
-		}
-		return m, nil
-	} else if config.IsKey(msgStr, config.KeyBack) {
-		m.currentTab = types.TabDashboard
-		m.state = types.StateDashboard
-		return m, nil
-	} else if config.IsKey(msgStr, config.KeyUp) || config.IsKey(msgStr, config.KeyDown) {
+    if config.IsKey(msgStr, config.KeySelect) {
+        // Use cursor to map to underlying transaction slice
+        idx := m.transactionsTable.Cursor()
+        txs := m.blockchainChain.GetAllTransactions()
+        if idx >= 0 && idx < len(txs) {
+            m.selectedTransaction = txs[idx].ID
+            m.navStack.Push(types.StateTransactionsList, nil)
+            m.state = types.StateTransactionDetail
+        }
+        return m, nil
+    } else if config.IsKey(msgStr, config.KeyBack) {
+        m.currentTab = types.TabDashboard
+        m.state = types.StateDashboard
+        return m, nil
+    } else if config.IsKey(msgStr, config.KeyUp) || config.IsKey(msgStr, config.KeyDown) {
 		// Let table handle navigation
 		var cmd tea.Cmd
 		m.transactionsTable, cmd = m.transactionsTable.Update(msg)
@@ -817,25 +826,150 @@ func (m *Model) handleTransactionsListNavigation(msgStr string, msg tea.KeyMsg) 
 
 // handleStateInspectorNavigation handles navigation in state inspector state
 func (m *Model) handleStateInspectorNavigation(msgStr string, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	if config.IsKey(msgStr, config.KeyBack) {
-		m.currentTab = types.TabDashboard
-		m.state = types.StateDashboard
-		return m, nil
-	}
-	// TODO: Add text input handling for address entry
-	return m, nil
+    if config.IsKey(msgStr, config.KeyBack) {
+        m.currentTab = types.TabDashboard
+        m.state = types.StateDashboard
+        return m, nil
+    }
+    // Pass key events to text input (except Enter and Escape)
+    if !config.IsKey(msgStr, config.KeySelect) && !config.IsKey(msgStr, config.KeyBack) {
+        var cmd tea.Cmd
+        m.inspectorInput, cmd = m.inspectorInput.Update(msg)
+        return m, cmd
+    }
+
+    // Enter triggers inspection
+    if config.IsKey(msgStr, config.KeySelect) {
+        address := m.inspectorInput.Value()
+        if address != "" {
+            // Optional validation
+            if !(len(address) == 42 && len(address) > 1 && address[:2] == "0x") {
+                m.inspectorResult = nil
+                m.inspectorError = fmt.Errorf("invalid address: must start with 0x and be 42 characters")
+                return m, nil
+            }
+
+            // Inspect the address
+            result, err := m.stateInspector.InspectAddress(address)
+            m.inspectorResult = result
+            m.inspectorError = err
+        }
+        return m, nil
+    }
+    return m, nil
 }
 
 // handleSettingsNavigation handles navigation in settings state
 func (m *Model) handleSettingsNavigation(msgStr string) (tea.Model, tea.Cmd) {
-	if config.IsKey(msgStr, config.KeyUp) {
-		// TODO: Navigate through settings options
-	} else if config.IsKey(msgStr, config.KeyDown) {
-		// TODO: Navigate through settings options
-	} else if config.IsKey(msgStr, config.KeyBack) {
-		m.currentTab = types.TabDashboard
-		m.state = types.StateDashboard
+    // Handle 'r' - Reset blockchain
+    if msgStr == "r" {
+        // Clear blockchain, reset to genesis
+        m.blockchainChain.Reset()
+        // Clear history
+        m.historyManager.Clear()
+        return m, nil
+    }
+
+    // Handle 'g' - Regenerate accounts (placeholder)
+    if msgStr == "g" {
+        // Not implemented: would require reseeding account manager
+        return m, nil
+    }
+
+    // Handle 't' - Toggle auto-refresh
+    if msgStr == "t" {
+        m.autoRefresh = !m.autoRefresh
+        return m, nil
+    }
+
+    if config.IsKey(msgStr, config.KeyUp) {
+        // TODO: Navigate through settings options
+    } else if config.IsKey(msgStr, config.KeyDown) {
+        // TODO: Navigate through settings options
+    } else if config.IsKey(msgStr, config.KeyBack) {
+        m.currentTab = types.TabDashboard
+        m.state = types.StateDashboard
+        return m, nil
+    }
+    return m, nil
+}
+
+// handleAccountDetailNavigation handles navigation in account detail state
+func (m *Model) handleAccountDetailNavigation(msgStr string) (tea.Model, tea.Cmd) {
+	// Validate that an account is selected
+	if m.selectedAccount == "" {
 		return m, nil
 	}
+
+	// Handle private key reveal confirmation workflow
+	if m.awaitingPrivateKeyConfirm {
+		if msgStr == "y" || msgStr == "Y" {
+			// Confirm reveal
+			m.showPrivateKey = true
+			m.awaitingPrivateKeyConfirm = false
+			return m, nil
+		}
+		// Any other key cancels
+		m.awaitingPrivateKeyConfirm = false
+		return m, nil
+	}
+
+	// Handle 'p' key to reveal/hide private key
+	if msgStr == "p" {
+		if m.showPrivateKey {
+			// If already showing, hide immediately (no confirmation needed to hide)
+			m.showPrivateKey = false
+		} else {
+			// Request confirmation before revealing
+			m.awaitingPrivateKeyConfirm = true
+		}
+		return m, nil
+	}
+
+	if config.IsKey(msgStr, config.KeyBack) {
+		m.showPrivateKey = false // Reset when going back
+		m.awaitingPrivateKeyConfirm = false // Reset confirmation state
+		// Use navigation stack for proper back navigation
+		if prevState, _ := m.navStack.Pop(); prevState != types.AppState(0) {
+			m.state = prevState
+		} else {
+			// Fallback if stack is empty
+			m.state = types.StateAccountsList
+		}
+		return m, nil
+	}
+
+	return m, nil
+}
+
+// handleBlockDetailNavigation handles navigation in block detail state
+func (m *Model) handleBlockDetailNavigation(msgStr string) (tea.Model, tea.Cmd) {
+	if config.IsKey(msgStr, config.KeyBack) {
+		// Use navigation stack for proper back navigation
+		if prevState, _ := m.navStack.Pop(); prevState != types.AppState(0) {
+			m.state = prevState
+		} else {
+			// Fallback if stack is empty
+			m.state = types.StateBlocksList
+		}
+		return m, nil
+	}
+
+	return m, nil
+}
+
+// handleTransactionDetailNavigation handles navigation in transaction detail state
+func (m *Model) handleTransactionDetailNavigation(msgStr string) (tea.Model, tea.Cmd) {
+	if config.IsKey(msgStr, config.KeyBack) {
+		// Use navigation stack for proper back navigation
+		if prevState, _ := m.navStack.Pop(); prevState != types.AppState(0) {
+			m.state = prevState
+		} else {
+			// Fallback if stack is empty
+			m.state = types.StateTransactionsList
+		}
+		return m, nil
+	}
+
 	return m, nil
 }
