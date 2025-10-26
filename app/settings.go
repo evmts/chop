@@ -1,11 +1,12 @@
 package app
 
 import (
-	"chop/config"
-	"fmt"
-	"strings"
+    "chop/config"
+    "fmt"
+    "strings"
+    "time"
 
-	"github.com/charmbracelet/lipgloss"
+    "github.com/charmbracelet/lipgloss"
 )
 
 // renderSettingsView renders the settings view with current configuration
@@ -82,30 +83,39 @@ func renderSettingsView(m *Model, width int) string {
 		Bold(true)
 
 	// Render each option with cursor and highlighting
-	options := []struct {
-		key         string
-		description string
-	}{
-		{"r", "Reset blockchain to genesis"},
-		{"g", "Regenerate accounts (new seed)"},
-		{"t", "Toggle auto-refresh"},
-		{"[/]", "Adjust gas limit (±1M)"},
-	}
+    options := []struct {
+        key         string
+        description string
+    }{
+        {"r", "Reset blockchain to genesis"},
+        {"g", "Regenerate accounts (new seed)"},
+        {"t", "Toggle auto-refresh"},
+        {"[/]", "Adjust gas limit (±1M)"},
+        {"s", "Save config (write chop.config.json)"},
+    }
 
-	for i, opt := range options {
-		cursor := "  "
-		style := normalStyle
-		if i == m.settingsSelectedOption {
-			cursor = "> "
-			style = selectedStyle
-		}
+    for i, opt := range options {
+        cursor := "  "
+        style := normalStyle
+        if i == m.settingsSelectedOption {
+            cursor = "> "
+            style = selectedStyle
+        }
 
 		s.WriteString(cursor)
 		s.WriteString(keyStyle.Render(opt.key))
 		s.WriteString(" - ")
 		s.WriteString(style.Render(opt.description))
 		s.WriteString("\n")
-	}
+    }
+
+    // Feedback line (ephemeral)
+    if m.feedbackMessage != "" && time.Now().Unix() < m.feedbackTimer {
+        feedbackStyle := lipgloss.NewStyle().Foreground(config.Amber).Bold(true)
+        s.WriteString("\n")
+        s.WriteString(feedbackStyle.Render(m.feedbackMessage))
+        s.WriteString("\n")
+    }
 
     // Confirmation prompts
     if m.awaitingRegenerateConfirm {
