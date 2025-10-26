@@ -1,16 +1,17 @@
 package tui
 
 import (
-	"chop/config"
-	"chop/core/blockchain"
-	"chop/core/state"
-	"chop/types"
-	"fmt"
-	"strings"
+    "chop/config"
+    "chop/core/blockchain"
+    "chop/core/state"
+    "chop/types"
+    "fmt"
+    "strings"
 
-	"github.com/charmbracelet/bubbles/table"
-	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/lipgloss"
+    "github.com/charmbracelet/bubbles/table"
+    "github.com/charmbracelet/bubbles/textinput"
+    "github.com/charmbracelet/lipgloss"
+    clip "github.com/atotto/clipboard"
 )
 
 // Layout helpers
@@ -95,14 +96,14 @@ func RenderHelp(state types.AppState) string {
 		helpText = "↑/↓: navigate • enter: view details • esc: back"
 	case types.StateBlockDetail:
 		helpText = "esc: back"
-	case types.StateTransactionsList:
-		helpText = "↑/↓: navigate • esc: back"
-	case types.StateTransactionDetail:
-		helpText = "esc: back"
+    case types.StateTransactionsList:
+        helpText = "↑/↓: navigate • enter: view details • esc: back"
+    case types.StateTransactionDetail:
+        helpText = "b: open block • c: copy • esc: back"
 	case types.StateStateInspector:
 		helpText = "enter: inspect • esc: back"
-	case types.StateSettings:
-		helpText = "r: reset • g: regenerate • t: toggle refresh • esc: back"
+    case types.StateSettings:
+        helpText = "r: reset • g: regenerate • t: toggle refresh • [/]: gas limit • esc: back"
 	default:
 		helpText = "q: quit"
 	}
@@ -829,11 +830,12 @@ func CreateTransactionsTable() table.Model {
 
 // Clipboard helpers (stubbed for now)
 func GetClipboard() (string, error) {
-	// TODO: Implement actual clipboard reading
-	return "", fmt.Errorf("clipboard not implemented")
+    return clip.ReadAll()
 }
 
 func CopyWithFeedback(content string) (string, error) {
-	// TODO: Implement actual clipboard writing
-	return "Copied to clipboard!", nil
+    if err := clip.WriteAll(content); err != nil {
+        return "", err
+    }
+    return "Copied to clipboard!", nil
 }

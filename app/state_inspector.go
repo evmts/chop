@@ -60,12 +60,14 @@ func renderStateInspectorView(input textinput.Model, result *types.AccountState,
 		// Nonce
 		resultContent += fieldStyle.Render("Nonce:") + " " + valueStyle.Render(fmt.Sprintf("%d", result.Nonce)) + "\n"
 
-		// Is Contract
-		isContractStr := "No"
-		if result.IsContract {
-			isContractStr = "Yes"
-		}
-		resultContent += fieldStyle.Render("Is Contract:") + " " + valueStyle.Render(isContractStr) + "\n"
+        // Is Contract
+        isContractStr := "No"
+        isContractStyle := lipgloss.NewStyle().Foreground(config.Error)
+        if result.IsContract {
+            isContractStr = "Yes"
+            isContractStyle = lipgloss.NewStyle().Foreground(config.Success)
+        }
+        resultContent += fieldStyle.Render("Is Contract:") + " " + isContractStyle.Bold(true).Render(isContractStr) + "\n"
 
 		// Code Size (if it's a contract)
 		if result.CodeSize > 0 {

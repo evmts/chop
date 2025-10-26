@@ -91,5 +91,19 @@ func renderSettingsView(m *Model, width int) string {
 	s.WriteString(optionStyle.Render(" to toggle auto-refresh"))
 	s.WriteString("\n")
 
-	return s.String()
+	// Gas limit adjustment
+	s.WriteString(optionStyle.Render("Press "))
+	s.WriteString(keyStyle.Render("'['/']'"))
+	s.WriteString(optionStyle.Render(" to adjust gas limit"))
+	s.WriteString("\n")
+
+    // Confirmation prompts
+    if m.awaitingRegenerateConfirm {
+        confirmStyle := lipgloss.NewStyle().Foreground(config.Amber).Bold(true)
+        s.WriteString("\n")
+        s.WriteString(confirmStyle.Render("Confirm regenerate accounts? Press 'y' to confirm, any other key to cancel."))
+        s.WriteString("\n")
+    }
+
+    return s.String()
 }

@@ -24,13 +24,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.contractsTable.SetHeight(tableHeight)
 		return m, nil
 
-	case tickMsg:
-		// Update dashboard stats if we're on dashboard
-		if m.state == types.StateDashboard {
-			m.lastUpdate = time.Now().Unix()
-		}
-		// Return the tick command to keep the ticker running
-		return m, tickCmd()
+    case tickMsg:
+        // Only process/continue ticks when autoRefresh is enabled
+        if m.autoRefresh {
+            if m.state == types.StateDashboard {
+                m.lastUpdate = time.Now().Unix()
+            }
+            // Keep ticker running
+            return m, tickCmd()
+        }
+        return m, nil
 
 	case callResultMsg:
 		m.callResult = msg.result
@@ -48,39 +51,67 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.state = types.StateMainMenu
 		return m, nil
 
-	case tea.KeyMsg:
-		msgStr := msg.String()
+    case tea.KeyMsg:
+        msgStr := msg.String()
 
-		// Handle tab navigation with number keys
-		switch msgStr {
-		case "1":
-			m.currentTab = types.TabDashboard
-			m.state = types.TabToState(types.TabDashboard)
-			return m, nil
-		case "2":
-			m.currentTab = types.TabAccounts
-			m.state = types.TabToState(types.TabAccounts)
-			return m, nil
-		case "3":
-			m.currentTab = types.TabBlocks
-			m.state = types.TabToState(types.TabBlocks)
-			return m, nil
-		case "4":
-			m.currentTab = types.TabTransactions
-			m.state = types.TabToState(types.TabTransactions)
-			return m, nil
-		case "5":
-			m.currentTab = types.TabContracts
-			m.state = types.TabToState(types.TabContracts)
-			return m, nil
-		case "6":
-			m.currentTab = types.TabStateInspector
-			m.state = types.TabToState(types.TabStateInspector)
-			return m, nil
-		case "7":
-			m.currentTab = types.TabSettings
-			m.state = types.TabToState(types.TabSettings)
-			return m, nil
+        // Handle tab navigation with number keys
+        switch msgStr {
+        case "1":
+            m.navStack.Clear()
+            m.selectedAccount = ""
+            m.selectedBlock = 0
+            m.selectedTransaction = ""
+            m.currentTab = types.TabDashboard
+            m.state = types.TabToState(types.TabDashboard)
+            return m, nil
+        case "2":
+            m.navStack.Clear()
+            m.selectedAccount = ""
+            m.selectedBlock = 0
+            m.selectedTransaction = ""
+            m.currentTab = types.TabAccounts
+            m.state = types.TabToState(types.TabAccounts)
+            return m, nil
+        case "3":
+            m.navStack.Clear()
+            m.selectedAccount = ""
+            m.selectedBlock = 0
+            m.selectedTransaction = ""
+            m.currentTab = types.TabBlocks
+            m.state = types.TabToState(types.TabBlocks)
+            return m, nil
+        case "4":
+            m.navStack.Clear()
+            m.selectedAccount = ""
+            m.selectedBlock = 0
+            m.selectedTransaction = ""
+            m.currentTab = types.TabTransactions
+            m.state = types.TabToState(types.TabTransactions)
+            return m, nil
+        case "5":
+            m.navStack.Clear()
+            m.selectedAccount = ""
+            m.selectedBlock = 0
+            m.selectedTransaction = ""
+            m.currentTab = types.TabContracts
+            m.state = types.TabToState(types.TabContracts)
+            return m, nil
+        case "6":
+            m.navStack.Clear()
+            m.selectedAccount = ""
+            m.selectedBlock = 0
+            m.selectedTransaction = ""
+            m.currentTab = types.TabStateInspector
+            m.state = types.TabToState(types.TabStateInspector)
+            return m, nil
+        case "7":
+            m.navStack.Clear()
+            m.selectedAccount = ""
+            m.selectedBlock = 0
+            m.selectedTransaction = ""
+            m.currentTab = types.TabSettings
+            m.state = types.TabToState(types.TabSettings)
+            return m, nil
 		default:
 			// Delegate all other keyboard handling to handlers.go
 			return m.handleStateNavigation(msg)
