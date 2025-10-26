@@ -1,7 +1,7 @@
 import { isMobile } from '@solid-primitives/platform'
 import CopyIcon from 'lucide-solid/icons/copy'
 import RectangleEllipsisIcon from 'lucide-solid/icons/rectangle-ellipsis'
-import { type Component, For, Show } from 'solid-js'
+import { type Component, createMemo, For, Show } from 'solid-js'
 import { toast } from 'solid-sonner'
 import Code from '~/components/Code'
 import InfoTooltip from '~/components/InfoTooltip'
@@ -11,28 +11,53 @@ import { cn } from '~/lib/cn'
 import { type EvmState, formatHex, formatMemory } from '~/lib/types'
 import { copyToClipboard } from '~/lib/utils'
 
+/**
+ * Memory component displays the EVM memory in 32-byte chunks with hex addresses.
+ *
+ * @remarks
+ * Shows memory contents in 32-byte (64 hex character) chunks with 4-digit hex addresses.
+ * Supports copying individual chunks with their position information.
+ *
+ * @param props - Component props
+ * @param props.state - Current EVM execution state containing the memory
+ */
 interface MemoryProps {
 	state: EvmState
 }
 
 const Memory: Component<MemoryProps> = ({ state }) => {
 	const handleCopy = (chunk: string, index: number) => {
-		const position = `0x${(index * 32).toString(16).padStart(2, '0')}`
-		copyToClipboard(`0x${chunk}`)
-		toast.info(
-			<>
-				Item at position <Code>{position}</Code> copied to clipboard
-			</>,
-		)
+		try {
+			// CRITICAL FIX: Use padStart(4, '0') for consistent 4-digit hex addresses
+			const position = `0x${(index * 32).toString(16).padStart(4, '0')}`
+			copyToClipboard(`0x${chunk}`)
+			toast.info(
+				<>
+					Item at position <Code>{position}</Code> copied to clipboard
+				</>,
+			)
+		} catch (error) {
+			toast.error('Failed to copy to clipboard')
+			console.error('Clipboard copy failed:', error)
+		}
 	}
 
-	const memoryChunks = () => formatMemory(state.memory)
+	// Performance optimization: Use createMemo to avoid recalculating on every render
+	const memoryChunks = createMemo(() => formatMemory(state.memory))
+
+	// Calculate total memory size in bytes
+	const memorySizeBytes = createMemo(() => {
+		const hex = state.memory.slice(2) // Remove '0x'
+		return hex.length / 2 // 2 hex chars = 1 byte
+	})
 
 	return (
 		<Card class="overflow-hidden">
 			<CardHeader class="border-b p-3">
 				<div class="flex items-center justify-between">
-					<CardTitle class="text-sm">Memory ({memoryChunks().length})</CardTitle>
+					<CardTitle class="text-sm">
+						Memory ({memoryChunks().length} chunks, {memorySizeBytes()} bytes)
+					</CardTitle>
 					<InfoTooltip>Hexadecimal representation</InfoTooltip>
 				</div>
 			</CardHeader>
@@ -52,7 +77,8 @@ const Memory: Component<MemoryProps> = ({ state }) => {
 								<div class="group flex justify-between px-4 py-1.5 transition-colors hover:bg-muted/50">
 									<div class="flex items-center">
 										<span class="w-16 pt-0.5 font-medium font-mono text-muted-foreground text-xs">
-											0x{(index() * 32).toString(16).padStart(2, '0')}:
+											{/* CRITICAL FIX: Use padStart(4, '0') for consistent 4-digit hex addresses */}
+											0x{(index() * 32).toString(16).padStart(4, '0')}:
 										</span>
 										<Code class="break-all text-sm">{isMobile ? formatHex(`0x${chunk}`) : `0x${chunk}`}</Code>
 									</div>

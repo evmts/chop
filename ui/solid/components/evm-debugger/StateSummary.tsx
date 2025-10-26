@@ -1,15 +1,27 @@
-import type { Component } from 'solid-js'
+import { createMemo, type Component } from 'solid-js'
 import { Badge } from '~/components/ui/badge'
 import { Card } from '~/components/ui/card'
 import type { EvmState } from '~/lib/types'
 
+/**
+ * StateSummary component displays key EVM state metrics in a dashboard layout.
+ *
+ * @remarks
+ * Shows instruction index, current opcode, gas left, and call depth.
+ * Updates in real-time as execution progresses.
+ *
+ * @param props - Component props
+ * @param props.state - Current EVM execution state
+ * @param props.isUpdating - Whether the state is currently being updated
+ */
 interface StateSummaryProps {
 	state: EvmState
 	isUpdating: boolean
 }
 
 const StateSummary: Component<StateSummaryProps> = (props) => {
-	const totalInstructions = () => {
+	// Performance optimization: Use createMemo for expensive calculation
+	const totalInstructions = createMemo(() => {
 		if (!props.state.blocks || props.state.blocks.length === 0) return 0
 		let maxIndex = 0
 		for (const b of props.state.blocks) {
@@ -17,18 +29,40 @@ const StateSummary: Component<StateSummaryProps> = (props) => {
 			if (end > maxIndex) maxIndex = end
 		}
 		return maxIndex
-	}
+	})
 
 	const currentBlock = () => props.state.blocks.find((b) => b.beginIndex === props.state.currentBlockStartIndex)
 
-	const currentOffset = () => Math.max(0, props.state.currentInstructionIndex - props.state.currentBlockStartIndex - 1)
+	// CRITICAL FIX: Fixed off-by-one error in offset calculation
+	// The offset should be the difference between current and block start, without the extra -1
+	const currentOffset = () => Math.max(0, props.state.currentInstructionIndex - props.state.currentBlockStartIndex)
 
 	const currentOpcode = () => {
 		const blk = currentBlock()
+		// Null safety: check if block exists
+		if (!blk) return 'UNKNOWN'
+
 		const idx = currentOffset()
-		if (!blk || idx < 0 || idx >= blk.opcodes.length) return 'UNKNOWN'
+		// Null safety: check if opcodes array exists and index is valid
+		if (!blk.opcodes || idx < 0 || idx >= blk.opcodes.length) return 'UNKNOWN'
+
 		return blk.opcodes[idx]
 	}
+
+	// Gas warning based on remaining gas
+	const gasWarning = createMemo(() => {
+		const gas = props.state.gasLeft
+		if (gas < 1000) return 'critical'
+		if (gas < 10000) return 'low'
+		return 'normal'
+	})
+
+	// Execution status
+	const executionStatus = createMemo(() => {
+		if (props.state.completed) return 'completed'
+		if (props.isUpdating) return 'running'
+		return 'paused'
+	})
 
 	return (
 		<Card class={`overflow-hidden ${props.isUpdating ? 'animate-pulse' : ''}`}>
@@ -39,6 +73,12 @@ const StateSummary: Component<StateSummaryProps> = (props) => {
 						{props.state.currentInstructionIndex}
 						<span class="font-normal text-muted-foreground text-sm">/ {totalInstructions()}</span>
 					</div>
+					<Badge
+						variant={executionStatus() === 'completed' ? 'default' : 'secondary'}
+						class="mt-1 text-[10px]"
+					>
+						{executionStatus()}
+					</Badge>
 				</div>
 				<div class="flex flex-col items-center justify-center border-b p-4 md:border-r md:border-b-0">
 					<div class="mb-1 font-medium text-muted-foreground text-xs uppercase tracking-wider">Opcode</div>
@@ -51,7 +91,12 @@ const StateSummary: Component<StateSummaryProps> = (props) => {
 				</div>
 				<div class="flex flex-col items-center justify-center border-r p-4">
 					<div class="mb-1 font-medium text-muted-foreground text-xs uppercase tracking-wider">Gas Left</div>
-					<div class="font-mono font-semibold text-2xl">{props.state.gasLeft}</div>
+					<div class="font-mono font-semibold text-2xl">{props.state.gasLeft.toLocaleString()}</div>
+					{gasWarning() !== 'normal' && (
+						<Badge variant={gasWarning() === 'critical' ? 'destructive' : 'default'} class="mt-1 text-[10px]">
+							{gasWarning()}
+						</Badge>
+					)}
 				</div>
 				<div class="flex flex-col items-center justify-center p-4">
 					<div class="mb-1 font-medium text-muted-foreground text-xs uppercase tracking-wider">Depth</div>

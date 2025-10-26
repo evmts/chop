@@ -11,17 +11,39 @@ import { cn } from '~/lib/cn'
 import { type EvmState, formatHex } from '~/lib/types'
 import { copyToClipboard } from '~/lib/utils'
 
+/**
+ * Stack component displays the EVM stack in reverse order (top at bottom).
+ *
+ * @remarks
+ * Shows stack values with their indices, supports copying individual items.
+ * The stack is displayed in reverse order for easier debugging (top of stack at bottom).
+ *
+ * @param props - Component props
+ * @param props.state - Current EVM execution state containing the stack
+ */
 interface StackProps {
 	state: EvmState
 }
 
 const Stack: Component<StackProps> = ({ state }) => {
-	const stack = state.stack.reverse()
+	// CRITICAL FIX: Use spread operator to avoid mutating original array
+	const reversedStack = () => [...state.stack].reverse()
 
 	const handleCopy = (item: string, index: number) => {
-		copyToClipboard(item)
-		toast.info(`Copied item at index ${stack.length - 1 - index} to clipboard`)
+		try {
+			copyToClipboard(item)
+			toast.info(
+				<>
+					Item at index <Code>{reversedStack().length - 1 - index}</Code> copied to clipboard
+				</>,
+			)
+		} catch (error) {
+			toast.error('Failed to copy to clipboard')
+			console.error('Clipboard copy failed:', error)
+		}
 	}
+
+	const stack = reversedStack()
 
 	return (
 		<Card class="overflow-hidden">
