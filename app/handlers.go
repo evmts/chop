@@ -356,6 +356,25 @@ func (m *Model) handleStateNavigation(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case types.StateConfirmReset:
 		return m.handleConfirmResetNavigation(msgStr)
+
+	// New tab-based states
+	case types.StateDashboard:
+		return m.handleDashboardNavigation(msgStr)
+
+	case types.StateAccountsList:
+		return m.handleAccountsListNavigation(msgStr, msg)
+
+	case types.StateBlocksList:
+		return m.handleBlocksListNavigation(msgStr, msg)
+
+	case types.StateTransactionsList:
+		return m.handleTransactionsListNavigation(msgStr, msg)
+
+	case types.StateStateInspector:
+		return m.handleStateInspectorNavigation(msgStr, msg)
+
+	case types.StateSettings:
+		return m.handleSettingsNavigation(msgStr)
 	}
 
 	return m, nil
@@ -709,4 +728,114 @@ func (m *Model) handleJumpToDestination() {
 			m.instructionsTable.SetCursor(targetInstIndex)
 		}
 	}
+}
+
+// handleDashboardNavigation handles navigation in dashboard state
+func (m *Model) handleDashboardNavigation(msgStr string) (tea.Model, tea.Cmd) {
+	if config.IsKey(msgStr, config.KeyBack) {
+		m.quitting = true
+		return m, tea.Batch(tea.ExitAltScreen, tea.Quit)
+	}
+	return m, nil
+}
+
+// handleAccountsListNavigation handles navigation in accounts list state
+func (m *Model) handleAccountsListNavigation(msgStr string, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if config.IsKey(msgStr, config.KeySelect) {
+		selectedRow := m.accountsTable.SelectedRow()
+		if len(selectedRow) > 0 && m.accountsTable.Cursor() < len(selectedRow) {
+			// Extract address from first column
+			m.selectedAccount = selectedRow[0]
+			m.navStack.Push(types.StateAccountsList, nil)
+			m.state = types.StateAccountDetail
+			return m, nil
+		}
+		return m, nil
+	} else if config.IsKey(msgStr, config.KeyBack) {
+		m.currentTab = types.TabDashboard
+		m.state = types.StateDashboard
+		return m, nil
+	} else if config.IsKey(msgStr, config.KeyUp) || config.IsKey(msgStr, config.KeyDown) {
+		// Let table handle navigation
+		var cmd tea.Cmd
+		m.accountsTable, cmd = m.accountsTable.Update(msg)
+		return m, cmd
+	}
+	return m, nil
+}
+
+// handleBlocksListNavigation handles navigation in blocks list state
+func (m *Model) handleBlocksListNavigation(msgStr string, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if config.IsKey(msgStr, config.KeySelect) {
+		selectedRow := m.blocksTable.SelectedRow()
+		if len(selectedRow) > 0 && m.blocksTable.Cursor() < len(selectedRow) {
+			// Extract block number from first column
+			// Note: Will need proper parsing in actual implementation
+			m.selectedBlock = uint64(m.blocksTable.Cursor())
+			m.navStack.Push(types.StateBlocksList, nil)
+			m.state = types.StateBlockDetail
+			return m, nil
+		}
+		return m, nil
+	} else if config.IsKey(msgStr, config.KeyBack) {
+		m.currentTab = types.TabDashboard
+		m.state = types.StateDashboard
+		return m, nil
+	} else if config.IsKey(msgStr, config.KeyUp) || config.IsKey(msgStr, config.KeyDown) {
+		// Let table handle navigation
+		var cmd tea.Cmd
+		m.blocksTable, cmd = m.blocksTable.Update(msg)
+		return m, cmd
+	}
+	return m, nil
+}
+
+// handleTransactionsListNavigation handles navigation in transactions list state
+func (m *Model) handleTransactionsListNavigation(msgStr string, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if config.IsKey(msgStr, config.KeySelect) {
+		selectedRow := m.transactionsTable.SelectedRow()
+		if len(selectedRow) > 0 && m.transactionsTable.Cursor() < len(selectedRow) {
+			// Extract transaction hash from first column
+			m.selectedTransaction = selectedRow[0]
+			m.navStack.Push(types.StateTransactionsList, nil)
+			m.state = types.StateTransactionDetail
+			return m, nil
+		}
+		return m, nil
+	} else if config.IsKey(msgStr, config.KeyBack) {
+		m.currentTab = types.TabDashboard
+		m.state = types.StateDashboard
+		return m, nil
+	} else if config.IsKey(msgStr, config.KeyUp) || config.IsKey(msgStr, config.KeyDown) {
+		// Let table handle navigation
+		var cmd tea.Cmd
+		m.transactionsTable, cmd = m.transactionsTable.Update(msg)
+		return m, cmd
+	}
+	return m, nil
+}
+
+// handleStateInspectorNavigation handles navigation in state inspector state
+func (m *Model) handleStateInspectorNavigation(msgStr string, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if config.IsKey(msgStr, config.KeyBack) {
+		m.currentTab = types.TabDashboard
+		m.state = types.StateDashboard
+		return m, nil
+	}
+	// TODO: Add text input handling for address entry
+	return m, nil
+}
+
+// handleSettingsNavigation handles navigation in settings state
+func (m *Model) handleSettingsNavigation(msgStr string) (tea.Model, tea.Cmd) {
+	if config.IsKey(msgStr, config.KeyUp) {
+		// TODO: Navigate through settings options
+	} else if config.IsKey(msgStr, config.KeyDown) {
+		// TODO: Navigate through settings options
+	} else if config.IsKey(msgStr, config.KeyBack) {
+		m.currentTab = types.TabDashboard
+		m.state = types.StateDashboard
+		return m, nil
+	}
+	return m, nil
 }

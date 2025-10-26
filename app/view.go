@@ -24,7 +24,36 @@ func (m Model) View() string {
 
 	layout := tui.Layout{Width: m.width, Height: m.height}
 
+	// Render tab bar for new navigation
+	var tabBar string
+	if m.state >= types.StateDashboard {
+		tabBar = tui.RenderTabBar(m.currentTab)
+	}
+
 	switch m.state {
+	case types.StateDashboard:
+		header := tui.RenderHeader("Chop Dashboard", "Local EVM Development Environment", config.TitleStyle, config.SubtitleStyle)
+		dashboard := tui.RenderDashboard(nil, nil, nil)
+		help := tui.RenderHelp(types.StateDashboard)
+		content := layout.ComposeVertical(tabBar, header, dashboard, help)
+		return layout.RenderWithBox(content)
+
+	case types.StateAccountsList:
+		header := tui.RenderHeader("Accounts", "Pre-funded Test Accounts", config.TitleStyle, config.SubtitleStyle)
+		updateAccountsTable(&m)
+		tableView := m.accountsTable.View()
+		help := tui.RenderHelp(types.StateAccountsList)
+		content := layout.ComposeVertical(tabBar, header, tableView, help)
+		return layout.RenderWithBox(content)
+
+	case types.StateAccountDetail:
+		header := tui.RenderHeader("Account Detail", "Account Information", config.TitleStyle, config.SubtitleStyle)
+		account, _ := m.accountManager.GetAccount(m.selectedAccount)
+		detail := renderAccountDetail(account, m.showPrivateKey, m.width-4)
+		help := tui.RenderHelp(types.StateAccountDetail)
+		content := layout.ComposeVertical(tabBar, header, detail, help)
+		return layout.RenderWithBox(content)
+
 	case types.StateMainMenu:
 		header := tui.RenderHeader(m.greeting, config.AppSubtitle, config.TitleStyle, config.SubtitleStyle)
 		menu := tui.RenderMenu(m.choices, m.cursor)
@@ -120,6 +149,14 @@ func (m Model) View() string {
 		content := layout.ComposeVertical(header, tableView, help)
 		return layout.RenderWithBox(content)
 
+	case types.StateTransactionsList:
+		header := tui.RenderHeader("Transactions", "Transaction History", config.TitleStyle, config.SubtitleStyle)
+		m.updateTransactionsTable()
+		tableView := m.transactionsTable.View()
+		help := tui.RenderHelp(types.StateTransactionsList)
+		content := layout.ComposeVertical(tabBar, header, tableView, help)
+		return layout.RenderWithBox(content)
+
 	case types.StateContractDetail:
 		header := tui.RenderHeader(config.ContractDetailTitle, config.ContractDetailSubtitle, config.TitleStyle, config.SubtitleStyle)
 		contract := m.historyManager.GetContract(m.selectedContract)
@@ -177,6 +214,26 @@ func (m Model) View() string {
 		detail := tui.RenderLogDetail(log, m.selectedLogIndex, m.width-4)
 		help := tui.RenderHelp(types.StateLogDetail)
 		content := layout.ComposeVertical(header, detail, help)
+		return layout.RenderWithBox(content)
+
+	case types.StateSettings:
+		header := tui.RenderHeader("Settings", "Configuration & Options", config.TitleStyle, config.SubtitleStyle)
+		settingsView := renderSettingsView(&m, m.width)
+		help := tui.RenderHelp(types.StateSettings)
+		content := layout.ComposeVertical(tabBar, header, settingsView, help)
+		return layout.RenderWithBox(content)
+
+	case types.StateStateInspector:
+		header := tui.RenderHeader("State Inspector", "Query Blockchain State", config.TitleStyle, config.SubtitleStyle)
+
+		// Initialize inspector input if it's empty
+		if m.inspectorInput.Value() == "" && m.inspectorInput.Placeholder == "" {
+			m.inspectorInput = initInspectorInput()
+		}
+
+		inspectorView := renderStateInspectorView(m.inspectorInput, m.inspectorResult, m.inspectorError, m.width-4)
+		help := tui.RenderHelp(types.StateStateInspector)
+		content := layout.ComposeVertical(tabBar, header, inspectorView, help)
 		return layout.RenderWithBox(content)
 
 	default:

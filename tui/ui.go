@@ -2,6 +2,8 @@ package tui
 
 import (
 	"chop/config"
+	"chop/core/blockchain"
+	"chop/core/state"
 	"chop/types"
 	"fmt"
 	"strings"
@@ -83,6 +85,22 @@ func RenderHelp(state types.AppState) string {
 		helpText = "enter: confirm • esc: cancel"
 	case types.StateLogDetail:
 		helpText = "esc: back"
+	case types.StateDashboard:
+		helpText = "1-7: switch tabs • q: quit"
+	case types.StateAccountsList:
+		helpText = "↑/↓: navigate • enter: view details • esc: back"
+	case types.StateAccountDetail:
+		helpText = "p: reveal private key • esc: back"
+	case types.StateBlocksList:
+		helpText = "↑/↓: navigate • enter: view details • esc: back"
+	case types.StateBlockDetail:
+		helpText = "esc: back"
+	case types.StateTransactionsList:
+		helpText = "↑/↓: navigate • esc: back"
+	case types.StateStateInspector:
+		helpText = "enter: inspect • esc: back"
+	case types.StateSettings:
+		helpText = "r: reset • g: regenerate • t: toggle refresh • esc: back"
 	default:
 		helpText = "q: quit"
 	}
@@ -544,6 +562,267 @@ func RenderLogDetail(log *types.Log, index int, width int) string {
 	s.WriteString(fmt.Sprintf("  0x%x\n", log.Data))
 
 	return s.String()
+}
+
+// RenderDashboard renders the dashboard view with live stats
+func RenderDashboard(stats *types.BlockchainStats, recentBlocks []*types.Block, recentTxs []*types.Transaction) string {
+	var s strings.Builder
+
+	// Header with network stats
+	s.WriteString(lipgloss.NewStyle().Bold(true).Foreground(config.Primary).Render("⛓  NETWORK"))
+	s.WriteString("\n\n")
+
+	// Network Stats
+	if stats != nil {
+		s.WriteString("Block Height: ")
+		s.WriteString(lipgloss.NewStyle().Foreground(config.Amber).Render(fmt.Sprintf("%d", stats.BlockHeight)))
+		s.WriteString("\n")
+
+		s.WriteString("Total Gas Used: ")
+		s.WriteString(lipgloss.NewStyle().Foreground(config.Amber).Render(fmt.Sprintf("%d", stats.TotalGasUsed)))
+		s.WriteString("\n")
+
+		s.WriteString("Accounts: ")
+		s.WriteString(lipgloss.NewStyle().Foreground(config.Amber).Render(fmt.Sprintf("%d", stats.TotalAccounts)))
+		s.WriteString("\n\n")
+	} else {
+		s.WriteString("Block Height: ")
+		s.WriteString(lipgloss.NewStyle().Foreground(config.Amber).Render("0"))
+		s.WriteString("\n")
+
+		s.WriteString("Total Gas Used: ")
+		s.WriteString(lipgloss.NewStyle().Foreground(config.Amber).Render("0"))
+		s.WriteString("\n")
+
+		s.WriteString("Accounts: ")
+		s.WriteString(lipgloss.NewStyle().Foreground(config.Amber).Render("10"))
+		s.WriteString("\n\n")
+	}
+
+	// Recent activity section
+	s.WriteString(lipgloss.NewStyle().Bold(true).Foreground(config.Primary).Render("📊 RECENT ACTIVITY"))
+	s.WriteString("\n\n")
+
+	// Recent Blocks
+	if len(recentBlocks) > 0 {
+		s.WriteString(lipgloss.NewStyle().Foreground(config.Primary).Render("Recent Blocks:"))
+		s.WriteString("\n\n")
+
+		for _, block := range recentBlocks {
+			if block == nil {
+				continue
+			}
+
+			// Format block hash
+			hashStr := blockchain.FormatBlockHash(block.Hash)
+			hashStyle := lipgloss.NewStyle().Foreground(config.Muted)
+
+			// Format timestamp
+			timeStr := blockchain.FormatTimestamp(block.Timestamp)
+			timeStyle := lipgloss.NewStyle().Foreground(config.Muted)
+
+			// Format gas usage
+			percentage, bar := blockchain.FormatGasUsage(block.GasUsed, block.GasLimit)
+			gasStyle := lipgloss.NewStyle()
+			if percentage > 80 {
+				gasStyle = gasStyle.Foreground(config.Error)
+			} else if percentage > 50 {
+				gasStyle = gasStyle.Foreground(config.Amber)
+			} else {
+				gasStyle = gasStyle.Foreground(config.Success)
+			}
+
+			// Render block line
+			s.WriteString(fmt.Sprintf("  Block #%d  %s  %s\n",
+				block.Number,
+				hashStyle.Render(hashStr),
+				timeStyle.Render(timeStr),
+			))
+			s.WriteString(fmt.Sprintf("    Gas: %s %s (%.1f%%)\n",
+				gasStyle.Render(bar),
+				gasStyle.Render(fmt.Sprintf("%d/%d", block.GasUsed, block.GasLimit)),
+				percentage,
+			))
+			s.WriteString(fmt.Sprintf("    Txs: %d\n\n", len(block.Transactions)))
+		}
+	} else {
+		s.WriteString(lipgloss.NewStyle().Foreground(config.Muted).Render("No recent blocks yet"))
+		s.WriteString("\n\n")
+	}
+
+	// Recent Transactions
+	if len(recentTxs) > 0 {
+		s.WriteString(lipgloss.NewStyle().Foreground(config.Primary).Render("Recent Transactions:"))
+		s.WriteString("\n\n")
+
+		for _, tx := range recentTxs {
+			if tx == nil {
+				continue
+			}
+
+			// Status indicator
+			statusIcon := "✓"
+			statusStyle := lipgloss.NewStyle().Foreground(config.Success)
+			if !tx.Status {
+				statusIcon = "✗"
+				statusStyle = lipgloss.NewStyle().Foreground(config.Error)
+			}
+
+			// Format addresses
+			fromAddr := blockchain.FormatBlockHash(tx.From)
+			toAddr := "CREATE"
+			if tx.To != "" {
+				toAddr = blockchain.FormatBlockHash(tx.To)
+			}
+
+			// Format value
+			valueStr := state.FormatBalanceShort(tx.Value)
+			valueStyle := lipgloss.NewStyle().Foreground(config.Amber)
+
+			// Format time
+			timeStr := blockchain.FormatTimestamp(tx.Timestamp)
+			timeStyle := lipgloss.NewStyle().Foreground(config.Muted)
+
+			// Render transaction line
+			s.WriteString(fmt.Sprintf("  %s %s → %s  %s ETH  %s\n",
+				statusStyle.Render(statusIcon),
+				fromAddr,
+				toAddr,
+				valueStyle.Render(valueStr),
+				timeStyle.Render(timeStr),
+			))
+		}
+		s.WriteString("\n")
+	} else {
+		s.WriteString(lipgloss.NewStyle().Foreground(config.Muted).Render("No recent transactions yet"))
+		s.WriteString("\n")
+	}
+
+	return s.String()
+}
+
+// RenderTabBar renders the tab navigation bar
+func RenderTabBar(currentTab types.Tab) string {
+	tabs := []types.Tab{
+		types.TabDashboard,
+		types.TabAccounts,
+		types.TabBlocks,
+		types.TabTransactions,
+		types.TabContracts,
+		types.TabStateInspector,
+		types.TabSettings,
+	}
+
+	var s strings.Builder
+	for i, tab := range tabs {
+		if i > 0 {
+			s.WriteString(" ")
+		}
+
+		label := fmt.Sprintf("[%d] %s", i+1, types.TabToString(tab))
+
+		style := lipgloss.NewStyle().Padding(0, 1)
+		if tab == currentTab {
+			style = style.Background(config.Primary).Foreground(lipgloss.Color("#000000")).Bold(true)
+		} else {
+			style = style.Foreground(config.Muted)
+		}
+
+		s.WriteString(style.Render(label))
+	}
+
+	return s.String()
+}
+
+// CreateAccountsTable creates a table for accounts
+func CreateAccountsTable() table.Model {
+	columns := []table.Column{
+		{Title: "#", Width: 4},
+		{Title: "Address", Width: 42},
+		{Title: "Balance", Width: 15},
+		{Title: "Nonce", Width: 8},
+		{Title: "Txs", Width: 6},
+	}
+
+	t := table.New(
+		table.WithColumns(columns),
+		table.WithFocused(true),
+		table.WithHeight(12),
+	)
+
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(config.Primary).
+		BorderBottom(true).
+		Bold(false)
+	s.Selected = s.Selected.
+		Foreground(config.Primary).
+		Bold(true)
+	t.SetStyles(s)
+
+	return t
+}
+
+// CreateBlocksTable creates a table for blocks
+func CreateBlocksTable() table.Model {
+	columns := []table.Column{
+		{Title: "Height", Width: 8},
+		{Title: "Hash", Width: 18},
+		{Title: "Txs", Width: 6},
+		{Title: "Gas Used", Width: 20},
+		{Title: "Time", Width: 15},
+	}
+
+	t := table.New(
+		table.WithColumns(columns),
+		table.WithFocused(true),
+		table.WithHeight(12),
+	)
+
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(config.Primary).
+		BorderBottom(true).
+		Bold(false)
+	s.Selected = s.Selected.
+		Foreground(config.Primary).
+		Bold(true)
+	t.SetStyles(s)
+
+	return t
+}
+
+// CreateTransactionsTable creates a table for transactions
+func CreateTransactionsTable() table.Model {
+	columns := []table.Column{
+		{Title: "Type", Width: 10},
+		{Title: "From", Width: 18},
+		{Title: "To", Width: 18},
+		{Title: "Value", Width: 12},
+		{Title: "Gas", Width: 10},
+		{Title: "Status", Width: 8},
+	}
+
+	t := table.New(
+		table.WithColumns(columns),
+		table.WithFocused(true),
+		table.WithHeight(12),
+	)
+
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(config.Primary).
+		BorderBottom(true).
+		Bold(false)
+	s.Selected = s.Selected.
+		Foreground(config.Primary).
+		Bold(true)
+	t.SetStyles(s)
+
+	return t
 }
 
 // Clipboard helpers (stubbed for now)

@@ -1,10 +1,11 @@
 package app
 
 import (
-	"chop/core/bytecode"
 	logs "chop/core"
+	"chop/core/bytecode"
 	"chop/tui"
 	"chop/types"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -23,6 +24,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.contractsTable.SetHeight(tableHeight)
 		return m, nil
 
+	case tickMsg:
+		// Update dashboard stats if we're on dashboard
+		if m.state == types.StateDashboard {
+			m.lastUpdate = time.Now().Unix()
+		}
+		// Return the tick command to keep the ticker running
+		return m, tickCmd()
+
 	case callResultMsg:
 		m.callResult = msg.result
 		m.state = types.StateCallResult
@@ -38,6 +47,44 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case resetCompleteMsg:
 		m.state = types.StateMainMenu
 		return m, nil
+
+	case tea.KeyMsg:
+		msgStr := msg.String()
+
+		// Handle tab navigation with number keys
+		switch msgStr {
+		case "1":
+			m.currentTab = types.TabDashboard
+			m.state = types.TabToState(types.TabDashboard)
+			return m, nil
+		case "2":
+			m.currentTab = types.TabAccounts
+			m.state = types.TabToState(types.TabAccounts)
+			return m, nil
+		case "3":
+			m.currentTab = types.TabBlocks
+			m.state = types.TabToState(types.TabBlocks)
+			return m, nil
+		case "4":
+			m.currentTab = types.TabTransactions
+			m.state = types.TabToState(types.TabTransactions)
+			return m, nil
+		case "5":
+			m.currentTab = types.TabContracts
+			m.state = types.TabToState(types.TabContracts)
+			return m, nil
+		case "6":
+			m.currentTab = types.TabStateInspector
+			m.state = types.TabToState(types.TabStateInspector)
+			return m, nil
+		case "7":
+			m.currentTab = types.TabSettings
+			m.state = types.TabToState(types.TabSettings)
+			return m, nil
+		default:
+			// Delegate all other keyboard handling to handlers.go
+			return m.handleStateNavigation(msg)
+		}
 
 	case disassemblyResultMsg:
 		if msg.error != nil {
@@ -73,10 +120,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		return m, nil
-
-	case tea.KeyMsg:
-		// Delegate all keyboard handling to handlers.go
-		return m.handleStateNavigation(msg)
 	}
 
 	return m, nil
