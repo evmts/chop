@@ -62,6 +62,7 @@ type Model struct {
 	historyTable      table.Model
 	contractsTable    table.Model
 	logsTable         table.Model
+	fixturesTable     table.Model
 	selectedHistoryID string
 	selectedContract  string
 	selectedLogIndex  int
@@ -89,6 +90,7 @@ type Model struct {
 	disassemblyError  error
 	currentBlockIndex int
 	instructionsTable table.Model
+	gotoPCInput       textinput.Model
 
     // UI state
     showCopyFeedback         bool

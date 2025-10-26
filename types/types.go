@@ -21,6 +21,7 @@ const (
 	StateContracts
 	StateContractDetail
 	StateConfirmReset
+	StateFixturesList
 	// New states for enhanced features
 	StateDashboard
 	StateAccountsList
@@ -31,6 +32,8 @@ const (
 	StateTransactionDetail
 	StateStateInspector
 	StateSettings
+	// Disassembly states
+	StateGotoPC
 )
 
 // Tab represents the main navigation tabs

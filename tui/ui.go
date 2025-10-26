@@ -2,6 +2,7 @@ package tui
 
 import (
     "chop/config"
+    "chop/core/bytecode"
     "chop/core/blockchain"
     "chop/core/state"
     "chop/types"
@@ -76,10 +77,12 @@ func RenderHelp(state types.AppState) string {
 		helpText = "enter: save • esc: cancel • r: reset • ctrl+v: paste"
 	case types.StateCallTypeEdit:
 		helpText = "↑/↓: navigate • enter: select • esc: cancel • r: reset"
-	case types.StateCallResult:
-		helpText = "esc: back"
+    case types.StateCallResult:
+        helpText = "↑/↓: navigate logs • enter: view log • f: save fixture • esc: back"
 	case types.StateCallHistory, types.StateContracts:
 		helpText = "↑/↓: navigate • enter: view details • esc: back"
+	case types.StateFixturesList:
+		helpText = "↑/↓: navigate • enter: load & execute • esc: back"
 	case types.StateCallHistoryDetail, types.StateContractDetail:
 		helpText = "esc: back"
 	case types.StateConfirmReset:
@@ -131,7 +134,7 @@ func RenderHelpForContractDetail(hasDisassembly bool) string {
 
 	var helpText string
 	if hasDisassembly {
-		helpText = "←/→: navigate blocks • ↑/↓: navigate instructions • c: copy address • esc: back"
+		helpText = "←/→: navigate blocks • ↑/↓: navigate instructions • g: jump to dest • G: goto PC • c: copy address • esc: back"
 	} else {
 		helpText = "c: copy address • esc: back"
 	}
@@ -360,6 +363,34 @@ func CreateContractsTable() table.Model {
 	return t
 }
 
+// CreateFixturesTable creates a table for saved fixtures
+func CreateFixturesTable() table.Model {
+	columns := []table.Column{
+		{Title: "Name", Width: 25},
+		{Title: "Bytecode", Width: 12},
+		{Title: "Gas Limit", Width: 12},
+	}
+
+	t := table.New(
+		table.WithColumns(columns),
+		table.WithFocused(true),
+		table.WithHeight(10),
+	)
+
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(config.Primary).
+		BorderBottom(true).
+		Bold(false)
+	s.Selected = s.Selected.
+		Foreground(config.Primary).
+		Bold(true)
+	t.SetStyles(s)
+
+	return t
+}
+
 // CreateLogsTable creates a table for logs
 func CreateLogsTable(height int) table.Model {
 	columns := []table.Column{
@@ -498,51 +529,162 @@ type DisassemblyDisplayData struct {
 	Height            int
 }
 
-// RenderBytecodeDisassemblyWithTable renders bytecode disassembly (stubbed)
+// RenderBytecodeDisassemblyWithTable renders bytecode disassembly with block indicator
 func RenderBytecodeDisassemblyWithTable(data DisassemblyDisplayData, instructionsTable table.Model) string {
-	var s strings.Builder
-	s.WriteString("Disassembly\n\n")
-	s.WriteString(fmt.Sprintf("Block: %d\n", data.CurrentBlockIndex))
-	s.WriteString(instructionsTable.View())
-	return s.String()
+    var s strings.Builder
+
+    // Title
+    titleStyle := lipgloss.NewStyle().Bold(true).Foreground(config.Primary)
+    s.WriteString(titleStyle.Render("Disassembly"))
+    s.WriteString("\n\n")
+
+    // Instructions table
+    s.WriteString(instructionsTable.View())
+    s.WriteString("\n\n")
+
+    // Block indicator footer with stats
+    if result, ok := data.Result.(*bytecode.DisassemblyResult); ok && result != nil {
+        instructions, block, err := bytecode.GetInstructionsForBlock(result, data.CurrentBlockIndex)
+        if err == nil && block != nil {
+            // Calculate block gas
+            blockGas := bytecode.CalculateBlockGas(instructions)
+
+            // Format indicator: "Block 3/8 • PC 42-67 • Gas: 156"
+            totalBlocks := len(result.Analysis.BasicBlocks)
+            indicator := fmt.Sprintf("Block %d/%d • PC %d-%d • Gas: %d",
+                data.CurrentBlockIndex+1,
+                totalBlocks,
+                block.Start,
+                block.End,
+                blockGas,
+            )
+
+            // Style with muted color
+            footerStyle := lipgloss.NewStyle().Foreground(config.Muted)
+            s.WriteString(footerStyle.Render(indicator))
+        }
+    }
+
+    return s.String()
 }
 
 // CreateInstructionsTable creates a table for instructions
 func CreateInstructionsTable(height int) table.Model {
-	columns := []table.Column{
-		{Title: "PC", Width: 6},
-		{Title: "OpCode", Width: 12},
-		{Title: "Operand", Width: 20},
-	}
+    columns := []table.Column{
+        {Title: "PC", Width: 6},
+        {Title: "Opcode", Width: 12},
+        {Title: "Hex", Width: 6},
+        {Title: "Value", Width: 20},
+        {Title: "Gas", Width: 6},
+        {Title: "Stack", Width: 10},
+    }
 
-	t := table.New(
-		table.WithColumns(columns),
-		table.WithFocused(true),
-		table.WithHeight(height),
-	)
+    t := table.New(
+        table.WithColumns(columns),
+        table.WithFocused(true),
+        table.WithHeight(height),
+    )
 
-	s := table.DefaultStyles()
-	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(config.Primary).
-		BorderBottom(true).
-		Bold(false)
-	s.Selected = s.Selected.
-		Foreground(config.Primary).
-		Bold(true)
-	t.SetStyles(s)
+    s := table.DefaultStyles()
+    s.Header = s.Header.
+        BorderStyle(lipgloss.NormalBorder()).
+        BorderForeground(config.Primary).
+        BorderBottom(true).
+        Bold(false)
+    s.Selected = s.Selected.
+        Foreground(config.Primary).
+        Bold(true)
+    t.SetStyles(s)
 
-	return t
+    return t
 }
 
-// ConvertInstructionsToRows converts instructions to table rows (stubbed)
-func ConvertInstructionsToRows(instructions interface{}, jumpDests map[int]bool) []table.Row {
-	// TODO: Implement actual conversion
-	return []table.Row{
-		{"0", "PUSH1", "0x00"},
-		{"2", "PUSH1", "0x00"},
-		{"4", "RETURN", ""},
-	}
+// ConvertInstructionsToRows converts instructions to table rows
+func ConvertInstructionsToRows(instructions []bytecode.Instruction, jumpDests map[int]bool) []table.Row {
+    rows := make([]table.Row, 0, len(instructions))
+
+    for _, inst := range instructions {
+        gas := "-"
+        if inst.GasCost != nil {
+            gas = fmt.Sprintf("%d", *inst.GasCost)
+        }
+        stack := "-"
+        if inst.StackInputs != nil || inst.StackOutputs != nil {
+            ins := uint8(0)
+            outs := uint8(0)
+            if inst.StackInputs != nil { ins = *inst.StackInputs }
+            if inst.StackOutputs != nil { outs = *inst.StackOutputs }
+            if ins > 0 || outs > 0 {
+                stack = fmt.Sprintf("-%d +%d", ins, outs)
+            }
+        }
+
+        value := ""
+        if inst.PushValue != nil {
+            value = *inst.PushValue
+            if inst.PushValueDecimal != nil {
+                target := int(*inst.PushValueDecimal)
+                if jumpDests[target] {
+                    value += fmt.Sprintf(" → [JD@%d]", target)
+                }
+            }
+        } else if inst.OpcodeName == "JUMPDEST" {
+            value = "[Jump Target]"
+        }
+
+        // Apply color coding to opcode name based on category
+        coloredOpcode := colorizeOpcode(inst.OpcodeName)
+
+        // Apply JUMPDEST highlighting
+        pcStr := fmt.Sprintf("%d", inst.PC)
+        if inst.OpcodeName == "JUMPDEST" {
+            // Add marker for JUMPDEST rows
+            pcStr = "► " + pcStr
+        }
+
+        rows = append(rows, table.Row{
+            pcStr,
+            coloredOpcode,
+            fmt.Sprintf("0x%02x", inst.OpcodeHex),
+            value,
+            gas,
+            stack,
+        })
+    }
+    return rows
+}
+
+// colorizeOpcode applies color coding to opcode names by category
+func colorizeOpcode(opcodeName string) string {
+    // Flow control (JUMP/JUMPI/JUMPDEST)
+    if opcodeName == "JUMP" || opcodeName == "JUMPI" || opcodeName == "JUMPDEST" {
+        return lipgloss.NewStyle().Foreground(config.Primary).Render(opcodeName)
+    }
+
+    // PUSH operations
+    if len(opcodeName) >= 4 && opcodeName[:4] == "PUSH" {
+        return lipgloss.NewStyle().Foreground(config.Amber).Render(opcodeName)
+    }
+
+    // External calls
+    if opcodeName == "CALL" || opcodeName == "STATICCALL" ||
+       opcodeName == "DELEGATECALL" || opcodeName == "CALLCODE" {
+        return lipgloss.NewStyle().Foreground(config.Success).Render(opcodeName)
+    }
+
+    // Termination opcodes
+    if opcodeName == "RETURN" || opcodeName == "REVERT" ||
+       opcodeName == "STOP" || opcodeName == "SELFDESTRUCT" {
+        return lipgloss.NewStyle().Foreground(config.Error).Render(opcodeName)
+    }
+
+    // Storage operations
+    if opcodeName == "SSTORE" || opcodeName == "SLOAD" {
+        return lipgloss.NewStyle().Foreground(config.Secondary).Render(opcodeName)
+    }
+
+    // Default: no color
+    return opcodeName
 }
 
 // RenderLogDetail renders detailed view of a log

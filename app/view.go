@@ -186,6 +186,32 @@ func (m Model) View() string {
 		content := layout.ComposeVertical(header, tableView, help)
 		return layout.RenderWithBox(content)
 
+	case types.StateFixturesList:
+		titleStyle := lipgloss.NewStyle().Bold(true).Foreground(config.Primary)
+		title := titleStyle.Render("SAVED FIXTURES")
+
+		// Check if fixtures exist
+		if m.fixturesTable.Rows() == nil || len(m.fixturesTable.Rows()) == 0 {
+			emptyStyle := lipgloss.NewStyle().Foreground(config.Muted)
+			emptyMsg := emptyStyle.Render("No fixtures found in ~/.chop/fixtures")
+			help := tui.RenderHelp(m.state)
+			content := layout.ComposeVertical(title, "", emptyMsg, "", help)
+			return layout.RenderWithBox(content)
+		}
+
+		tableView := m.fixturesTable.View()
+		help := tui.RenderHelp(m.state)
+
+		// Add feedback message if present
+		if m.feedbackMessage != "" && time.Now().Unix() < m.feedbackTimer {
+			feedbackStyle := lipgloss.NewStyle().Foreground(config.Amber).Bold(true)
+			content := layout.ComposeVertical(title, "", tableView, "", feedbackStyle.Render(m.feedbackMessage), "", help)
+			return layout.RenderWithBox(content)
+		}
+
+		content := layout.ComposeVertical(title, "", tableView, "", help)
+		return layout.RenderWithBox(content)
+
 	case types.StateTransactionsList:
 		header := tui.RenderHeader("Transactions", "Transaction History", config.TitleStyle, config.SubtitleStyle)
 		m.updateTransactionsTable()
@@ -339,6 +365,21 @@ func (m Model) View() string {
 		detail := renderBlockDetail(block, transactions, m.width-4)
 		help := tui.RenderHelp(types.StateBlockDetail)
 		content := layout.ComposeVertical(tabBar, header, detail, help)
+		return layout.RenderWithBox(content)
+
+	case types.StateGotoPC:
+		header := tui.RenderHeader("Go to PC", "Jump to specific program counter", config.TitleStyle, config.SubtitleStyle)
+		inputView := tui.RenderCallEdit("PC Address", m.gotoPCInput, "", 0)
+
+		// Show feedback message if active
+		var feedback string
+		if m.feedbackMessage != "" && time.Now().Unix() < m.feedbackTimer {
+			feedbackStyle := lipgloss.NewStyle().Foreground(config.Error).Bold(true)
+			feedback = feedbackStyle.Render(m.feedbackMessage)
+		}
+
+		helpText := lipgloss.NewStyle().Foreground(config.Muted).Render("enter: jump to PC • esc: cancel")
+		content := layout.ComposeVertical(header, inputView, feedback, helpText)
 		return layout.RenderWithBox(content)
 
 	default:
