@@ -1,5 +1,9 @@
 # Chop - Guillotine EVM CLI
 
+![CI](https://github.com/evmts/chop/workflows/CI/badge.svg)
+[![Go Report Card](https://goreportcard.com/badge/github.com/evmts/chop)](https://goreportcard.com/report/github.com/evmts/chop)
+[![Release](https://img.shields.io/github/v/release/evmts/chop)](https://github.com/evmts/chop/releases)
+
 A hybrid Zig/Go project that uses the guillotine-mini EVM for Ethereum transaction processing with a Bubble Tea-based TUI.
 
 ## Project Structure
@@ -87,9 +91,55 @@ chop/
 
 ## Prerequisites
 
-- **Zig**: 0.15.1 or later
-- **Go**: 1.21 or later
-- **Git**: For submodule management
+- **Zig**: 0.15.1 or later (for building from source)
+- **Go**: 1.21 or later (for building from source)
+- **Git**: For submodule management (for building from source)
+
+## Installation
+
+### Pre-built Binaries (Recommended)
+
+Download pre-built binaries for your platform from the [GitHub Releases](https://github.com/evmts/chop/releases) page.
+
+#### macOS
+
+```bash
+# Intel Mac
+curl -LO https://github.com/evmts/chop/releases/latest/download/chop_latest_darwin_amd64.tar.gz
+tar -xzf chop_latest_darwin_amd64.tar.gz
+chmod +x chop
+sudo mv chop /usr/local/bin/
+
+# Apple Silicon Mac
+curl -LO https://github.com/evmts/chop/releases/latest/download/chop_latest_darwin_arm64.tar.gz
+tar -xzf chop_latest_darwin_arm64.tar.gz
+chmod +x chop
+sudo mv chop /usr/local/bin/
+```
+
+#### Linux
+
+```bash
+# AMD64
+curl -LO https://github.com/evmts/chop/releases/latest/download/chop_latest_linux_amd64.tar.gz
+tar -xzf chop_latest_linux_amd64.tar.gz
+chmod +x chop
+sudo mv chop /usr/local/bin/
+
+# ARM64
+curl -LO https://github.com/evmts/chop/releases/latest/download/chop_latest_linux_arm64.tar.gz
+tar -xzf chop_latest_linux_arm64.tar.gz
+chmod +x chop
+sudo mv chop /usr/local/bin/
+```
+
+#### Windows
+
+Download the appropriate `.zip` file for your architecture from the [releases page](https://github.com/evmts/chop/releases), extract it, and add the executable to your PATH.
+
+### Building from Source
+
+If you prefer to build from source, see the [Build System](#build-system) section below.
 
 ## Setup
 
@@ -241,6 +291,46 @@ Global:
 - Number keys 1–7 switch tabs; esc goes back; q or ctrl+c quits
 - 'c' in detail views copies the primary identifier (e.g., tx hash)
 
+## Testing
+
+### Running Tests
+
+```bash
+# Run all Go tests
+go test ./...
+
+# Run tests with verbose output
+go test ./... -v
+
+# Run tests with race detector (recommended for development)
+go test ./... -race
+
+# Run tests with coverage report
+go test ./... -cover
+
+# Generate detailed coverage report
+go test ./... -coverprofile=coverage.txt -covermode=atomic
+go tool cover -html=coverage.txt -o coverage.html
+```
+
+### Running Tests via Zig Build
+
+```bash
+# Run all tests (Zig and Go)
+zig build test
+
+# Run only Go tests
+zig build go-test
+```
+
+### Continuous Integration
+
+All pull requests and commits to `main` automatically run tests on:
+- Go versions: 1.22, 1.24
+- Platforms: Ubuntu (Linux), macOS
+
+You can view the CI status in the [GitHub Actions](https://github.com/evmts/chop/actions) tab.
+
 ## Why Zig Build?
 
 We use Zig's build system as the orchestrator because:
@@ -250,3 +340,76 @@ We use Zig's build system as the orchestrator because:
 3. **Dependency Management**: Properly tracks dependencies between components
 4. **Parallelization**: Automatically parallelizes independent build steps
 5. **Caching**: Only rebuilds what changed
+
+## Release Process (Maintainers)
+
+The release process is fully automated using GitHub Actions and GoReleaser.
+
+### Creating a New Release
+
+1. **Ensure all changes are committed and pushed to `main`**
+   ```bash
+   git checkout main
+   git pull origin main
+   ```
+
+2. **Create and push a version tag** (following [Semantic Versioning](https://semver.org/))
+   ```bash
+   # For a new feature release
+   git tag -a v0.1.0 -m "Release v0.1.0: Initial release with TUI"
+
+   # For a bug fix release
+   git tag -a v0.1.1 -m "Release v0.1.1: Fix state persistence bug"
+
+   # For a major release with breaking changes
+   git tag -a v1.0.0 -m "Release v1.0.0: First stable release"
+
+   # Push the tag to trigger the release workflow
+   git push origin v0.1.0
+   ```
+
+3. **GitHub Actions will automatically**:
+   - Run all tests
+   - Build binaries for all platforms (Linux, macOS, Windows) and architectures (amd64, arm64)
+   - Generate checksums
+   - Create a GitHub Release with:
+     - Release notes from commit messages
+     - Downloadable binaries for all platforms
+     - Installation instructions
+
+4. **Monitor the release**:
+   - Visit the [Actions tab](https://github.com/evmts/chop/actions) to watch the release workflow
+   - Once complete, check the [Releases page](https://github.com/evmts/chop/releases)
+
+### Testing Releases Locally
+
+You can test the release process locally without publishing:
+
+```bash
+# Install goreleaser (macOS)
+brew install goreleaser
+
+# Or download from https://github.com/goreleaser/goreleaser/releases
+
+# Run goreleaser in snapshot mode (won't publish)
+goreleaser release --snapshot --clean
+
+# Built artifacts will be in dist/
+ls -la dist/
+```
+
+### Release Checklist
+
+Before creating a release, ensure:
+- [ ] All tests pass: `go test ./...`
+- [ ] Code builds successfully: `CGO_ENABLED=0 go build -o chop .`
+- [ ] Documentation is up to date (README.md, DOCS.md)
+- [ ] CHANGELOG or commit messages clearly describe changes
+- [ ] Version follows [Semantic Versioning](https://semver.org/)
+- [ ] No breaking changes in minor/patch releases
+
+### Version Numbering Guide
+
+- **Major version (v1.0.0)**: Breaking changes, incompatible API changes
+- **Minor version (v0.1.0)**: New features, backwards-compatible
+- **Patch version (v0.0.1)**: Bug fixes, backwards-compatible
