@@ -1,0 +1,58 @@
+# Dependabot configuration for automated dependency updates
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  # Go modules dependency updates
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      # Check for updates weekly on Monday
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Los_Angeles"
+    # Limit the number of open PRs for Go modules
+    open-pull-requests-limit: 10
+    # Assign reviewers (uncomment and customize as needed)
+    # reviewers:
+    #   - "maintainer-username"
+    # Add labels to pull requests
+    labels:
+      - "dependencies"
+      - "go"
+    # Group updates for similar dependencies
+    groups:
+      # Group all charmbracelet packages together
+      charmbracelet:
+        patterns:
+          - "github.com/charmbracelet/*"
+      # Group patch updates for all dependencies
+      patch-updates:
+        update-types:
+          - "patch"
+    # Commit message prefix
+    commit-message:
+      prefix: "chore"
+      prefix-development: "chore"
+      include: "scope"
+
+  # GitHub Actions dependency updates
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      # Check for updates weekly on Monday
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Los_Angeles"
+    # Limit the number of open PRs for GitHub Actions
+    open-pull-requests-limit: 5
+    # Add labels to pull requests
+    labels:
+      - "dependencies"
+      - "github-actions"
+    # Commit message prefix
+    commit-message:
+      prefix: "ci"
+      include: "scope"

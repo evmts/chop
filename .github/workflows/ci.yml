@@ -50,7 +50,19 @@ jobs:
       - name: Run tests
         run: go test ./... -v -race -coverprofile=coverage.txt -covermode=atomic
 
-      # Upload coverage report
+      # Upload coverage report to Codecov
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.txt
+          flags: unittests,${{ matrix.os }},go${{ matrix.go-version }}
+          name: codecov-${{ matrix.os }}-go${{ matrix.go-version }}
+          fail_ci_if_error: false
+          verbose: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      # Also upload coverage as artifact for debugging
       - name: Upload coverage to artifact
         uses: actions/upload-artifact@v4
         with:
@@ -106,7 +118,7 @@ jobs:
           path: chop
           retention-days: 7
 
-  # Optional: Lint job using golangci-lint
+  # Lint job using golangci-lint
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -123,10 +135,9 @@ jobs:
           go-version: '1.24'
           cache: true
 
-      # Run golangci-lint if .golangci.yml exists
+      # Run golangci-lint with .golangci.yml configuration
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
           version: latest
           args: --timeout=5m
-        continue-on-error: true  # Don't fail CI if linting issues exist
