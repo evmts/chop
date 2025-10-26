@@ -1,23 +1,26 @@
 package main
 
 import (
-	"chop/app"
-	"chop/evm"
-	"chop/fork"
-	"chop/server"
-	"context"
-	"encoding/hex"
-	"fmt"
-	"log"
-	"math/big"
-	"os"
-	"os/signal"
-	"strings"
-	"syscall"
-	"time"
+    "chop/app"
+    "chop/config"
+    "chop/diff"
+    "chop/evm"
+    "chop/fork"
+    "chop/server"
+    "chop/fixtures"
+    "context"
+    "encoding/hex"
+    "fmt"
+    "log"
+    "math/big"
+    "os"
+    "os/signal"
+    "strings"
+    "syscall"
+    "time"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/urfave/cli/v2"
+    tea "github.com/charmbracelet/bubbletea"
+    "github.com/urfave/cli/v2"
 )
 
 // Version information - injected by goreleaser at build time
@@ -29,14 +32,22 @@ var (
 )
 
 func runTUI(c *cli.Context) error {
-	p := tea.NewProgram(
-		app.InitialModel(),
-		tea.WithAltScreen(),
-	)
-	if _, err := p.Run(); err != nil {
-		return fmt.Errorf("error running program: %w", err)
-	}
-	return nil
+    // Load config and seed model defaults (e.g., gas limit)
+    appCfg := config.Load()
+
+    model := app.InitialModel()
+    if appCfg.GasLimit != 0 && model.Chain != nil {
+        model.Chain.SetGasLimit(appCfg.GasLimit)
+    }
+
+    p := tea.NewProgram(
+        model,
+        tea.WithAltScreen(),
+    )
+    if _, err := p.Run(); err != nil {
+        return fmt.Errorf("error running program: %w", err)
+    }
+    return nil
 }
 
 // parseHexOrDecimal parses a hex string (0x...) or decimal string into a big.Int
@@ -234,8 +245,14 @@ func runCall(c *cli.Context) error {
 }
 
 func runServe(c *cli.Context) error {
-	// Create a model with server enabled
-	model := app.InitialModel()
+    // Load config to seed defaults for model (e.g., gas limit)
+    appCfg := config.Load()
+
+    // Create a model with server enabled
+    model := app.InitialModel()
+    if appCfg.GasLimit != 0 && model.Chain != nil {
+        model.Chain.SetGasLimit(appCfg.GasLimit)
+    }
 
 	// Handle forking if --fork is provided
 	if c.String("fork") != "" {
@@ -262,30 +279,30 @@ func runServe(c *cli.Context) error {
 		}
 	}
 
-	// Configure server
-	config := &server.Config{
-		Port:    c.Int("port"),
-		Host:    c.String("host"),
-		Verbose: c.Bool("verbose"),
-		LogSize: 100,
-	}
+    // Configure server
+    srvConfig := &server.Config{
+        Port:    c.Int("port"),
+        Host:    c.String("host"),
+        Verbose: c.Bool("verbose"),
+        LogSize: 100,
+    }
 
 	// Create server instance
-	srv := server.NewServer(model.Chain, model.Accounts, config)
+    srv := server.NewServer(model.Chain, model.Accounts, srvConfig)
 	model.Server = srv
 	model.ServerRunning = true
 
 	// If headless mode, just run the server without TUI
-	if c.Bool("headless") {
-		fmt.Printf("Starting Chop JSON-RPC server on %s:%d\n", config.Host, config.Port)
+    if c.Bool("headless") {
+        fmt.Printf("Starting Chop JSON-RPC server on %s:%d\n", srvConfig.Host, srvConfig.Port)
 		fmt.Println("Press Ctrl+C to stop")
 
 		// Start server in goroutine
-		go func() {
-			if err := srv.Start(config); err != nil {
-				log.Printf("Server error: %v", err)
-			}
-		}()
+        go func() {
+            if err := srv.Start(srvConfig); err != nil {
+                log.Printf("Server error: %v", err)
+            }
+        }()
 
 		// Wait for interrupt signal
 		sigChan := make(chan os.Signal, 1)
@@ -307,11 +324,11 @@ func runServe(c *cli.Context) error {
 
 	// Otherwise, run TUI with server
 	// Start server in background
-	go func() {
-		if err := srv.Start(config); err != nil {
-			log.Printf("Server error: %v", err)
-		}
-	}()
+    go func() {
+        if err := srv.Start(srvConfig); err != nil {
+            log.Printf("Server error: %v", err)
+        }
+    }()
 
 	p := tea.NewProgram(
 		model,
@@ -335,9 +352,113 @@ func runServe(c *cli.Context) error {
 	return nil
 }
 
+// runListFixtures lists saved fixture names
+func runListFixtures(c *cli.Context) error {
+    names, err := fixtures.List()
+    if err != nil {
+        return fmt.Errorf("list fixtures failed: %w", err)
+    }
+    if len(names) == 0 {
+        fmt.Println("No fixtures found in ~/.chop/fixtures")
+        return nil
+    }
+    for _, n := range names {
+        fmt.Println(n)
+    }
+    return nil
+}
+
+// runSaveFixture saves a fixture from flags
+func runSaveFixture(c *cli.Context) error {
+    name := c.Args().First()
+    if name == "" {
+        return fmt.Errorf("usage: chop save-fixture <name> [--bytecode 0x.. --calldata 0x.. --caller 0x.. --value 0 --gas 100000]")
+    }
+    fx := fixtures.Fixture{
+        Name:     name,
+        Bytecode: c.String("bytecode"),
+        Calldata: c.String("calldata"),
+        Caller:   c.String("caller"),
+        Value:    c.String("value"),
+        GasLimit: uint64(c.Int64("gas")),
+    }
+    path, err := fixtures.Save(fx)
+    if err != nil {
+        return fmt.Errorf("save fixture failed: %w", err)
+    }
+    fmt.Println("Saved:", path)
+    return nil
+}
+
+// runLoadFixture loads and executes a fixture
+func runLoadFixture(c *cli.Context) error {
+    name := c.Args().First()
+    if name == "" {
+        return fmt.Errorf("usage: chop load-fixture <name>")
+    }
+    fx, err := fixtures.Load(name)
+    if err != nil {
+        return fmt.Errorf("load fixture failed: %w", err)
+    }
+
+    // Create EVM instance
+    evmInstance, err := evm.NewEVM(c.String("hardfork"), evm.LogLevelNone)
+    if err != nil {
+        return fmt.Errorf("failed to create EVM: %w", err)
+    }
+    defer evmInstance.Close()
+
+    // Set bytecode if provided
+    if fx.Bytecode != "" {
+        bc, err := parseCalldata(fx.Bytecode)
+        if err != nil {
+            return fmt.Errorf("invalid fixture bytecode: %w", err)
+        }
+        if err := evmInstance.SetBytecode(bc); err != nil {
+            return fmt.Errorf("failed to set bytecode: %w", err)
+        }
+    }
+
+    // Build execution context
+    caller, err := parseAddress(fx.Caller)
+    if err != nil {
+        return fmt.Errorf("invalid caller address: %w", err)
+    }
+    // Default contract address when not provided by fixture (arbitrary)
+    address, _ := parseAddress("0x0000000000000000000000000000000000000002")
+    value, err := parseU256(fx.Value)
+    if err != nil {
+        return fmt.Errorf("invalid value: %w", err)
+    }
+    calldata, err := parseCalldata(fx.Calldata)
+    if err != nil {
+        return fmt.Errorf("invalid calldata: %w", err)
+    }
+    if err := evmInstance.SetExecutionContext(evm.ExecutionContext{
+        Gas:      int64(fx.GasLimit),
+        Caller:   caller,
+        Address:  address,
+        Value:    value,
+        Calldata: calldata,
+    }); err != nil {
+        return fmt.Errorf("failed to set execution context: %w", err)
+    }
+
+    // Execute
+    result, err := evmInstance.Execute()
+    if err != nil {
+        return fmt.Errorf("execution failed: %w", err)
+    }
+    fmt.Println(result.String())
+    return nil
+}
+
 func main() {
-	// Build version string with additional information
-	versionInfo := version
+    // Load file+env config to seed CLI defaults (file < env; CLI still overrides)
+    appCfg := config.Load()
+
+    // Build version string with additional information
+    versionInfo := version
 	if commit != "none" {
 		versionInfo += fmt.Sprintf(" (commit: %s)", commit)
 	}
@@ -348,58 +469,59 @@ func main() {
 		versionInfo += fmt.Sprintf(" (by: %s)", builtBy)
 	}
 
-	cliApp := &cli.App{
-		Name:    "chop",
-		Usage:   "Guillotine EVM CLI - Interactive EVM execution environment",
-		Version: versionInfo,
-		Action:  runTUI,
-		Commands: []*cli.Command{
+    cliApp := &cli.App{
+        Name:    "chop",
+        Usage:   "Guillotine EVM CLI - Interactive EVM execution environment",
+        Version: versionInfo,
+        Action:  runTUI,
+        Commands: []*cli.Command{
 			{
 				Name:    "serve",
 				Aliases: []string{"s"},
 				Usage:   "Start JSON-RPC server (with optional TUI)",
 				Action:  runServe,
 				Flags: []cli.Flag{
-					&cli.IntFlag{
-						Name:    "port",
-						Aliases: []string{"p"},
-						Usage:   "Server port",
-						Value:   8545,
-						EnvVars: []string{"CHOP_PORT"},
-					},
-					&cli.StringFlag{
-						Name:  "host",
-						Usage: "Server host",
-						Value: "127.0.0.1",
-						EnvVars: []string{"CHOP_HOST"},
-					},
-					&cli.BoolFlag{
-						Name:    "verbose",
-						Aliases: []string{"v"},
-						Usage:   "Enable verbose JSON-RPC logging",
-						Value:   false,
-						EnvVars: []string{"CHOP_VERBOSE"},
-					},
-					&cli.BoolFlag{
-						Name:  "headless",
-						Usage: "Run server without TUI",
-						Value: false,
-					},
-					&cli.StringFlag{
-						Name:    "fork",
-						Aliases: []string{"f"},
-						Usage:   "Fork from a remote Ethereum RPC (e.g., https://eth-mainnet.g.alchemy.com/v2/...)",
-						Value:   "",
-						EnvVars: []string{"CHOP_FORK"},
-					},
-					&cli.Uint64Flag{
-						Name:    "fork-block",
-						Usage:   "Block number to fork from (0 = latest)",
-						Value:   0,
-						EnvVars: []string{"CHOP_FORK_BLOCK"},
-					},
-				},
-			},
+                    &cli.IntFlag{
+                        Name:    "port",
+                        Aliases: []string{"p"},
+                        Usage:   "Server port",
+                        Value:   appCfg.Port,
+                        EnvVars: []string{"CHOP_PORT"},
+                    },
+                    &cli.StringFlag{
+                        Name:  "host",
+                        Usage: "Server host",
+                        Value: appCfg.Host,
+                        EnvVars: []string{"CHOP_HOST"},
+                    },
+                    &cli.BoolFlag{
+                        Name:    "verbose",
+                        Aliases: []string{"v"},
+                        Usage:   "Enable verbose JSON-RPC logging",
+                        Value:   appCfg.Verbose,
+                        EnvVars: []string{"CHOP_VERBOSE"},
+                    },
+                    &cli.BoolFlag{
+                        Name:  "headless",
+                        Usage: "Run server without TUI",
+                        Value: false,
+                        EnvVars: []string{"CHOP_HEADLESS"},
+                    },
+                    &cli.StringFlag{
+                        Name:    "fork",
+                        Aliases: []string{"f"},
+                        Usage:   "Fork from a remote Ethereum RPC (e.g., https://eth-mainnet.g.alchemy.com/v2/...)",
+                        Value:   appCfg.Fork,
+                        EnvVars: []string{"CHOP_FORK"},
+                    },
+                    &cli.Uint64Flag{
+                        Name:    "fork-block",
+                        Usage:   "Block number to fork from (0 = latest)",
+                        Value:   appCfg.ForkBlock,
+                        EnvVars: []string{"CHOP_FORK_BLOCK"},
+                    },
+                },
+            },
 			{
 				Name:    "call",
 				Aliases: []string{"c"},
@@ -407,120 +529,189 @@ func main() {
 				Action:  runCall,
 				Flags: []cli.Flag{
 					// Execution context
-					&cli.StringFlag{
-						Name:    "bytecode",
-						Aliases: []string{"b"},
-						Usage:   "Contract bytecode to execute (hex)",
-						Value:   "0x6000600055", // Simple PUSH1 0 PUSH1 0 SSTORE
-					},
-					&cli.Int64Flag{
-						Name:    "gas",
-						Aliases: []string{"g"},
-						Usage:   "Gas limit for execution",
-						Value:   30000000,
-					},
-					&cli.StringFlag{
-						Name:  "caller",
-						Usage: "Caller address (hex)",
-						Value: "0x0000000000000000000000000000000000000001",
-					},
-					&cli.StringFlag{
-						Name:    "address",
-						Aliases: []string{"a"},
-						Usage:   "Contract address (hex)",
-						Value:   "0x0000000000000000000000000000000000000002",
-					},
-					&cli.StringFlag{
-						Name:    "value",
-						Aliases: []string{"v"},
-						Usage:   "Value to send (wei, hex or decimal)",
-						Value:   "0",
-					},
-					&cli.StringFlag{
-						Name:    "calldata",
-						Aliases: []string{"d"},
-						Usage:   "Calldata for the call (hex)",
-						Value:   "0x",
-					},
+                    &cli.StringFlag{
+                        Name:    "bytecode",
+                        Aliases: []string{"b"},
+                        Usage:   "Contract bytecode to execute (hex)",
+                        Value:   "0x6000600055", // Simple PUSH1 0 PUSH1 0 SSTORE
+                        EnvVars: []string{"CHOP_BYTECODE"},
+                    },
+                    &cli.Int64Flag{
+                        Name:    "gas",
+                        Aliases: []string{"g"},
+                        Usage:   "Gas limit for execution",
+                        Value:   int64(appCfg.GasLimit),
+                        EnvVars: []string{"CHOP_GAS"},
+                    },
+                    &cli.StringFlag{
+                        Name:  "caller",
+                        Usage: "Caller address (hex)",
+                        Value: "0x0000000000000000000000000000000000000001",
+                        EnvVars: []string{"CHOP_CALLER"},
+                    },
+                    &cli.StringFlag{
+                        Name:    "address",
+                        Aliases: []string{"a"},
+                        Usage:   "Contract address (hex)",
+                        Value:   "0x0000000000000000000000000000000000000002",
+                        EnvVars: []string{"CHOP_ADDRESS"},
+                    },
+                    &cli.StringFlag{
+                        Name:    "value",
+                        Aliases: []string{"v"},
+                        Usage:   "Value to send (wei, hex or decimal)",
+                        Value:   "0",
+                        EnvVars: []string{"CHOP_VALUE"},
+                    },
+                    &cli.StringFlag{
+                        Name:    "calldata",
+                        Aliases: []string{"d"},
+                        Usage:   "Calldata for the call (hex)",
+                        Value:   "0x",
+                        EnvVars: []string{"CHOP_CALLDATA"},
+                    },
 
 					// EVM configuration
-					&cli.StringFlag{
-						Name:  "hardfork",
-						Usage: "EVM hardfork (e.g., shanghai, cancun)",
-						Value: "cancun",
-					},
-					&cli.StringFlag{
-						Name:  "log-level",
-						Usage: "Log level (none, error, warn, info, debug)",
-						Value: "none",
-					},
+                    &cli.StringFlag{
+                        Name:  "hardfork",
+                        Usage: "EVM hardfork (e.g., shanghai, cancun)",
+                        Value: appCfg.Hardfork,
+                        EnvVars: []string{"CHOP_HARDFORK"},
+                    },
+                    &cli.StringFlag{
+                        Name:  "log-level",
+                        Usage: "Log level (none, error, warn, info, debug)",
+                        Value: "none",
+                        EnvVars: []string{"CHOP_LOG_LEVEL"},
+                    },
 
 					// Block context (optional)
-					&cli.StringFlag{
-						Name:  "chain-id",
-						Usage: "Chain ID (hex or decimal)",
-						Value: "1",
-					},
-					&cli.Uint64Flag{
-						Name:  "block-number",
-						Usage: "Block number",
-						Value: 1,
-					},
-					&cli.Uint64Flag{
-						Name:  "block-timestamp",
-						Usage: "Block timestamp (unix)",
-						Value: 1234567890,
-					},
-					&cli.StringFlag{
-						Name:  "difficulty",
-						Usage: "Block difficulty (hex or decimal)",
-						Value: "0",
-					},
-					&cli.StringFlag{
-						Name:  "prevrandao",
-						Usage: "Block prevrandao (hex or decimal)",
-						Value: "0",
-					},
-					&cli.StringFlag{
-						Name:  "coinbase",
-						Usage: "Block coinbase address (hex)",
-						Value: "0x0000000000000000000000000000000000000000",
-					},
-					&cli.Uint64Flag{
-						Name:  "block-gas-limit",
-						Usage: "Block gas limit",
-						Value: 30000000,
-					},
-					&cli.StringFlag{
-						Name:  "base-fee",
-						Usage: "Block base fee (hex or decimal)",
-						Value: "0",
-					},
-					&cli.StringFlag{
-						Name:  "blob-base-fee",
-						Usage: "Blob base fee (hex or decimal)",
-						Value: "0",
-					},
-				},
-			},
+                    &cli.StringFlag{
+                        Name:  "chain-id",
+                        Usage: "Chain ID (hex or decimal)",
+                        Value: "1",
+                        EnvVars: []string{"CHOP_CHAIN_ID"},
+                    },
+                    &cli.Uint64Flag{
+                        Name:  "block-number",
+                        Usage: "Block number",
+                        Value: 1,
+                        EnvVars: []string{"CHOP_BLOCK_NUMBER"},
+                    },
+                    &cli.Uint64Flag{
+                        Name:  "block-timestamp",
+                        Usage: "Block timestamp (unix)",
+                        Value: 1234567890,
+                        EnvVars: []string{"CHOP_BLOCK_TIMESTAMP"},
+                    },
+                    &cli.StringFlag{
+                        Name:  "difficulty",
+                        Usage: "Block difficulty (hex or decimal)",
+                        Value: "0",
+                        EnvVars: []string{"CHOP_DIFFICULTY"},
+                    },
+                    &cli.StringFlag{
+                        Name:  "prevrandao",
+                        Usage: "Block prevrandao (hex or decimal)",
+                        Value: "0",
+                        EnvVars: []string{"CHOP_PREVRANDAO"},
+                    },
+                    &cli.StringFlag{
+                        Name:  "coinbase",
+                        Usage: "Block coinbase address (hex)",
+                        Value: "0x0000000000000000000000000000000000000000",
+                        EnvVars: []string{"CHOP_COINBASE"},
+                    },
+                    &cli.Uint64Flag{
+                        Name:  "block-gas-limit",
+                        Usage: "Block gas limit",
+                        Value: appCfg.GasLimit,
+                        EnvVars: []string{"CHOP_BLOCK_GAS_LIMIT"},
+                    },
+                    &cli.StringFlag{
+                        Name:  "base-fee",
+                        Usage: "Block base fee (hex or decimal)",
+                        Value: "0",
+                        EnvVars: []string{"CHOP_BASE_FEE"},
+                    },
+                    &cli.StringFlag{
+                        Name:  "blob-base-fee",
+                        Usage: "Blob base fee (hex or decimal)",
+                        Value: "0",
+                        EnvVars: []string{"CHOP_BLOB_BASE_FEE"},
+                    },
+                },
+            },
 			{
 				Name:    "run",
 				Aliases: []string{"r"},
 				Usage:   "Run the Guillotine EVM (launches TUI)",
 				Action:  runTUI,
 			},
-			{
-				Name:    "build",
-				Aliases: []string{"b"},
-				Usage:   "Build the Guillotine library",
-				Action: func(c *cli.Context) error {
-					fmt.Println("Building Guillotine library...")
-					// TODO: Build guillotine-mini submodule
-					return nil
-				},
-			},
-		},
-	}
+            {
+                Name:    "build",
+                Aliases: []string{"b"},
+                Usage:   "Build the Guillotine library",
+                Action: func(c *cli.Context) error {
+                    fmt.Println("Building Guillotine library...")
+                    // TODO: Build guillotine-mini submodule
+                    return nil
+                },
+            },
+            {
+                Name:  "list-fixtures",
+                Usage: "List saved fixtures (~/.chop/fixtures)",
+                Action: runListFixtures,
+            },
+            {
+                Name:  "save-fixture",
+                Usage: "Save a fixture from flags: chop save-fixture <name>",
+                Action: runSaveFixture,
+                Flags: []cli.Flag{
+                    &cli.StringFlag{Name: "bytecode", Aliases: []string{"b"}, Usage: "Bytecode (hex)", Value: "0x", EnvVars: []string{"CHOP_BYTECODE"}},
+                    &cli.StringFlag{Name: "calldata", Aliases: []string{"d"}, Usage: "Calldata (hex)", Value: "0x", EnvVars: []string{"CHOP_CALLDATA"}},
+                    &cli.StringFlag{Name: "caller", Usage: "Caller address (hex)", Value: "0x0000000000000000000000000000000000000001", EnvVars: []string{"CHOP_CALLER"}},
+                    &cli.StringFlag{Name: "value", Aliases: []string{"v"}, Usage: "Value (wei, hex or decimal)", Value: "0", EnvVars: []string{"CHOP_VALUE"}},
+                    &cli.Int64Flag{Name: "gas", Aliases: []string{"g"}, Usage: "Gas limit", Value: int64(appCfg.GasLimit), EnvVars: []string{"CHOP_GAS"}},
+                },
+            },
+            {
+                Name:  "load-fixture",
+                Usage: "Load and execute a fixture: chop load-fixture <name>",
+                Action: runLoadFixture,
+                Flags: []cli.Flag{
+                    &cli.StringFlag{Name: "hardfork", Usage: "EVM hardfork", Value: appCfg.Hardfork, EnvVars: []string{"CHOP_HARDFORK"}},
+                },
+            },
+            {
+                Name:  "diff",
+                Usage: "Differential test: compare Chop against Ethereum execution specs",
+                Action: func(c *cli.Context) error {
+                    return diff.Run(diff.Options{
+                        Bytecode:  c.String("bytecode"),
+                        Calldata:  c.String("calldata"),
+                        Reference: c.String("reference"),
+                        Fixture:   c.String("fixture"),
+                        Category:  c.String("category"),
+                        Verbose:   c.Bool("verbose"),
+                        Fork:      c.String("fork"),
+                    })
+                },
+                Flags: []cli.Flag{
+                    // Legacy flags (for future revme support)
+                    &cli.StringFlag{Name: "bytecode", Aliases: []string{"b"}, Usage: "Bytecode (hex)", Value: "0x", EnvVars: []string{"CHOP_BYTECODE"}},
+                    &cli.StringFlag{Name: "calldata", Aliases: []string{"d"}, Usage: "Calldata (hex)", Value: "0x", EnvVars: []string{"CHOP_CALLDATA"}},
+                    &cli.StringFlag{Name: "reference", Aliases: []string{"r"}, Usage: "Reference EVM (revme|geth)", Value: "revme"},
+
+                    // Spec fixture flags
+                    &cli.StringFlag{Name: "fixture", Aliases: []string{"f"}, Usage: "Path to Ethereum spec fixture JSON"},
+                    &cli.StringFlag{Name: "category", Aliases: []string{"c"}, Usage: "Run all fixtures in category (e.g., 'homestead/coverage')"},
+                    &cli.StringFlag{Name: "fork", Usage: "Specific fork to test (e.g., 'Cancun', 'Berlin')"},
+                    &cli.BoolFlag{Name: "verbose", Aliases: []string{"v"}, Usage: "Verbose output"},
+                },
+            },
+        },
+    }
 
 	if err := cliApp.Run(os.Args); err != nil {
 		log.Fatal(err)
