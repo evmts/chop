@@ -159,30 +159,67 @@ The project uses Zig's build system as the primary orchestrator. All build comma
 
 | Command | Description |
 |---------|-------------|
-| `zig build` | Build everything (default: Zig, Go, and guillotine-mini) |
+| `zig build` | Build everything (default: stub EVM, WASM library) |
 | `zig build all` | Explicitly build everything |
-| `zig build run` | Build and run the Zig executable |
-| `zig build go` | Build only the Go binary |
-| `zig build guillotine` | Build only the guillotine-mini WASM library |
-| `zig build test` | Run all tests (Zig and Go) |
+| `zig build go` | Build Go binary with stub EVM (CGo disabled) |
+| `zig build go-cgo` | **Build Go binary with real EVM (CGo enabled)** |
+| `zig build run` | Run the Go application (stub EVM) |
+| `zig build run-cgo` | **Run the Go application with real EVM** |
+| `zig build guillotine` | Build guillotine-mini WASM library |
+| `zig build guillotine-lib` | Build guillotine-mini native library for CGo |
+| `zig build test` | Run all tests |
 | `zig build go-test` | Run only Go tests |
 | `zig build clean` | Remove all build artifacts |
 
 ### Quick Start
 
-```bash
-# Build everything
-zig build
+#### Option 1: Stub EVM (Fast, No CGo)
 
-# Run the Go TUI application
-zig-out/bin/chop-go
+```bash
+# Build with stub EVM (no actual execution)
+zig build go
+
+# Run CLI (stub returns fake gas values)
+./zig-out/bin/chop-go call --bytecode 0x6001600101
+# Output: WARNING: CGo disabled - EVM execution stubbed
+```
+
+#### Option 2: Real EVM (CGo Enabled) ⭐ RECOMMENDED
+
+```bash
+# Build with real EVM execution
+zig build go-cgo
+
+# Run CLI with actual EVM
+./zig-out/bin/chop call --bytecode 0x6001600101
+# Output: ExecutionResult{Status: SUCCESS, GasUsed: 9, ...}
 
 # Or build and run directly
-zig build go && ./zig-out/bin/chop-go
+zig build run-cgo -- call --bytecode 0x6000600055
 
-# Run all tests
+# Run tests
 zig build test
 ```
+
+### CGo vs Stub Builds
+
+The project supports two build modes:
+
+#### Stub Build (CGo Disabled)
+- **Command**: `zig build go`
+- **Output**: `zig-out/bin/chop-go`
+- **Pros**: Fast compilation, no C dependencies, portable
+- **Cons**: EVM execution is fake (returns mock values)
+- **Use for**: Development, testing UI/CLI without EVM
+
+#### CGo Build (Real EVM) ⭐
+- **Command**: `zig build go-cgo`
+- **Output**: `zig-out/bin/chop`
+- **Pros**: Actual EVM execution, real gas accounting, accurate results
+- **Cons**: Requires C compiler, longer build time (~10-20s)
+- **Use for**: Production, actual EVM testing, accurate gas measurements
+
+**Key Difference**: The CGo build links against the guillotine-mini native library (`libwasm.a`, `libblst.a`, `libc-kzg-4844.a`, `libbn254_wrapper.a`) and uses real Zig EVM implementation. The stub build has no external dependencies and returns fake execution results.
 
 ## Components
 
@@ -207,25 +244,33 @@ The EVM implementation, built as a WASM library.
 **Source**: `lib/guillotine-mini/` (submodule)
 **Output**: `lib/guillotine-mini/zig-out/bin/guillotine_mini.wasm`
 
-## TODO: Guillotine Integration
+## Guillotine Integration Status
 
-The following components are stubbed and need to be integrated with the guillotine-mini submodule:
+### ✅ Completed
 
-1. **EVM Execution** (`internal/core/evm/evm.go`)
-   - Replace stubbed `ExecuteCall` with actual Guillotine VM calls
-   - Implement VM lifecycle management
-   - Handle actual EVM state
+1. **EVM Execution** (`evm/` package) - **WORKING**
+   - Full CGo bindings to guillotine-mini native library
+   - Real EVM execution with accurate gas accounting
+   - Support for all call types (CALL, STATICCALL, CREATE, etc.)
+   - Async execution with state injection
+   - Build system integration (`zig build go-cgo`)
 
-2. **Bytecode Analysis** (`internal/core/bytecode/bytecode.go`)
+### 🚧 TODO
+
+1. **Bytecode Analysis** (`core/bytecode/bytecode.go`)
    - Implement real EVM opcode disassembly
    - Add control flow analysis
    - Generate basic blocks
 
-3. **State Replay** (`internal/core/state/state.go`)
+2. **State Replay** (`core/state/state.go`)
    - Implement state replay through VM
 
-4. **Clipboard Support** (`internal/ui/ui.go`)
+3. **Clipboard Support** (`tui/ui.go`)
    - Implement actual clipboard read/write operations
+
+4. **TUI Integration**
+   - Wire up TUI to use real EVM execution (currently uses stub)
+   - Update call results view to show real execution data
 
 ## Development
 

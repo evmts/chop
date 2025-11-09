@@ -2,7 +2,7 @@
 
 package evm
 
-// #cgo LDFLAGS: -L${SRCDIR}/../../lib/guillotine-mini/zig-out/bin -lwasm
+// #cgo LDFLAGS: -L${SRCDIR}/../lib/guillotine-mini/zig-out/lib -lwasm -lblst -lc-kzg-4844 -lbn254_wrapper
 // #include <stdint.h>
 // #include <stdbool.h>
 // #include <stdlib.h>

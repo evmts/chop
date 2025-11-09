@@ -36,7 +36,7 @@ pub fn build(b: *std.Build) void {
     });
     go_build.setEnvironmentVariable("CGO_ENABLED", "0");
 
-    const go_step = b.step("go", "Build Go application");
+    const go_step = b.step("go", "Build Go application (CGo disabled, stub EVM)");
     go_step.dependOn(&go_build.step);
 
     // Run the Go application
@@ -46,8 +46,50 @@ pub fn build(b: *std.Build) void {
         go_run.addArgs(args);
     }
 
-    const run_step = b.step("run", "Run the Go application");
+    const run_step = b.step("run", "Run the Go application (stub EVM)");
     run_step.dependOn(&go_run.step);
+
+    // ========================================
+    // CGo-Enabled Build (Real EVM)
+    // ========================================
+
+    // Build guillotine-mini native library (for CGo)
+    const guillotine_lib_build = b.addSystemCommand(&.{
+        "zig",
+        "build",
+        "lib",
+        "-Doptimize=ReleaseFast",
+    });
+    guillotine_lib_build.setCwd(b.path("lib/guillotine-mini"));
+
+    const guillotine_lib_step = b.step("guillotine-lib", "Build guillotine-mini native library for CGo");
+    guillotine_lib_step.dependOn(&guillotine_lib_build.step);
+
+    // Build Go binary WITH CGo (requires guillotine-mini native lib)
+    const go_build_cgo = b.addSystemCommand(&.{
+        "go",
+        "build",
+        "-o",
+        "zig-out/bin/chop",
+        "-tags",
+        "cgo",
+        "./main.go",
+    });
+    go_build_cgo.setEnvironmentVariable("CGO_ENABLED", "1");
+    go_build_cgo.step.dependOn(&guillotine_lib_build.step); // Ensure lib built first
+
+    const go_cgo_step = b.step("go-cgo", "Build Go application with CGo (real EVM execution)");
+    go_cgo_step.dependOn(&go_build_cgo.step);
+
+    // Run the CGo-enabled Go application
+    const go_run_cgo = b.addSystemCommand(&.{"zig-out/bin/chop"});
+    go_run_cgo.step.dependOn(&go_build_cgo.step);
+    if (b.args) |args| {
+        go_run_cgo.addArgs(args);
+    }
+
+    const run_cgo_step = b.step("run-cgo", "Run the Go application with real EVM");
+    run_cgo_step.dependOn(&go_run_cgo.step);
 
     // Go tests (without CGo by default)
     const go_test = b.addSystemCommand(&.{
