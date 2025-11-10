@@ -64,7 +64,7 @@ jobs:
 
       # Also upload coverage as artifact for debugging
       - name: Upload coverage to artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: coverage-${{ matrix.os }}-go${{ matrix.go-version }}
           path: coverage.txt
@@ -112,7 +112,7 @@ jobs:
 
       # Upload the binary as an artifact
       - name: Upload binary artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: chop-${{ matrix.os }}
           path: chop
