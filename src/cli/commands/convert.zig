@@ -136,7 +136,7 @@ pub fn fromWei(ctx: *Context, args: []const []const u8) CliError!void {
 
 fn printFractional(ctx: *Context, remainder: u256, divisor: u256, decimals: u8) !void {
     var r = remainder;
-    var d = divisor;
+    const d = divisor;
     var buf: [32]u8 = undefined;
     var idx: usize = 0;
 

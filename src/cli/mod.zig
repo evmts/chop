@@ -8,7 +8,6 @@
 //! - And more...
 
 const std = @import("std");
-const clap = @import("clap");
 const primitives = @import("primitives");
 const crypto = @import("crypto");
 
@@ -32,78 +31,69 @@ pub const OutputFormat = enum {
 /// CLI context passed to all commands
 pub const Context = struct {
     allocator: std.mem.Allocator,
-    stdout: std.fs.File.Writer,
-    stderr: std.fs.File.Writer,
+    stdout: std.fs.File,
+    stderr: std.fs.File,
     format: OutputFormat,
+    stdout_buf: [4096]u8 = undefined,
+    stderr_buf: [4096]u8 = undefined,
 
-    pub fn print(self: *const Context, comptime fmt: []const u8, args: anytype) !void {
-        try self.stdout.print(fmt, args);
+    pub fn print(self: *Context, comptime fmt: []const u8, args: anytype) !void {
+        var writer = self.stdout.writer(&self.stdout_buf);
+        try writer.print(fmt, args);
     }
 
-    pub fn printJson(self: *const Context, value: anytype) !void {
-        try std.json.stringify(value, .{}, self.stdout);
-        try self.stdout.writeByte('\n');
-    }
-
-    pub fn err(self: *const Context, comptime fmt: []const u8, args: anytype) !void {
-        try self.stderr.print(fmt, args);
+    pub fn err(self: *Context, comptime fmt: []const u8, args: anytype) !void {
+        var writer = self.stderr.writer(&self.stderr_buf);
+        try writer.print(fmt, args);
     }
 };
 
-/// Main CLI parameters definition
-pub const params = clap.parseParamsComptime(
-    \\-h, --help             Display this help and exit
-    \\-j, --json             Output as JSON
-    \\-V, --version          Print version
-    \\<command>...
-    \\
-);
-
 /// Run the CLI with the given arguments
 pub fn run(allocator: std.mem.Allocator) !u8 {
-    const stdout = std.io.getStdOut().writer();
-    const stderr = std.io.getStdErr().writer();
+    const stdout = std.fs.File.stdout();
+    const stderr = std.fs.File.stderr();
 
-    var diag = clap.Diagnostic{};
-    var res = clap.parse(clap.Help, &params, .string, .{
-        .diagnostic = &diag,
-        .allocator = allocator,
-    }) catch |err| {
-        diag.report(stderr) catch {};
-        return 1;
-    };
-    defer res.deinit();
+    // Parse arguments manually
+    var args_iter = std.process.args();
+    _ = args_iter.skip(); // Skip program name
 
-    // Handle help
-    if (res.args.help != 0) {
-        printHelp(stdout) catch return 1;
-        return 0;
+    var args_list = std.ArrayList([]const u8){};
+    defer args_list.deinit(allocator);
+
+    var json_output = false;
+
+    while (args_iter.next()) |arg| {
+        if (std.mem.eql(u8, arg, "-h") or std.mem.eql(u8, arg, "--help")) {
+            printHelp(stdout.writer()) catch return 1;
+            return 0;
+        }
+        if (std.mem.eql(u8, arg, "-V") or std.mem.eql(u8, arg, "--version")) {
+            stdout.writer().print("chop 0.1.0\n", .{}) catch return 1;
+            return 0;
+        }
+        if (std.mem.eql(u8, arg, "-j") or std.mem.eql(u8, arg, "--json")) {
+            json_output = true;
+            continue;
+        }
+        try args_list.append(allocator, arg);
     }
 
-    // Handle version
-    if (res.args.version != 0) {
-        stdout.print("chop 0.1.0\n", .{}) catch return 1;
-        return 0;
-    }
-
-    // Get command arguments
-    const positionals = res.positionals;
-    if (positionals.len == 0) {
-        // No command - return to launch TUI
+    // No command - return to launch TUI
+    if (args_list.items.len == 0) {
         return 255; // Special code meaning "launch TUI"
     }
 
-    const format: OutputFormat = if (res.args.json != 0) .json else .text;
+    const format: OutputFormat = if (json_output) .json else .text;
     var ctx = Context{
         .allocator = allocator,
-        .stdout = stdout,
-        .stderr = stderr,
+        .stdout = stdout.writer(),
+        .stderr = stderr.writer(),
         .format = format,
     };
 
     // Dispatch to command
-    const cmd = positionals[0];
-    const cmd_args = positionals[1..];
+    const cmd = args_list.items[0];
+    const cmd_args = args_list.items[1..];
 
     return dispatchCommand(&ctx, cmd, cmd_args);
 }
