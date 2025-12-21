@@ -61,14 +61,17 @@ pub fn run(allocator: std.mem.Allocator) !u8 {
     defer args_list.deinit(allocator);
 
     var json_output = false;
+    var stdout_buf: [4096]u8 = undefined;
 
     while (args_iter.next()) |arg| {
         if (std.mem.eql(u8, arg, "-h") or std.mem.eql(u8, arg, "--help")) {
-            printHelp(stdout.writer()) catch return 1;
+            var writer = stdout.writer(&stdout_buf);
+            printHelp(&writer) catch return 1;
             return 0;
         }
         if (std.mem.eql(u8, arg, "-V") or std.mem.eql(u8, arg, "--version")) {
-            stdout.writer().print("chop 0.1.0\n", .{}) catch return 1;
+            var writer = stdout.writer(&stdout_buf);
+            writer.print("chop 0.1.0\n", .{}) catch return 1;
             return 0;
         }
         if (std.mem.eql(u8, arg, "-j") or std.mem.eql(u8, arg, "--json")) {
@@ -86,8 +89,8 @@ pub fn run(allocator: std.mem.Allocator) !u8 {
     const format: OutputFormat = if (json_output) .json else .text;
     var ctx = Context{
         .allocator = allocator,
-        .stdout = stdout.writer(),
-        .stderr = stderr.writer(),
+        .stdout = stdout,
+        .stderr = stderr,
         .format = format,
     };
 
