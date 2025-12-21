@@ -51,6 +51,7 @@ pub fn build(b: *std.Build) void {
 
     const primitives_mod = voltaire_dep.module("primitives");
     const crypto_mod = voltaire_dep.module("crypto");
+    const precompiles_mod = voltaire_dep.module("precompiles");
     const clap_mod = clap_dep.module("clap");
 
     // ========================================
@@ -64,6 +65,7 @@ pub fn build(b: *std.Build) void {
     });
     evm_mod.addImport("primitives", primitives_mod);
     evm_mod.addImport("crypto", crypto_mod);
+    evm_mod.addImport("precompiles", precompiles_mod);
     evm_mod.addImport("build_options", options_mod);
 
     // ========================================
