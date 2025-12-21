@@ -4,6 +4,9 @@ const vxfw = vaxis.vxfw;
 
 const Tab = @import("state/tab.zig").Tab;
 const styles = @import("styles.zig");
+const views = @import("views/mod.zig");
+const types = @import("types.zig");
+const core = @import("core/mod.zig");
 
 /// ChopApp is the root widget for the Chop TUI application.
 /// It manages tab navigation and delegates rendering to child views.
@@ -11,15 +14,60 @@ pub const ChopApp = struct {
     allocator: std.mem.Allocator,
     current_tab: Tab = .dashboard,
 
+    // Blockchain simulation
+    blockchain: *core.Blockchain,
+
+    // View instances
+    dashboard_view: views.DashboardView,
+    accounts_view: views.AccountsView,
+    blocks_view: views.BlocksView,
+    transactions_view: views.TransactionsView,
+    contracts_view: views.ContractsView,
+    history_view: views.HistoryView,
+    settings_view: views.SettingsView,
+    inspector_view: views.InspectorView,
+
     pub fn init(allocator: std.mem.Allocator) !*ChopApp {
         const self = try allocator.create(ChopApp);
+        errdefer allocator.destroy(self);
+
+        // Initialize blockchain simulation
+        const blockchain = try core.Blockchain.init(allocator);
+        errdefer blockchain.deinit();
+
         self.* = .{
             .allocator = allocator,
+            .blockchain = blockchain,
+            .dashboard_view = views.DashboardView.init(allocator),
+            .accounts_view = views.AccountsView.init(allocator),
+            .blocks_view = views.BlocksView.init(allocator),
+            .transactions_view = views.TransactionsView.init(allocator),
+            .contracts_view = views.ContractsView.init(allocator),
+            .history_view = views.HistoryView.init(allocator),
+            .settings_view = views.SettingsView.init(allocator),
+            .inspector_view = views.InspectorView.init(allocator),
         };
+
+        // Connect views to blockchain data
+        self.dashboard_view.blockchain = blockchain;
+        self.dashboard_view.stats = blockchain.getStats();
+        self.dashboard_view.recent_blocks = blockchain.getRecentBlocks(5);
+        self.dashboard_view.recent_txs = blockchain.getRecentTransactions(5);
+        self.accounts_view.accounts = blockchain.getAccounts();
+        self.blocks_view.blocks = blockchain.getBlocks();
+        self.transactions_view.transactions = blockchain.getTransactions();
+        self.contracts_view.contracts = blockchain.getContracts();
+        self.history_view.entries = blockchain.getCallHistory();
+        self.history_view.blockchain = blockchain;
+        self.settings_view.blockchain = blockchain;
+        self.inspector_view.blockchain = blockchain;
+
         return self;
     }
 
     pub fn deinit(self: *ChopApp) void {
+        self.inspector_view.deinit();
+        self.blockchain.deinit();
         self.allocator.destroy(self);
     }
 
@@ -56,18 +104,36 @@ pub const ChopApp = struct {
                     ctx.consumeAndRedraw();
                     return;
                 }
+
+                // Delegate to current view
+                try self.getCurrentView().handleEvent(ctx, event);
             },
-            else => {},
+            else => {
+                // Delegate other events to current view
+                try self.getCurrentView().handleEvent(ctx, event);
+            },
         }
+    }
+
+    fn getCurrentView(self: *ChopApp) vxfw.Widget {
+        return switch (self.current_tab) {
+            .dashboard => self.dashboard_view.widget(),
+            .call_history => self.history_view.widget(),
+            .contracts => self.contracts_view.widget(),
+            .accounts => self.accounts_view.widget(),
+            .blocks => self.blocks_view.widget(),
+            .transactions => self.transactions_view.widget(),
+            .settings => self.settings_view.widget(),
+        };
     }
 
     fn draw(self: *ChopApp, ctx: vxfw.DrawContext) !vxfw.Surface {
         const max_size = ctx.max.size();
 
-        // Create surface
+        // Create main surface
         var surface = try vxfw.Surface.init(ctx.arena, self.widget(), max_size);
 
-        // Draw tab bar at the top
+        // Draw tab bar at the top (row 0)
         var col: u16 = 1;
         for (Tab.all()) |tab| {
             const label = tab.label();
@@ -94,64 +160,37 @@ pub const ChopApp = struct {
             }
         }
 
-        // Draw separator line
-        if (max_size.height > 1) {
-            for (0..max_size.width) |x| {
-                surface.writeCell(@intCast(x), 1, .{
-                    .char = .{ .grapheme = "─", .width = 1 },
-                    .style = styles.styles.muted,
-                });
-            }
+        // Draw separator line (row 1)
+        for (0..max_size.width) |x| {
+            surface.writeCell(@intCast(x), 1, .{
+                .char = .{ .grapheme = "─", .width = 1 },
+                .style = styles.styles.muted,
+            });
         }
 
-        // Draw current tab content
-        if (max_size.height > 3) {
-            const content_start_row: u16 = 3;
-            const title = self.current_tab.shortLabel();
-            const help = self.current_tab.helpText();
+        // Draw current view as a child surface (starting at row 2)
+        if (max_size.height > 4) {
+            const content_height = max_size.height - 3; // Leave room for tab bar and help bar
+            const content_ctx = ctx.withConstraints(
+                .{ .width = max_size.width, .height = 0 },
+                .{ .width = max_size.width, .height = content_height },
+            );
 
-            // Draw tab title
-            var title_col: u16 = 2;
-            for (title) |char| {
-                if (title_col < max_size.width - 1) {
-                    surface.writeCell(title_col, content_start_row, .{
-                        .char = .{ .grapheme = &[_]u8{char}, .width = 1 },
-                        .style = styles.styles.title,
-                    });
-                    title_col += 1;
-                }
-            }
+            const view_surface = try self.getCurrentView().draw(content_ctx);
 
-            // Draw help text
-            var help_col: u16 = 2;
-            for (help) |char| {
-                if (help_col < max_size.width - 1) {
-                    surface.writeCell(help_col, content_start_row + 2, .{
-                        .char = .{ .grapheme = &[_]u8{char}, .width = 1 },
-                        .style = styles.styles.muted,
-                    });
-                    help_col += 1;
-                }
-            }
-
-            // Draw placeholder message
-            const placeholder = "(Content coming soon)";
-            var ph_col: u16 = 2;
-            for (placeholder) |char| {
-                if (ph_col < max_size.width - 1) {
-                    surface.writeCell(ph_col, content_start_row + 4, .{
-                        .char = .{ .grapheme = &[_]u8{char}, .width = 1 },
-                        .style = styles.styles.muted,
-                    });
-                    ph_col += 1;
-                }
-            }
+            // Add as child surface
+            const children = try ctx.arena.alloc(vxfw.SubSurface, 1);
+            children[0] = .{
+                .origin = .{ .row = 2, .col = 0 },
+                .surface = view_surface,
+            };
+            surface.children = children;
         }
 
         // Draw help bar at bottom
         if (max_size.height > 2) {
             const help_row = max_size.height - 1;
-            const help_text = "q: Quit | 1-7: Switch tabs | j/k: Navigate | Enter: Select | Esc: Back";
+            const help_text = getHelpText(self.current_tab);
 
             var help_col: u16 = 1;
             for (help_text) |char| {
@@ -168,3 +207,15 @@ pub const ChopApp = struct {
         return surface;
     }
 };
+
+fn getHelpText(tab: Tab) []const u8 {
+    return switch (tab) {
+        .dashboard => "q: Quit | 1-7: Switch tabs | a: Toggle auto-refresh | r: Refresh",
+        .call_history => "q: Quit | 1-7: Tabs | j/k: Navigate | Enter: Detail | n: New call | e: Execute",
+        .contracts => "q: Quit | 1-7: Tabs | j/k: Navigate | Enter: Detail | h/l: Blocks | g: Jump | G: Goto PC",
+        .accounts => "q: Quit | 1-7: Tabs | j/k: Navigate | Enter: Detail | c: Copy | p: Private key",
+        .blocks => "q: Quit | 1-7: Tabs | j/k: Navigate | Enter: Detail | c: Copy hash",
+        .transactions => "q: Quit | 1-7: Tabs | j/k: Navigate | Enter: Detail | c: Copy hash",
+        .settings => "q: Quit | 1-7: Tabs | j/k: Navigate | Enter: Select",
+    };
+}
