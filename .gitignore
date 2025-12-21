@@ -24,3 +24,9 @@ coverage.txt
 # OS
 .DS_Store
 Thumbs.db
+
+# Local directories
+guillotine/
+tevm-monorepo/
+ui/coverage/
+libvaxis/
