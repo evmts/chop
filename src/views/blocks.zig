@@ -103,24 +103,24 @@ pub const BlocksView = struct {
         var row: u16 = 0;
 
         // Header
-        try writeString(surface, 2, row, "Blocks", styles.styles.title);
+        try writeString(surface, ctx, 2, row, "Blocks", styles.styles.title);
         row += 1;
-        try writeString(surface, 2, row, "Block Explorer", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "Block Explorer", styles.styles.muted);
         row += 2;
 
         // Column headers
-        try writeString(surface, 2, row, "Block", styles.styles.muted);
-        try writeString(surface, 12, row, "Hash", styles.styles.muted);
-        try writeString(surface, 36, row, "Txs", styles.styles.muted);
-        try writeString(surface, 44, row, "Gas Used", styles.styles.muted);
-        try writeString(surface, 60, row, "Timestamp", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "Block", styles.styles.muted);
+        try writeString(surface, ctx, 12, row, "Hash", styles.styles.muted);
+        try writeString(surface, ctx, 36, row, "Txs", styles.styles.muted);
+        try writeString(surface, ctx, 44, row, "Gas Used", styles.styles.muted);
+        try writeString(surface, ctx, 60, row, "Timestamp", styles.styles.muted);
         row += 1;
         try drawLine(surface, row, max_size.width, styles.styles.muted);
         row += 1;
 
         // Block list
         if (self.blocks.len == 0) {
-            try writeString(surface, 2, row, "No blocks yet", styles.styles.muted);
+            try writeString(surface, ctx, 2, row, "No blocks yet", styles.styles.muted);
         } else {
             for (self.blocks, 0..) |block, i| {
                 if (row >= max_size.height - 3) break;
@@ -130,28 +130,28 @@ pub const BlocksView = struct {
 
                 // Selection indicator
                 if (is_selected) {
-                    try writeString(surface, 0, row, ">", styles.styles.value);
+                    try writeString(surface, ctx, 0, row, ">", styles.styles.value);
                 }
 
                 // Block number
                 const num_str = try std.fmt.allocPrint(ctx.arena, "#{d}", .{block.number});
-                try writeString(surface, 2, row, num_str, row_style);
+                try writeString(surface, ctx, 2, row, num_str, row_style);
 
                 // Hash (shortened)
                 const short_hash = if (block.hash.len > 18) block.hash[0..18] else block.hash;
-                try writeString(surface, 12, row, short_hash, row_style);
+                try writeString(surface, ctx, 12, row, short_hash, row_style);
 
                 // Transaction count
                 const tx_count = try std.fmt.allocPrint(ctx.arena, "{d}", .{block.transactions.len});
-                try writeString(surface, 36, row, tx_count, row_style);
+                try writeString(surface, ctx, 36, row, tx_count, row_style);
 
                 // Gas used
                 const gas_str = try std.fmt.allocPrint(ctx.arena, "{d}", .{block.gas_used});
-                try writeString(surface, 44, row, gas_str, row_style);
+                try writeString(surface, ctx, 44, row, gas_str, row_style);
 
                 // Timestamp
                 const ts_str = try formatTimestamp(ctx.arena, block.timestamp);
-                try writeString(surface, 60, row, ts_str, styles.styles.muted);
+                try writeString(surface, ctx, 60, row, ts_str, styles.styles.muted);
 
                 row += 1;
             }
@@ -162,7 +162,7 @@ pub const BlocksView = struct {
 
     fn drawDetail(self: *BlocksView, ctx: vxfw.DrawContext, surface: *vxfw.Surface, max_size: vxfw.Size) !vxfw.Surface {
         const block = self.selected_block orelse {
-            try writeString(surface, 2, 0, "Block not found", styles.styles.err);
+            try writeString(surface, ctx, 2, 0, "Block not found", styles.styles.err);
             return surface.*;
         };
 
@@ -170,53 +170,53 @@ pub const BlocksView = struct {
 
         // Header
         const title = try std.fmt.allocPrint(ctx.arena, "Block #{d}", .{block.number});
-        try writeString(surface, 2, row, title, styles.styles.title);
+        try writeString(surface, ctx, 2, row, title, styles.styles.title);
         row += 2;
 
         // Block details
-        try writeString(surface, 2, row, "Hash:", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "Hash:", styles.styles.muted);
         row += 1;
-        try writeString(surface, 4, row, block.hash, styles.styles.value);
+        try writeString(surface, ctx, 4, row, block.hash, styles.styles.value);
         row += 2;
 
-        try writeString(surface, 2, row, "Parent Hash:", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "Parent Hash:", styles.styles.muted);
         row += 1;
-        try writeString(surface, 4, row, block.parent_hash, styles.styles.normal);
+        try writeString(surface, ctx, 4, row, block.parent_hash, styles.styles.normal);
         row += 2;
 
-        try writeString(surface, 2, row, "Miner:", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "Miner:", styles.styles.muted);
         row += 1;
-        try writeString(surface, 4, row, block.miner, styles.styles.normal);
+        try writeString(surface, ctx, 4, row, block.miner, styles.styles.normal);
         row += 2;
 
         // Stats row
         const gas_str = try std.fmt.allocPrint(ctx.arena, "Gas Used: {d} / {d}", .{ block.gas_used, block.gas_limit });
-        try writeString(surface, 2, row, gas_str, styles.styles.normal);
+        try writeString(surface, ctx, 2, row, gas_str, styles.styles.normal);
         row += 1;
 
         const size_str = try std.fmt.allocPrint(ctx.arena, "Size: {d} bytes", .{block.size});
-        try writeString(surface, 2, row, size_str, styles.styles.normal);
+        try writeString(surface, ctx, 2, row, size_str, styles.styles.normal);
         row += 2;
 
-        try writeString(surface, 2, row, "Timestamp:", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "Timestamp:", styles.styles.muted);
         row += 1;
         const ts_str = try formatTimestamp(ctx.arena, block.timestamp);
-        try writeString(surface, 4, row, ts_str, styles.styles.normal);
+        try writeString(surface, ctx, 4, row, ts_str, styles.styles.normal);
         row += 2;
 
         // Transactions section
         const tx_title = try std.fmt.allocPrint(ctx.arena, "TRANSACTIONS ({d})", .{block.transactions.len});
-        try writeString(surface, 2, row, tx_title, styles.styles.title);
+        try writeString(surface, ctx, 2, row, tx_title, styles.styles.title);
         row += 1;
         try drawLine(surface, row, max_size.width, styles.styles.muted);
         row += 1;
 
         if (block.transactions.len == 0) {
-            try writeString(surface, 2, row, "No transactions in this block", styles.styles.muted);
+            try writeString(surface, ctx, 2, row, "No transactions in this block", styles.styles.muted);
         } else {
             for (block.transactions) |tx_hash| {
                 if (row >= max_size.height - 2) break;
-                try writeString(surface, 2, row, tx_hash, styles.styles.normal);
+                try writeString(surface, ctx, 2, row, tx_hash, styles.styles.normal);
                 row += 1;
             }
         }
@@ -227,22 +227,25 @@ pub const BlocksView = struct {
 
 // Helper functions
 
-fn writeString(surface: *vxfw.Surface, col: u16, row: u16, text: []const u8, style: vaxis.Style) !void {
+fn writeString(surface: *vxfw.Surface, ctx: vxfw.DrawContext, col: u16, row: u16, text: []const u8, style: vaxis.Style) !void {
     var c = col;
-    for (text) |char| {
+    var iter = ctx.graphemeIterator(text);
+    while (iter.next()) |grapheme_result| {
         if (c >= surface.size.width) break;
+        const grapheme = grapheme_result.bytes(text);
+        const width: u8 = @intCast(ctx.stringWidth(grapheme));
         surface.writeCell(c, row, .{
-            .char = .{ .grapheme = &[_]u8{char}, .width = 1 },
+            .char = .{ .grapheme = grapheme, .width = width },
             .style = style,
         });
-        c += 1;
+        c += width;
     }
 }
 
 fn drawLine(surface: *vxfw.Surface, row: u16, width: u16, style: vaxis.Style) !void {
     for (0..width) |x| {
         surface.writeCell(@intCast(x), row, .{
-            .char = .{ .grapheme = "─", .width = 1 },
+            .char = .{ .grapheme = "-", .width = 1 },
             .style = style,
         });
     }

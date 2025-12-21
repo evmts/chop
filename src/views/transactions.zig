@@ -143,24 +143,24 @@ pub const TransactionsView = struct {
         var row: u16 = 0;
 
         // Header
-        try writeString(surface, 2, row, "Transactions", styles.styles.title);
+        try writeString(surface, ctx, 2, row, "Transactions", styles.styles.title);
         row += 1;
-        try writeString(surface, 2, row, "Transaction History", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "Transaction History", styles.styles.muted);
         row += 2;
 
         // Column headers
-        try writeString(surface, 2, row, "Status", styles.styles.muted);
-        try writeString(surface, 10, row, "Hash", styles.styles.muted);
-        try writeString(surface, 30, row, "From", styles.styles.muted);
-        try writeString(surface, 50, row, "To", styles.styles.muted);
-        try writeString(surface, 70, row, "Gas", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "Status", styles.styles.muted);
+        try writeString(surface, ctx, 10, row, "Hash", styles.styles.muted);
+        try writeString(surface, ctx, 30, row, "From", styles.styles.muted);
+        try writeString(surface, ctx, 50, row, "To", styles.styles.muted);
+        try writeString(surface, ctx, 70, row, "Gas", styles.styles.muted);
         row += 1;
         try drawLine(surface, row, max_size.width, styles.styles.muted);
         row += 1;
 
         // Transaction list
         if (self.transactions.len == 0) {
-            try writeString(surface, 2, row, "No transactions yet", styles.styles.muted);
+            try writeString(surface, ctx, 2, row, "No transactions yet", styles.styles.muted);
         } else {
             for (self.transactions, 0..) |tx, i| {
                 if (row >= max_size.height - 3) break;
@@ -170,29 +170,29 @@ pub const TransactionsView = struct {
 
                 // Selection indicator
                 if (is_selected) {
-                    try writeString(surface, 0, row, ">", styles.styles.value);
+                    try writeString(surface, ctx, 0, row, ">", styles.styles.value);
                 }
 
                 // Status
                 const status = if (tx.status) "[OK]" else "[FAIL]";
                 const status_style = if (tx.status) styles.styles.success else styles.styles.err;
-                try writeString(surface, 2, row, status, status_style);
+                try writeString(surface, ctx, 2, row, status, status_style);
 
                 // Hash (shortened)
                 const short_hash = if (tx.hash.len > 16) tx.hash[0..16] else tx.hash;
-                try writeString(surface, 10, row, short_hash, row_style);
+                try writeString(surface, ctx, 10, row, short_hash, row_style);
 
                 // From (shortened)
                 const short_from = if (tx.from.len > 16) tx.from[0..16] else tx.from;
-                try writeString(surface, 30, row, short_from, row_style);
+                try writeString(surface, ctx, 30, row, short_from, row_style);
 
                 // To
                 const to_str = if (tx.to) |to| (if (to.len > 16) to[0..16] else to) else "CREATE";
-                try writeString(surface, 50, row, to_str, row_style);
+                try writeString(surface, ctx, 50, row, to_str, row_style);
 
                 // Gas
                 const gas_str = try std.fmt.allocPrint(ctx.arena, "{d}", .{tx.gas_used});
-                try writeString(surface, 70, row, gas_str, styles.styles.muted);
+                try writeString(surface, ctx, 70, row, gas_str, styles.styles.muted);
 
                 row += 1;
             }
@@ -203,88 +203,88 @@ pub const TransactionsView = struct {
 
     fn drawDetail(self: *TransactionsView, ctx: vxfw.DrawContext, surface: *vxfw.Surface, max_size: vxfw.Size) !vxfw.Surface {
         const tx = self.selected_tx orelse {
-            try writeString(surface, 2, 0, "Transaction not found", styles.styles.err);
+            try writeString(surface, ctx, 2, 0, "Transaction not found", styles.styles.err);
             return surface.*;
         };
 
         var row: u16 = 0;
 
         // Header
-        try writeString(surface, 2, row, "Transaction Detail", styles.styles.title);
+        try writeString(surface, ctx, 2, row, "Transaction Detail", styles.styles.title);
         row += 2;
 
         // Status
         const status_str = if (tx.status) "SUCCESS" else "FAILED";
         const status_style = if (tx.status) styles.styles.success else styles.styles.err;
-        try writeString(surface, 2, row, "Status: ", styles.styles.muted);
-        try writeString(surface, 10, row, status_str, status_style);
+        try writeString(surface, ctx, 2, row, "Status: ", styles.styles.muted);
+        try writeString(surface, ctx, 10, row, status_str, status_style);
         row += 2;
 
         // Hash
-        try writeString(surface, 2, row, "Hash:", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "Hash:", styles.styles.muted);
         row += 1;
-        try writeString(surface, 4, row, tx.hash, styles.styles.value);
+        try writeString(surface, ctx, 4, row, tx.hash, styles.styles.value);
         row += 2;
 
         // Block
         const block_str = try std.fmt.allocPrint(ctx.arena, "Block: #{d}", .{tx.block_number});
-        try writeString(surface, 2, row, block_str, styles.styles.normal);
+        try writeString(surface, ctx, 2, row, block_str, styles.styles.normal);
         row += 1;
 
         // From
-        try writeString(surface, 2, row, "From:", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "From:", styles.styles.muted);
         row += 1;
-        try writeString(surface, 4, row, tx.from, styles.styles.normal);
+        try writeString(surface, ctx, 4, row, tx.from, styles.styles.normal);
         row += 1;
 
         // To
-        try writeString(surface, 2, row, "To:", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "To:", styles.styles.muted);
         row += 1;
         const to_str = tx.to orelse "(Contract Creation)";
-        try writeString(surface, 4, row, to_str, styles.styles.normal);
+        try writeString(surface, ctx, 4, row, to_str, styles.styles.normal);
         row += 2;
 
         // Value & Gas
         const value_str = try std.fmt.allocPrint(ctx.arena, "Value: {d} wei", .{@as(u64, @truncate(tx.value))});
-        try writeString(surface, 2, row, value_str, styles.styles.value);
+        try writeString(surface, ctx, 2, row, value_str, styles.styles.value);
         row += 1;
 
         const gas_str = try std.fmt.allocPrint(ctx.arena, "Gas: {d} / {d}", .{ tx.gas_used, tx.gas_limit });
-        try writeString(surface, 2, row, gas_str, styles.styles.normal);
+        try writeString(surface, ctx, 2, row, gas_str, styles.styles.normal);
         row += 2;
 
         // Call type
-        try writeString(surface, 2, row, "Type: ", styles.styles.muted);
-        try writeString(surface, 8, row, tx.call_type.toString(), styles.styles.normal);
+        try writeString(surface, ctx, 2, row, "Type: ", styles.styles.muted);
+        try writeString(surface, ctx, 8, row, tx.call_type.toString(), styles.styles.normal);
         row += 2;
 
         // Error info if failed
         if (!tx.status) {
             if (tx.error_info) |err| {
-                try writeString(surface, 2, row, "Error:", styles.styles.err);
+                try writeString(surface, ctx, 2, row, "Error:", styles.styles.err);
                 row += 1;
-                try writeString(surface, 4, row, err, styles.styles.err);
+                try writeString(surface, ctx, 4, row, err, styles.styles.err);
                 row += 2;
             }
         }
 
         // Deployed address if CREATE
         if (tx.deployed_addr) |addr| {
-            try writeString(surface, 2, row, "Deployed:", styles.styles.muted);
+            try writeString(surface, ctx, 2, row, "Deployed:", styles.styles.muted);
             row += 1;
-            try writeString(surface, 4, row, addr, styles.styles.success);
+            try writeString(surface, ctx, 4, row, addr, styles.styles.success);
             row += 2;
         }
 
         // Logs section
         const logs_title = try std.fmt.allocPrint(ctx.arena, "LOGS ({d})", .{tx.logs.len});
-        try writeString(surface, 2, row, logs_title, styles.styles.title);
+        try writeString(surface, ctx, 2, row, logs_title, styles.styles.title);
         row += 1;
         try drawLine(surface, row, max_size.width, styles.styles.muted);
         row += 1;
 
         if (tx.logs.len == 0) {
-            try writeString(surface, 2, row, "No logs emitted", styles.styles.muted);
+            try writeString(surface, ctx, 2, row, "No logs emitted", styles.styles.muted);
         } else {
             for (tx.logs, 0..) |log, i| {
                 if (row >= max_size.height - 2) break;
@@ -293,11 +293,11 @@ pub const TransactionsView = struct {
                 const log_style = if (is_selected) styles.styles.selected else styles.styles.normal;
 
                 if (is_selected) {
-                    try writeString(surface, 0, row, ">", styles.styles.value);
+                    try writeString(surface, ctx, 0, row, ">", styles.styles.value);
                 }
 
                 const log_str = try std.fmt.allocPrint(ctx.arena, "Log {d}: {s}", .{ i, log.address });
-                try writeString(surface, 2, row, log_str, log_style);
+                try writeString(surface, ctx, 2, row, log_str, log_style);
                 row += 1;
             }
         }
@@ -309,12 +309,12 @@ pub const TransactionsView = struct {
         _ = max_size;
 
         const tx = self.selected_tx orelse {
-            try writeString(surface, 2, 0, "Transaction not found", styles.styles.err);
+            try writeString(surface, ctx, 2, 0, "Transaction not found", styles.styles.err);
             return surface.*;
         };
 
         if (self.log_selected_index >= tx.logs.len) {
-            try writeString(surface, 2, 0, "Log not found", styles.styles.err);
+            try writeString(surface, ctx, 2, 0, "Log not found", styles.styles.err);
             return surface.*;
         }
 
@@ -323,35 +323,35 @@ pub const TransactionsView = struct {
 
         // Header
         const title = try std.fmt.allocPrint(ctx.arena, "Log #{d}", .{self.log_selected_index});
-        try writeString(surface, 2, row, title, styles.styles.title);
+        try writeString(surface, ctx, 2, row, title, styles.styles.title);
         row += 2;
 
         // Address
-        try writeString(surface, 2, row, "Contract:", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "Contract:", styles.styles.muted);
         row += 1;
-        try writeString(surface, 4, row, log.address, styles.styles.value);
+        try writeString(surface, ctx, 4, row, log.address, styles.styles.value);
         row += 2;
 
         // Topics
         const topics_title = try std.fmt.allocPrint(ctx.arena, "Topics ({d}):", .{log.topics.len});
-        try writeString(surface, 2, row, topics_title, styles.styles.muted);
+        try writeString(surface, ctx, 2, row, topics_title, styles.styles.muted);
         row += 1;
 
         for (log.topics, 0..) |topic, i| {
             const topic_label = try std.fmt.allocPrint(ctx.arena, "  [{d}] ", .{i});
-            try writeString(surface, 2, row, topic_label, styles.styles.muted);
-            try writeString(surface, 8, row, topic, styles.styles.normal);
+            try writeString(surface, ctx, 2, row, topic_label, styles.styles.muted);
+            try writeString(surface, ctx, 8, row, topic, styles.styles.normal);
             row += 1;
         }
         row += 1;
 
         // Data
-        try writeString(surface, 2, row, "Data:", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "Data:", styles.styles.muted);
         row += 1;
         if (log.data.len > 0) {
-            try writeString(surface, 4, row, log.data, styles.styles.normal);
+            try writeString(surface, ctx, 4, row, log.data, styles.styles.normal);
         } else {
-            try writeString(surface, 4, row, "(empty)", styles.styles.muted);
+            try writeString(surface, ctx, 4, row, "(empty)", styles.styles.muted);
         }
 
         return surface.*;
@@ -360,22 +360,25 @@ pub const TransactionsView = struct {
 
 // Helper functions
 
-fn writeString(surface: *vxfw.Surface, col: u16, row: u16, text: []const u8, style: vaxis.Style) !void {
+fn writeString(surface: *vxfw.Surface, ctx: vxfw.DrawContext, col: u16, row: u16, text: []const u8, style: vaxis.Style) !void {
     var c = col;
-    for (text) |char| {
+    var iter = ctx.graphemeIterator(text);
+    while (iter.next()) |grapheme_result| {
         if (c >= surface.size.width) break;
+        const grapheme = grapheme_result.bytes(text);
+        const width: u8 = @intCast(ctx.stringWidth(grapheme));
         surface.writeCell(c, row, .{
-            .char = .{ .grapheme = &[_]u8{char}, .width = 1 },
+            .char = .{ .grapheme = grapheme, .width = width },
             .style = style,
         });
-        c += 1;
+        c += width;
     }
 }
 
 fn drawLine(surface: *vxfw.Surface, row: u16, width: u16, style: vaxis.Style) !void {
     for (0..width) |x| {
         surface.writeCell(@intCast(x), row, .{
-            .char = .{ .grapheme = "─", .width = 1 },
+            .char = .{ .grapheme = "-", .width = 1 },
             .style = style,
         });
     }

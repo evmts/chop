@@ -114,22 +114,22 @@ pub const AccountsView = struct {
         var row: u16 = 0;
 
         // Header
-        try writeString(surface, 2, row, "Accounts", styles.styles.title);
+        try writeString(surface, ctx, 2, row, "Accounts", styles.styles.title);
         row += 1;
-        try writeString(surface, 2, row, "Pre-funded Test Accounts", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "Pre-funded Test Accounts", styles.styles.muted);
         row += 2;
 
         // Column headers
-        try writeString(surface, 2, row, "#", styles.styles.muted);
-        try writeString(surface, 6, row, "Address", styles.styles.muted);
-        try writeString(surface, 50, row, "Balance", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "#", styles.styles.muted);
+        try writeString(surface, ctx, 6, row, "Address", styles.styles.muted);
+        try writeString(surface, ctx, 50, row, "Balance", styles.styles.muted);
         row += 1;
         try drawLine(surface, row, max_size.width, styles.styles.muted);
         row += 1;
 
         // Account list
         if (self.accounts.len == 0) {
-            try writeString(surface, 2, row, "No accounts available", styles.styles.muted);
+            try writeString(surface, ctx, 2, row, "No accounts available", styles.styles.muted);
         } else {
             for (self.accounts, 0..) |account, i| {
                 if (row >= max_size.height - 3) break;
@@ -139,19 +139,19 @@ pub const AccountsView = struct {
 
                 // Draw selection indicator
                 if (is_selected) {
-                    try writeString(surface, 0, row, ">", styles.styles.value);
+                    try writeString(surface, ctx, 0, row, ">", styles.styles.value);
                 }
 
                 // Account index
                 const index_str = try std.fmt.allocPrint(ctx.arena, "{d}", .{account.index});
-                try writeString(surface, 2, row, index_str, row_style);
+                try writeString(surface, ctx, 2, row, index_str, row_style);
 
                 // Address
-                try writeString(surface, 6, row, account.address, row_style);
+                try writeString(surface, ctx, 6, row, account.address, row_style);
 
                 // Balance (simplified - just show raw value)
                 const balance_str = try std.fmt.allocPrint(ctx.arena, "{d} wei", .{@as(u64, @truncate(account.balance))});
-                try writeString(surface, 50, row, balance_str, styles.styles.value);
+                try writeString(surface, ctx, 50, row, balance_str, styles.styles.value);
 
                 row += 1;
             }
@@ -164,7 +164,7 @@ pub const AccountsView = struct {
         _ = max_size;
 
         if (self.selected_index >= self.accounts.len) {
-            try writeString(surface, 2, 0, "Account not found", styles.styles.err);
+            try writeString(surface, ctx, 2, 0, "Account not found", styles.styles.err);
             return surface.*;
         }
 
@@ -172,46 +172,46 @@ pub const AccountsView = struct {
         var row: u16 = 0;
 
         // Header
-        try writeString(surface, 2, row, "Account Detail", styles.styles.title);
+        try writeString(surface, ctx, 2, row, "Account Detail", styles.styles.title);
         row += 2;
 
         // Address
-        try writeString(surface, 2, row, "Address:", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "Address:", styles.styles.muted);
         row += 1;
-        try writeString(surface, 4, row, account.address, styles.styles.value);
+        try writeString(surface, ctx, 4, row, account.address, styles.styles.value);
         row += 2;
 
         // Balance
-        try writeString(surface, 2, row, "Balance:", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "Balance:", styles.styles.muted);
         row += 1;
         const balance_str = try std.fmt.allocPrint(ctx.arena, "{d} wei", .{@as(u64, @truncate(account.balance))});
-        try writeString(surface, 4, row, balance_str, styles.styles.value);
+        try writeString(surface, ctx, 4, row, balance_str, styles.styles.value);
         row += 2;
 
         // Nonce
-        try writeString(surface, 2, row, "Nonce:", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "Nonce:", styles.styles.muted);
         row += 1;
         const nonce_str = try std.fmt.allocPrint(ctx.arena, "{d}", .{account.nonce});
-        try writeString(surface, 4, row, nonce_str, styles.styles.value);
+        try writeString(surface, ctx, 4, row, nonce_str, styles.styles.value);
         row += 2;
 
         // Code hash
-        try writeString(surface, 2, row, "Code Hash:", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "Code Hash:", styles.styles.muted);
         row += 1;
-        try writeString(surface, 4, row, account.code_hash, styles.styles.normal);
+        try writeString(surface, ctx, 4, row, account.code_hash, styles.styles.normal);
         row += 2;
 
         // Private key (if available and revealed)
         if (account.private_key) |pk| {
-            try writeString(surface, 2, row, "Private Key:", styles.styles.muted);
+            try writeString(surface, ctx, 2, row, "Private Key:", styles.styles.muted);
             row += 1;
 
             if (self.confirming_reveal) {
-                try writeString(surface, 4, row, "Press 'p' again to reveal (security risk!)", styles.styles.err);
+                try writeString(surface, ctx, 4, row, "Press 'p' again to reveal (security risk!)", styles.styles.err);
             } else if (self.show_private_key) {
-                try writeString(surface, 4, row, pk, styles.styles.err);
+                try writeString(surface, ctx, 4, row, pk, styles.styles.err);
             } else {
-                try writeString(surface, 4, row, "******* (press 'p' to reveal)", styles.styles.muted);
+                try writeString(surface, ctx, 4, row, "******* (press 'p' to reveal)", styles.styles.muted);
             }
         }
 
@@ -221,15 +221,18 @@ pub const AccountsView = struct {
 
 // Helper functions
 
-fn writeString(surface: *vxfw.Surface, col: u16, row: u16, text: []const u8, style: vaxis.Style) !void {
+fn writeString(surface: *vxfw.Surface, ctx: vxfw.DrawContext, col: u16, row: u16, text: []const u8, style: vaxis.Style) !void {
     var c = col;
-    for (text) |char| {
+    var iter = ctx.graphemeIterator(text);
+    while (iter.next()) |grapheme_result| {
         if (c >= surface.size.width) break;
+        const grapheme = grapheme_result.bytes(text);
+        const width: u8 = @intCast(ctx.stringWidth(grapheme));
         surface.writeCell(c, row, .{
-            .char = .{ .grapheme = &[_]u8{char}, .width = 1 },
+            .char = .{ .grapheme = grapheme, .width = width },
             .style = style,
         });
-        c += 1;
+        c += width;
     }
 }
 

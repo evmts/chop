@@ -214,17 +214,17 @@ pub const InspectorView = struct {
         var row: u16 = 0;
 
         // Header
-        try writeString(&surface, 2, row, "State Inspector", styles.styles.title);
+        try writeString(&surface, ctx, 2, row, "State Inspector", styles.styles.title);
         row += 1;
-        try writeString(&surface, 2, row, "Query Blockchain State", styles.styles.muted);
+        try writeString(&surface, ctx, 2, row, "Query Blockchain State", styles.styles.muted);
         row += 2;
 
         // Input field
-        try writeString(&surface, 2, row, "Address:", styles.styles.muted);
+        try writeString(&surface, ctx, 2, row, "Address:", styles.styles.muted);
         row += 1;
 
         // Draw input box
-        try writeString(&surface, 2, row, "[", styles.styles.muted);
+        try writeString(&surface, ctx, 2, row, "[", styles.styles.muted);
 
         // Input text
         if (self.address_len > 0) {
@@ -238,7 +238,7 @@ pub const InspectorView = struct {
                 c += 1;
             }
         } else {
-            try writeString(&surface, 3, row, "0x...", styles.styles.muted);
+            try writeString(&surface, ctx, 3, row, "0x...", styles.styles.muted);
         }
 
         // Cursor
@@ -250,59 +250,59 @@ pub const InspectorView = struct {
             });
         }
 
-        try writeString(&surface, @min(max_size.width - 1, 3 + @as(u16, @intCast(@max(self.address_len, 5))) + 1), row, "]", styles.styles.muted);
+        try writeString(&surface, ctx, @min(max_size.width - 1, 3 + @as(u16, @intCast(@max(self.address_len, 5))) + 1), row, "]", styles.styles.muted);
         row += 2;
 
         // Loading indicator
         if (self.is_loading) {
-            try writeString(&surface, 2, row, "Loading...", styles.styles.muted);
+            try writeString(&surface, ctx, 2, row, "Loading...", styles.styles.muted);
             row += 2;
         }
 
         // Error message
         if (self.error_message) |err| {
-            try writeString(&surface, 2, row, "Error: ", styles.styles.err);
-            try writeString(&surface, 9, row, err, styles.styles.err);
+            try writeString(&surface, ctx, 2, row, "Error: ", styles.styles.err);
+            try writeString(&surface, ctx, 9, row, err, styles.styles.err);
             row += 2;
         }
 
         // Result
         if (self.result) |result| {
-            try writeString(&surface, 2, row, "ACCOUNT STATE", styles.styles.title);
+            try writeString(&surface, ctx, 2, row, "ACCOUNT STATE", styles.styles.title);
             row += 1;
             try drawLine(&surface, row, max_size.width, styles.styles.muted);
             row += 1;
 
             // Address
-            try writeString(&surface, 2, row, "Address:", styles.styles.muted);
+            try writeString(&surface, ctx, 2, row, "Address:", styles.styles.muted);
             row += 1;
-            try writeString(&surface, 4, row, result.address, styles.styles.value);
+            try writeString(&surface, ctx, 4, row, result.address, styles.styles.value);
             row += 2;
 
             // Type
             const type_str = if (result.is_contract) "Contract" else "EOA";
-            try writeString(&surface, 2, row, "Type: ", styles.styles.muted);
-            try writeString(&surface, 8, row, type_str, styles.styles.normal);
+            try writeString(&surface, ctx, 2, row, "Type: ", styles.styles.muted);
+            try writeString(&surface, ctx, 8, row, type_str, styles.styles.normal);
             row += 1;
 
             // Balance
             const balance_str = try std.fmt.allocPrint(ctx.arena, "Balance: {d} wei", .{@as(u64, @truncate(result.balance))});
-            try writeString(&surface, 2, row, balance_str, styles.styles.normal);
+            try writeString(&surface, ctx, 2, row, balance_str, styles.styles.normal);
             row += 1;
 
             // Nonce
             const nonce_str = try std.fmt.allocPrint(ctx.arena, "Nonce: {d}", .{result.nonce});
-            try writeString(&surface, 2, row, nonce_str, styles.styles.normal);
+            try writeString(&surface, ctx, 2, row, nonce_str, styles.styles.normal);
             row += 2;
 
             // Code (if contract)
             if (result.is_contract) {
                 const code_str = try std.fmt.allocPrint(ctx.arena, "Code Size: {d} bytes", .{result.code_size});
-                try writeString(&surface, 2, row, code_str, styles.styles.normal);
+                try writeString(&surface, ctx, 2, row, code_str, styles.styles.normal);
                 row += 2;
 
                 // Storage slots
-                try writeString(&surface, 2, row, "STORAGE", styles.styles.title);
+                try writeString(&surface, ctx, 2, row, "STORAGE", styles.styles.title);
                 row += 1;
                 try drawLine(&surface, row, max_size.width, styles.styles.muted);
                 row += 1;
@@ -316,15 +316,15 @@ pub const InspectorView = struct {
                     }
                     if (row >= max_size.height - 2) break;
 
-                    try writeString(&surface, 2, row, entry.key_ptr.*, styles.styles.muted);
-                    try writeString(&surface, 2 + @as(u16, @intCast(@min(entry.key_ptr.len, 40))), row, " = ", styles.styles.muted);
-                    try writeString(&surface, 5 + @as(u16, @intCast(@min(entry.key_ptr.len, 40))), row, entry.value_ptr.*, styles.styles.value);
+                    try writeString(&surface, ctx, 2, row, entry.key_ptr.*, styles.styles.muted);
+                    try writeString(&surface, ctx, 2 + @as(u16, @intCast(@min(entry.key_ptr.len, 40))), row, " = ", styles.styles.muted);
+                    try writeString(&surface, ctx, 5 + @as(u16, @intCast(@min(entry.key_ptr.len, 40))), row, entry.value_ptr.*, styles.styles.value);
                     row += 1;
                     slot_count += 1;
                 }
 
                 if (slot_count == 0) {
-                    try writeString(&surface, 2, row, "No storage slots", styles.styles.muted);
+                    try writeString(&surface, ctx, 2, row, "No storage slots", styles.styles.muted);
                 }
             }
         }
@@ -335,22 +335,25 @@ pub const InspectorView = struct {
 
 // Helper functions
 
-fn writeString(surface: *vxfw.Surface, col: u16, row: u16, text: []const u8, style: vaxis.Style) !void {
+fn writeString(surface: *vxfw.Surface, ctx: vxfw.DrawContext, col: u16, row: u16, text: []const u8, style: vaxis.Style) !void {
     var c = col;
-    for (text) |char| {
+    var iter = ctx.graphemeIterator(text);
+    while (iter.next()) |grapheme_result| {
         if (c >= surface.size.width) break;
+        const grapheme = grapheme_result.bytes(text);
+        const width: u8 = @intCast(ctx.stringWidth(grapheme));
         surface.writeCell(c, row, .{
-            .char = .{ .grapheme = &[_]u8{char}, .width = 1 },
+            .char = .{ .grapheme = grapheme, .width = width },
             .style = style,
         });
-        c += 1;
+        c += width;
     }
 }
 
 fn drawLine(surface: *vxfw.Surface, row: u16, width: u16, style: vaxis.Style) !void {
     for (0..width) |x| {
         surface.writeCell(@intCast(x), row, .{
-            .char = .{ .grapheme = "─", .width = 1 },
+            .char = .{ .grapheme = "-", .width = 1 },
             .style = style,
         });
     }

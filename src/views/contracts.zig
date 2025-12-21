@@ -310,22 +310,22 @@ pub const ContractsView = struct {
         var row: u16 = 0;
 
         // Header
-        try writeString(surface, 2, row, "Contracts", styles.styles.title);
+        try writeString(surface, ctx, 2, row, "Contracts", styles.styles.title);
         row += 1;
-        try writeString(surface, 2, row, "Deployed Contracts", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "Deployed Contracts", styles.styles.muted);
         row += 2;
 
         // Column headers
-        try writeString(surface, 2, row, "Address", styles.styles.muted);
-        try writeString(surface, 46, row, "Size", styles.styles.muted);
-        try writeString(surface, 60, row, "Deployed", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "Address", styles.styles.muted);
+        try writeString(surface, ctx, 46, row, "Size", styles.styles.muted);
+        try writeString(surface, ctx, 60, row, "Deployed", styles.styles.muted);
         row += 1;
-        try drawLine(surface, row, max_size.width, styles.styles.muted);
+        try drawLine(surface, ctx, row, max_size.width, styles.styles.muted);
         row += 1;
 
         // Contract list
         if (self.contracts.len == 0) {
-            try writeString(surface, 2, row, "No contracts deployed yet", styles.styles.muted);
+            try writeString(surface, ctx, 2, row, "No contracts deployed yet", styles.styles.muted);
         } else {
             for (self.contracts, 0..) |contract, i| {
                 if (row >= max_size.height - 3) break;
@@ -334,19 +334,19 @@ pub const ContractsView = struct {
                 const row_style = if (is_selected) styles.styles.selected else styles.styles.normal;
 
                 if (is_selected) {
-                    try writeString(surface, 0, row, ">", styles.styles.value);
+                    try writeString(surface, ctx, 0, row, ">", styles.styles.value);
                 }
 
                 // Address
-                try writeString(surface, 2, row, contract.address, row_style);
+                try writeString(surface, ctx, 2, row, contract.address, row_style);
 
                 // Bytecode size
                 const size_str = try std.fmt.allocPrint(ctx.arena, "{d} bytes", .{contract.bytecode.len});
-                try writeString(surface, 46, row, size_str, row_style);
+                try writeString(surface, ctx, 46, row, size_str, row_style);
 
                 // Timestamp
                 const ts_str = try std.fmt.allocPrint(ctx.arena, "{d}", .{contract.timestamp});
-                try writeString(surface, 60, row, ts_str, styles.styles.muted);
+                try writeString(surface, ctx, 60, row, ts_str, styles.styles.muted);
 
                 row += 1;
             }
@@ -357,7 +357,7 @@ pub const ContractsView = struct {
 
     fn drawDetail(self: *ContractsView, ctx: vxfw.DrawContext, surface: *vxfw.Surface, max_size: vxfw.Size) !vxfw.Surface {
         const contract = self.selected_contract orelse {
-            try writeString(surface, 2, 0, "Contract not found", styles.styles.err);
+            try writeString(surface, ctx, 2, 0, "Contract not found", styles.styles.err);
             return surface.*;
         };
 
@@ -367,26 +367,26 @@ pub const ContractsView = struct {
         const left_width = max_size.width * 40 / 100;
 
         // Left panel - Contract details
-        try writeString(surface, 2, row, "Contract Detail", styles.styles.title);
+        try writeString(surface, ctx, 2, row, "Contract Detail", styles.styles.title);
         row += 2;
 
-        try writeString(surface, 2, row, "Address:", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "Address:", styles.styles.muted);
         row += 1;
-        try writeString(surface, 4, row, contract.address, styles.styles.value);
+        try writeString(surface, ctx, 4, row, contract.address, styles.styles.value);
         row += 2;
 
         const size_str = try std.fmt.allocPrint(ctx.arena, "Size: {d} bytes", .{contract.bytecode.len});
-        try writeString(surface, 2, row, size_str, styles.styles.normal);
+        try writeString(surface, ctx, 2, row, size_str, styles.styles.normal);
         row += 2;
 
         // Bytecode preview (first 64 chars)
-        try writeString(surface, 2, row, "Bytecode:", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "Bytecode:", styles.styles.muted);
         row += 1;
         const preview_len = @min(contract.bytecode.len, 64);
         if (preview_len > 0) {
-            try writeString(surface, 4, row, contract.bytecode[0..preview_len], styles.styles.normal);
+            try writeString(surface, ctx, 4, row, contract.bytecode[0..preview_len], styles.styles.normal);
             if (contract.bytecode.len > 64) {
-                try writeString(surface, 4 + preview_len, row, "...", styles.styles.muted);
+                try writeString(surface, ctx, 4 + preview_len, row, "...", styles.styles.muted);
             }
         }
         row += 2;
@@ -403,25 +403,25 @@ pub const ContractsView = struct {
         const right_start = left_width + 2;
         var right_row: u16 = 0;
 
-        try writeStringAt(surface, right_start, right_row, "Disassembly", styles.styles.title);
+        try writeStringAt(surface, ctx, right_start, right_row, "Disassembly", styles.styles.title);
         right_row += 1;
 
         if (self.disassembly_error) |err| {
-            try writeStringAt(surface, right_start, right_row, "Error: ", styles.styles.err);
-            try writeStringAt(surface, right_start + 7, right_row, err, styles.styles.err);
+            try writeStringAt(surface, ctx, right_start, right_row, "Error: ", styles.styles.err);
+            try writeStringAt(surface, ctx, right_start + 7, right_row, err, styles.styles.err);
         } else if (self.disassembly) |dis| {
             // Block navigation info
             const block_info = try std.fmt.allocPrint(ctx.arena, "Block {d}/{d}", .{ self.current_block_index + 1, dis.blocks.len });
-            try writeStringAt(surface, right_start, right_row, block_info, styles.styles.muted);
+            try writeStringAt(surface, ctx, right_start, right_row, block_info, styles.styles.muted);
             right_row += 1;
-            try drawLineAt(surface, right_row, right_start, max_size.width - right_start, styles.styles.muted);
+            try drawLineAt(surface, ctx, right_row, right_start, max_size.width - right_start, styles.styles.muted);
             right_row += 1;
 
             // Column headers
-            try writeStringAt(surface, right_start, right_row, "PC", styles.styles.muted);
-            try writeStringAt(surface, right_start + 8, right_row, "OP", styles.styles.muted);
-            try writeStringAt(surface, right_start + 14, right_row, "Name", styles.styles.muted);
-            try writeStringAt(surface, right_start + 30, right_row, "Operand", styles.styles.muted);
+            try writeStringAt(surface, ctx, right_start, right_row, "PC", styles.styles.muted);
+            try writeStringAt(surface, ctx, right_start + 8, right_row, "OP", styles.styles.muted);
+            try writeStringAt(surface, ctx, right_start + 14, right_row, "Name", styles.styles.muted);
+            try writeStringAt(surface, ctx, right_start + 30, right_row, "Operand", styles.styles.muted);
             right_row += 1;
 
             if (self.current_block_index < dis.blocks.len) {
@@ -441,33 +441,31 @@ pub const ContractsView = struct {
 
                     // PC
                     const pc_str = try std.fmt.allocPrint(ctx.arena, "{x:0>4}", .{instr.pc});
-                    try writeStringAt(surface, right_start, right_row, pc_str, styles.styles.muted);
+                    try writeStringAt(surface, ctx, right_start, right_row, pc_str, styles.styles.muted);
 
                     // Opcode hex
                     const op_str = try std.fmt.allocPrint(ctx.arena, "{x:0>2}", .{instr.opcode});
-                    try writeStringAt(surface, right_start + 8, right_row, op_str, styles.styles.value);
+                    try writeStringAt(surface, ctx, right_start + 8, right_row, op_str, styles.styles.value);
 
                     // Opcode name
-                    try writeStringAt(surface, right_start + 14, right_row, instr.opcode_name, instr_style);
+                    try writeStringAt(surface, ctx, right_start + 14, right_row, instr.opcode_name, instr_style);
 
                     // Operand
                     if (instr.operand) |operand| {
-                        try writeStringAt(surface, right_start + 30, right_row, operand, instr_style);
+                        try writeStringAt(surface, ctx, right_start + 30, right_row, operand, instr_style);
                     }
 
                     right_row += 1;
                 }
             }
         } else {
-            try writeStringAt(surface, right_start, right_row, "Loading disassembly...", styles.styles.muted);
+            try writeStringAt(surface, ctx, right_start, right_row, "Loading disassembly...", styles.styles.muted);
         }
 
         return surface.*;
     }
 
     fn drawGotoPCModal(self: *ContractsView, ctx: vxfw.DrawContext, surface: *vxfw.Surface, max_size: vxfw.Size) !vxfw.Surface {
-        _ = ctx;
-
         // Draw a simple modal overlay
         const modal_width: u16 = 40;
         const modal_height: u16 = 6;
@@ -477,33 +475,26 @@ pub const ContractsView = struct {
         // Border
         for (0..modal_width) |x| {
             surface.writeCell(start_x + @as(u16, @intCast(x)), start_y, .{
-                .char = .{ .grapheme = "─", .width = 1 },
+                .char = .{ .grapheme = "-", .width = 1 },
                 .style = styles.styles.title,
             });
             surface.writeCell(start_x + @as(u16, @intCast(x)), start_y + modal_height - 1, .{
-                .char = .{ .grapheme = "─", .width = 1 },
+                .char = .{ .grapheme = "-", .width = 1 },
                 .style = styles.styles.title,
             });
         }
 
-        try writeStringAt(surface, start_x + 2, start_y + 1, "Go to PC", styles.styles.title);
-        try writeStringAt(surface, start_x + 2, start_y + 2, "Enter PC (hex):", styles.styles.muted);
+        try writeStringAt(surface, ctx, start_x + 2, start_y + 1, "Go to PC", styles.styles.title);
+        try writeStringAt(surface, ctx, start_x + 2, start_y + 2, "Enter PC (hex):", styles.styles.muted);
 
         // Draw input box with current value
-        try writeStringAt(surface, start_x + 18, start_y + 2, "[", styles.styles.muted);
+        try writeStringAt(surface, ctx, start_x + 18, start_y + 2, "[", styles.styles.muted);
         if (self.goto_pc_len > 0) {
-            var c: u16 = start_x + 19;
-            for (self.goto_pc_buffer[0..self.goto_pc_len]) |char| {
-                surface.writeCell(c, start_y + 2, .{
-                    .char = .{ .grapheme = &[_]u8{char}, .width = 1 },
-                    .style = styles.styles.value,
-                });
-                c += 1;
-            }
+            try writeString(surface, ctx, start_x + 19, start_y + 2, self.goto_pc_buffer[0..self.goto_pc_len], styles.styles.value);
         }
-        try writeStringAt(surface, start_x + 19 + @as(u16, @intCast(self.goto_pc_len)), start_y + 2, "_]", styles.styles.muted);
+        try writeStringAt(surface, ctx, start_x + 19 + @as(u16, @intCast(self.goto_pc_len)), start_y + 2, "_]", styles.styles.muted);
 
-        try writeStringAt(surface, start_x + 2, start_y + 4, "esc: cancel | enter: jump", styles.styles.muted);
+        try writeStringAt(surface, ctx, start_x + 2, start_y + 4, "esc: cancel | enter: jump", styles.styles.muted);
 
         return surface.*;
     }
@@ -511,35 +502,40 @@ pub const ContractsView = struct {
 
 // Helper functions
 
-fn writeString(surface: *vxfw.Surface, col: u16, row: u16, text: []const u8, style: vaxis.Style) !void {
+fn writeString(surface: *vxfw.Surface, ctx: vxfw.DrawContext, col: u16, row: u16, text: []const u8, style: vaxis.Style) !void {
     var c = col;
-    for (text) |char| {
+    var iter = ctx.graphemeIterator(text);
+    while (iter.next()) |grapheme_result| {
         if (c >= surface.size.width) break;
+        const grapheme = grapheme_result.bytes(text);
+        const width: u8 = @intCast(ctx.stringWidth(grapheme));
         surface.writeCell(c, row, .{
-            .char = .{ .grapheme = &[_]u8{char}, .width = 1 },
+            .char = .{ .grapheme = grapheme, .width = width },
             .style = style,
         });
-        c += 1;
+        c += width;
     }
 }
 
-fn writeStringAt(surface: *vxfw.Surface, col: u16, row: u16, text: []const u8, style: vaxis.Style) !void {
-    try writeString(surface, col, row, text, style);
+fn writeStringAt(surface: *vxfw.Surface, ctx: vxfw.DrawContext, col: u16, row: u16, text: []const u8, style: vaxis.Style) !void {
+    try writeString(surface, ctx, col, row, text, style);
 }
 
-fn drawLine(surface: *vxfw.Surface, row: u16, width: u16, style: vaxis.Style) !void {
+fn drawLine(surface: *vxfw.Surface, ctx: vxfw.DrawContext, row: u16, width: u16, style: vaxis.Style) !void {
+    _ = ctx;
     for (0..width) |x| {
         surface.writeCell(@intCast(x), row, .{
-            .char = .{ .grapheme = "─", .width = 1 },
+            .char = .{ .grapheme = "-", .width = 1 },
             .style = style,
         });
     }
 }
 
-fn drawLineAt(surface: *vxfw.Surface, row: u16, start_col: u16, width: u16, style: vaxis.Style) !void {
+fn drawLineAt(surface: *vxfw.Surface, ctx: vxfw.DrawContext, row: u16, start_col: u16, width: u16, style: vaxis.Style) !void {
+    _ = ctx;
     for (0..width) |x| {
         surface.writeCell(start_col + @as(u16, @intCast(x)), row, .{
-            .char = .{ .grapheme = "─", .width = 1 },
+            .char = .{ .grapheme = "-", .width = 1 },
             .style = style,
         });
     }

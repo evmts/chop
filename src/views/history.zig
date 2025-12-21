@@ -314,24 +314,24 @@ pub const HistoryView = struct {
         var row: u16 = 0;
 
         // Header
-        try writeString(surface, 2, row, "Call History", styles.styles.title);
+        try writeString(surface, ctx, 2, row, "Call History", styles.styles.title);
         row += 1;
-        try writeString(surface, 2, row, "EVM Execution History", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "EVM Execution History", styles.styles.muted);
         row += 2;
 
         // Column headers
-        try writeString(surface, 2, row, "Status", styles.styles.muted);
-        try writeString(surface, 10, row, "Type", styles.styles.muted);
-        try writeString(surface, 24, row, "Target", styles.styles.muted);
-        try writeString(surface, 50, row, "Gas", styles.styles.muted);
-        try writeString(surface, 64, row, "Time", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "Status", styles.styles.muted);
+        try writeString(surface, ctx, 10, row, "Type", styles.styles.muted);
+        try writeString(surface, ctx, 24, row, "Target", styles.styles.muted);
+        try writeString(surface, ctx, 50, row, "Gas", styles.styles.muted);
+        try writeString(surface, ctx, 64, row, "Time", styles.styles.muted);
         row += 1;
         try drawLine(surface, row, max_size.width, styles.styles.muted);
         row += 1;
 
         // Entry list
         if (self.entries.len == 0) {
-            try writeString(surface, 2, row, "No calls yet. Press 'n' to create a new call.", styles.styles.muted);
+            try writeString(surface, ctx, 2, row, "No calls yet. Press 'n' to create a new call.", styles.styles.muted);
         } else {
             for (self.entries, 0..) |entry, i| {
                 if (row >= max_size.height - 3) break;
@@ -340,7 +340,7 @@ pub const HistoryView = struct {
                 const row_style = if (is_selected) styles.styles.selected else styles.styles.normal;
 
                 if (is_selected) {
-                    try writeString(surface, 0, row, ">", styles.styles.value);
+                    try writeString(surface, ctx, 0, row, ">", styles.styles.value);
                 }
 
                 // Status
@@ -348,24 +348,24 @@ pub const HistoryView = struct {
                 const success = if (entry.result) |r| r.success else false;
                 const status = if (!has_result) "[---]" else if (success) "[OK]" else "[FAIL]";
                 const status_style = if (!has_result) styles.styles.muted else if (success) styles.styles.success else styles.styles.err;
-                try writeString(surface, 2, row, status, status_style);
+                try writeString(surface, ctx, 2, row, status, status_style);
 
                 // Call type
-                try writeString(surface, 10, row, entry.params.call_type.toString(), row_style);
+                try writeString(surface, ctx, 10, row, entry.params.call_type.toString(), row_style);
 
                 // Target
                 const target = if (entry.params.target.len > 20) entry.params.target[0..20] else entry.params.target;
-                try writeString(surface, 24, row, target, row_style);
+                try writeString(surface, ctx, 24, row, target, row_style);
 
                 // Gas
                 if (entry.result) |result| {
                     const gas_str = try std.fmt.allocPrint(ctx.arena, "{d}", .{result.gas_left});
-                    try writeString(surface, 50, row, gas_str, styles.styles.muted);
+                    try writeString(surface, ctx, 50, row, gas_str, styles.styles.muted);
                 }
 
                 // Timestamp
                 const ts_str = try std.fmt.allocPrint(ctx.arena, "{d}", .{entry.timestamp});
-                try writeString(surface, 64, row, ts_str, styles.styles.muted);
+                try writeString(surface, ctx, 64, row, ts_str, styles.styles.muted);
 
                 row += 1;
             }
@@ -376,95 +376,95 @@ pub const HistoryView = struct {
 
     fn drawDetail(self: *HistoryView, ctx: vxfw.DrawContext, surface: *vxfw.Surface, max_size: vxfw.Size) !vxfw.Surface {
         const entry = self.selected_entry orelse {
-            try writeString(surface, 2, 0, "Entry not found", styles.styles.err);
+            try writeString(surface, ctx, 2, 0, "Entry not found", styles.styles.err);
             return surface.*;
         };
 
         var row: u16 = 0;
 
         // Header
-        try writeString(surface, 2, row, "Call Detail", styles.styles.title);
+        try writeString(surface, ctx, 2, row, "Call Detail", styles.styles.title);
         row += 2;
 
         // Status
         if (entry.result) |result| {
             const status_str = if (result.success) "SUCCESS" else "FAILED";
             const status_style = if (result.success) styles.styles.success else styles.styles.err;
-            try writeString(surface, 2, row, "Status: ", styles.styles.muted);
-            try writeString(surface, 10, row, status_str, status_style);
+            try writeString(surface, ctx, 2, row, "Status: ", styles.styles.muted);
+            try writeString(surface, ctx, 10, row, status_str, status_style);
             row += 2;
         }
 
         // Parameters
-        try writeString(surface, 2, row, "PARAMETERS", styles.styles.title);
+        try writeString(surface, ctx, 2, row, "PARAMETERS", styles.styles.title);
         row += 1;
         try drawLine(surface, row, max_size.width, styles.styles.muted);
         row += 1;
 
-        try writeString(surface, 2, row, "Type: ", styles.styles.muted);
-        try writeString(surface, 10, row, entry.params.call_type.toString(), styles.styles.normal);
+        try writeString(surface, ctx, 2, row, "Type: ", styles.styles.muted);
+        try writeString(surface, ctx, 10, row, entry.params.call_type.toString(), styles.styles.normal);
         row += 1;
 
-        try writeString(surface, 2, row, "Caller: ", styles.styles.muted);
-        try writeString(surface, 10, row, entry.params.caller, styles.styles.normal);
+        try writeString(surface, ctx, 2, row, "Caller: ", styles.styles.muted);
+        try writeString(surface, ctx, 10, row, entry.params.caller, styles.styles.normal);
         row += 1;
 
-        try writeString(surface, 2, row, "Target: ", styles.styles.muted);
-        try writeString(surface, 10, row, entry.params.target, styles.styles.value);
+        try writeString(surface, ctx, 2, row, "Target: ", styles.styles.muted);
+        try writeString(surface, ctx, 10, row, entry.params.target, styles.styles.value);
         row += 1;
 
-        try writeString(surface, 2, row, "Value: ", styles.styles.muted);
-        try writeString(surface, 10, row, entry.params.value, styles.styles.normal);
+        try writeString(surface, ctx, 2, row, "Value: ", styles.styles.muted);
+        try writeString(surface, ctx, 10, row, entry.params.value, styles.styles.normal);
         row += 1;
 
-        try writeString(surface, 2, row, "Gas: ", styles.styles.muted);
-        try writeString(surface, 10, row, entry.params.gas_limit, styles.styles.normal);
+        try writeString(surface, ctx, 2, row, "Gas: ", styles.styles.muted);
+        try writeString(surface, ctx, 10, row, entry.params.gas_limit, styles.styles.normal);
         row += 2;
 
         // Result
         if (entry.result) |result| {
-            try writeString(surface, 2, row, "RESULT", styles.styles.title);
+            try writeString(surface, ctx, 2, row, "RESULT", styles.styles.title);
             row += 1;
             try drawLine(surface, row, max_size.width, styles.styles.muted);
             row += 1;
 
             const gas_left_str = try std.fmt.allocPrint(ctx.arena, "Gas Left: {d}", .{result.gas_left});
-            try writeString(surface, 2, row, gas_left_str, styles.styles.normal);
+            try writeString(surface, ctx, 2, row, gas_left_str, styles.styles.normal);
             row += 1;
 
             if (result.return_data.len > 0) {
-                try writeString(surface, 2, row, "Return Data:", styles.styles.muted);
+                try writeString(surface, ctx, 2, row, "Return Data:", styles.styles.muted);
                 row += 1;
                 const preview = if (result.return_data.len > 64) result.return_data[0..64] else result.return_data;
-                try writeString(surface, 4, row, preview, styles.styles.normal);
+                try writeString(surface, ctx, 4, row, preview, styles.styles.normal);
                 row += 2;
             }
 
             if (!result.success) {
                 if (result.error_info) |err| {
-                    try writeString(surface, 2, row, "Error:", styles.styles.err);
+                    try writeString(surface, ctx, 2, row, "Error:", styles.styles.err);
                     row += 1;
-                    try writeString(surface, 4, row, err, styles.styles.err);
+                    try writeString(surface, ctx, 4, row, err, styles.styles.err);
                     row += 2;
                 }
             }
 
             if (result.deployed_addr) |addr| {
-                try writeString(surface, 2, row, "Deployed:", styles.styles.muted);
+                try writeString(surface, ctx, 2, row, "Deployed:", styles.styles.muted);
                 row += 1;
-                try writeString(surface, 4, row, addr, styles.styles.success);
+                try writeString(surface, ctx, 4, row, addr, styles.styles.success);
                 row += 2;
             }
 
             // Logs
             const logs_title = try std.fmt.allocPrint(ctx.arena, "LOGS ({d})", .{result.logs.len});
-            try writeString(surface, 2, row, logs_title, styles.styles.title);
+            try writeString(surface, ctx, 2, row, logs_title, styles.styles.title);
             row += 1;
             try drawLine(surface, row, max_size.width, styles.styles.muted);
             row += 1;
 
             if (result.logs.len == 0) {
-                try writeString(surface, 2, row, "No logs emitted", styles.styles.muted);
+                try writeString(surface, ctx, 2, row, "No logs emitted", styles.styles.muted);
             } else {
                 for (result.logs, 0..) |log, i| {
                     if (row >= max_size.height - 2) break;
@@ -473,11 +473,11 @@ pub const HistoryView = struct {
                     const log_style = if (is_selected) styles.styles.selected else styles.styles.normal;
 
                     if (is_selected) {
-                        try writeString(surface, 0, row, ">", styles.styles.value);
+                        try writeString(surface, ctx, 0, row, ">", styles.styles.value);
                     }
 
                     const log_str = try std.fmt.allocPrint(ctx.arena, "Log {d}: {s}", .{ i, log.address });
-                    try writeString(surface, 2, row, log_str, log_style);
+                    try writeString(surface, ctx, 2, row, log_str, log_style);
                     row += 1;
                 }
             }
@@ -487,15 +487,14 @@ pub const HistoryView = struct {
     }
 
     fn drawParams(self: *HistoryView, ctx: vxfw.DrawContext, surface: *vxfw.Surface, max_size: vxfw.Size) !vxfw.Surface {
-        _ = ctx;
         _ = max_size;
 
         var row: u16 = 0;
 
         // Header
-        try writeString(surface, 2, row, "Call Parameters", styles.styles.title);
+        try writeString(surface, ctx, 2, row, "Call Parameters", styles.styles.title);
         row += 1;
-        try writeString(surface, 2, row, "Configure EVM call", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "Configure EVM call", styles.styles.muted);
         row += 2;
 
         // Parameters list
@@ -515,16 +514,16 @@ pub const HistoryView = struct {
             const value_style = if (is_selected) styles.styles.value else styles.styles.normal;
 
             if (is_selected) {
-                try writeString(surface, 0, row, ">", styles.styles.value);
+                try writeString(surface, ctx, 0, row, ">", styles.styles.value);
             }
 
-            try writeString(surface, 2, row, param.name, label_style);
-            try writeString(surface, 16, row, ": ", styles.styles.muted);
+            try writeString(surface, ctx, 2, row, param.name, label_style);
+            try writeString(surface, ctx, 16, row, ": ", styles.styles.muted);
 
             if (param.value.len > 0) {
-                try writeString(surface, 18, row, param.value, value_style);
+                try writeString(surface, ctx, 18, row, param.value, value_style);
             } else {
-                try writeString(surface, 18, row, "(empty)", styles.styles.muted);
+                try writeString(surface, ctx, 18, row, "(empty)", styles.styles.muted);
             }
 
             row += 1;
@@ -533,20 +532,18 @@ pub const HistoryView = struct {
         // Validation error
         if (self.validation_error) |err| {
             row += 1;
-            try writeString(surface, 2, row, "Error: ", styles.styles.err);
-            try writeString(surface, 9, row, err, styles.styles.err);
+            try writeString(surface, ctx, 2, row, "Error: ", styles.styles.err);
+            try writeString(surface, ctx, 9, row, err, styles.styles.err);
         }
 
         return surface.*;
     }
 
     fn drawParamEdit(self: *HistoryView, ctx: vxfw.DrawContext, surface: *vxfw.Surface, max_size: vxfw.Size) !vxfw.Surface {
-        _ = ctx;
-
         var row: u16 = 0;
 
         // Header
-        try writeString(surface, 2, row, "Edit Parameter", styles.styles.title);
+        try writeString(surface, ctx, 2, row, "Edit Parameter", styles.styles.title);
         row += 2;
 
         const param_names = [_][]const u8{
@@ -560,23 +557,16 @@ pub const HistoryView = struct {
         };
 
         const name = if (self.param_cursor < param_names.len) param_names[self.param_cursor] else "Unknown";
-        try writeString(surface, 2, row, name, styles.styles.muted);
+        try writeString(surface, ctx, 2, row, name, styles.styles.muted);
         row += 1;
 
         // Draw input box
-        try writeString(surface, 2, row, "[", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "[", styles.styles.muted);
 
         // Draw current buffer content
         const display_len = @min(self.edit_buffer_len, @as(usize, @intCast(max_size.width)) -| 6);
         if (display_len > 0) {
-            var c: u16 = 3;
-            for (self.edit_buffer[0..display_len]) |char| {
-                surface.writeCell(c, row, .{
-                    .char = .{ .grapheme = &[_]u8{char}, .width = 1 },
-                    .style = styles.styles.value,
-                });
-                c += 1;
-            }
+            try writeString(surface, ctx, 3, row, self.edit_buffer[0..display_len], styles.styles.value);
         }
 
         // Draw cursor
@@ -591,11 +581,11 @@ pub const HistoryView = struct {
         // Closing bracket
         const bracket_pos: u16 = 3 + @as(u16, @intCast(@max(display_len, 1))) + 1;
         if (bracket_pos < max_size.width) {
-            try writeString(surface, bracket_pos, row, "]", styles.styles.muted);
+            try writeString(surface, ctx, bracket_pos, row, "]", styles.styles.muted);
         }
         row += 2;
 
-        try writeString(surface, 2, row, "esc: cancel | enter: confirm | arrows: move cursor", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "esc: cancel | enter: confirm | arrows: move cursor", styles.styles.muted);
 
         return surface.*;
     }
@@ -791,17 +781,17 @@ pub const HistoryView = struct {
         _ = max_size;
 
         const entry = self.selected_entry orelse {
-            try writeString(surface, 2, 0, "Entry not found", styles.styles.err);
+            try writeString(surface, ctx, 2, 0, "Entry not found", styles.styles.err);
             return surface.*;
         };
 
         const result = entry.result orelse {
-            try writeString(surface, 2, 0, "No result", styles.styles.err);
+            try writeString(surface, ctx, 2, 0, "No result", styles.styles.err);
             return surface.*;
         };
 
         if (self.log_selected_index >= result.logs.len) {
-            try writeString(surface, 2, 0, "Log not found", styles.styles.err);
+            try writeString(surface, ctx, 2, 0, "Log not found", styles.styles.err);
             return surface.*;
         }
 
@@ -810,35 +800,35 @@ pub const HistoryView = struct {
 
         // Header
         const title = try std.fmt.allocPrint(ctx.arena, "Log #{d}", .{self.log_selected_index});
-        try writeString(surface, 2, row, title, styles.styles.title);
+        try writeString(surface, ctx, 2, row, title, styles.styles.title);
         row += 2;
 
         // Address
-        try writeString(surface, 2, row, "Contract:", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "Contract:", styles.styles.muted);
         row += 1;
-        try writeString(surface, 4, row, log.address, styles.styles.value);
+        try writeString(surface, ctx, 4, row, log.address, styles.styles.value);
         row += 2;
 
         // Topics
         const topics_title = try std.fmt.allocPrint(ctx.arena, "Topics ({d}):", .{log.topics.len});
-        try writeString(surface, 2, row, topics_title, styles.styles.muted);
+        try writeString(surface, ctx, 2, row, topics_title, styles.styles.muted);
         row += 1;
 
         for (log.topics, 0..) |topic, i| {
             const topic_label = try std.fmt.allocPrint(ctx.arena, "  [{d}] ", .{i});
-            try writeString(surface, 2, row, topic_label, styles.styles.muted);
-            try writeString(surface, 8, row, topic, styles.styles.normal);
+            try writeString(surface, ctx, 2, row, topic_label, styles.styles.muted);
+            try writeString(surface, ctx, 8, row, topic, styles.styles.normal);
             row += 1;
         }
         row += 1;
 
         // Data
-        try writeString(surface, 2, row, "Data:", styles.styles.muted);
+        try writeString(surface, ctx, 2, row, "Data:", styles.styles.muted);
         row += 1;
         if (log.data.len > 0) {
-            try writeString(surface, 4, row, log.data, styles.styles.normal);
+            try writeString(surface, ctx, 4, row, log.data, styles.styles.normal);
         } else {
-            try writeString(surface, 4, row, "(empty)", styles.styles.muted);
+            try writeString(surface, ctx, 4, row, "(empty)", styles.styles.muted);
         }
 
         return surface.*;
@@ -847,22 +837,25 @@ pub const HistoryView = struct {
 
 // Helper functions
 
-fn writeString(surface: *vxfw.Surface, col: u16, row: u16, text: []const u8, style: vaxis.Style) !void {
+fn writeString(surface: *vxfw.Surface, ctx: vxfw.DrawContext, col: u16, row: u16, text: []const u8, style: vaxis.Style) !void {
     var c = col;
-    for (text) |char| {
+    var iter = ctx.graphemeIterator(text);
+    while (iter.next()) |grapheme_result| {
         if (c >= surface.size.width) break;
+        const grapheme = grapheme_result.bytes(text);
+        const width: u8 = @intCast(ctx.stringWidth(grapheme));
         surface.writeCell(c, row, .{
-            .char = .{ .grapheme = &[_]u8{char}, .width = 1 },
+            .char = .{ .grapheme = grapheme, .width = width },
             .style = style,
         });
-        c += 1;
+        c += width;
     }
 }
 
 fn drawLine(surface: *vxfw.Surface, row: u16, width: u16, style: vaxis.Style) !void {
     for (0..width) |x| {
         surface.writeCell(@intCast(x), row, .{
-            .char = .{ .grapheme = "─", .width = 1 },
+            .char = .{ .grapheme = "-", .width = 1 },
             .style = style,
         });
     }

@@ -139,15 +139,17 @@ pub const ChopApp = struct {
             const label = tab.label();
             const style = if (tab == self.current_tab) styles.styles.tab_active else styles.styles.tab_inactive;
 
-            // Draw tab label
-            for (label) |char| {
-                if (col < max_size.width) {
-                    surface.writeCell(col, 0, .{
-                        .char = .{ .grapheme = &[_]u8{char}, .width = 1 },
-                        .style = style,
-                    });
-                    col += 1;
-                }
+            // Draw tab label using proper grapheme iteration
+            var iter = ctx.graphemeIterator(label);
+            while (iter.next()) |grapheme_result| {
+                if (col >= max_size.width) break;
+                const grapheme = grapheme_result.bytes(label);
+                const width: u8 = @intCast(ctx.stringWidth(grapheme));
+                surface.writeCell(col, 0, .{
+                    .char = .{ .grapheme = grapheme, .width = width },
+                    .style = style,
+                });
+                col += width;
             }
 
             // Add separator
@@ -163,7 +165,7 @@ pub const ChopApp = struct {
         // Draw separator line (row 1)
         for (0..max_size.width) |x| {
             surface.writeCell(@intCast(x), 1, .{
-                .char = .{ .grapheme = "─", .width = 1 },
+                .char = .{ .grapheme = "-", .width = 1 },
                 .style = styles.styles.muted,
             });
         }
@@ -193,14 +195,16 @@ pub const ChopApp = struct {
             const help_text = getHelpText(self.current_tab);
 
             var help_col: u16 = 1;
-            for (help_text) |char| {
-                if (help_col < max_size.width - 1) {
-                    surface.writeCell(help_col, help_row, .{
-                        .char = .{ .grapheme = &[_]u8{char}, .width = 1 },
-                        .style = styles.styles.muted,
-                    });
-                    help_col += 1;
-                }
+            var help_iter = ctx.graphemeIterator(help_text);
+            while (help_iter.next()) |grapheme_result| {
+                if (help_col >= max_size.width - 1) break;
+                const grapheme = grapheme_result.bytes(help_text);
+                const width: u8 = @intCast(ctx.stringWidth(grapheme));
+                surface.writeCell(help_col, help_row, .{
+                    .char = .{ .grapheme = grapheme, .width = width },
+                    .style = styles.styles.muted,
+                });
+                help_col += width;
             }
         }
 

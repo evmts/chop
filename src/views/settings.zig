@@ -206,35 +206,35 @@ pub const SettingsView = struct {
         var row: u16 = 0;
 
         // Header
-        try writeString(&surface, 2, row, "Settings", styles.styles.title);
+        try writeString(&surface, ctx, 2, row, "Settings", styles.styles.title);
         row += 1;
-        try writeString(&surface, 2, row, "Configuration & Options", styles.styles.muted);
+        try writeString(&surface, ctx, 2, row, "Configuration & Options", styles.styles.muted);
         row += 2;
 
         // Server status
-        try writeString(&surface, 2, row, "RPC SERVER", styles.styles.title);
+        try writeString(&surface, ctx, 2, row, "RPC SERVER", styles.styles.title);
         row += 1;
         try drawLine(&surface, row, max_size.width, styles.styles.muted);
         row += 1;
 
         const status = if (self.server_running) "Running" else "Stopped";
         const status_style = if (self.server_running) styles.styles.success else styles.styles.muted;
-        try writeString(&surface, 2, row, "Status: ", styles.styles.muted);
-        try writeString(&surface, 10, row, status, status_style);
+        try writeString(&surface, ctx, 2, row, "Status: ", styles.styles.muted);
+        try writeString(&surface, ctx, 10, row, status, status_style);
         row += 1;
 
         if (self.server_running) {
             const port_str = try std.fmt.allocPrint(ctx.arena, "Port: {d}", .{self.server_port});
-            try writeString(&surface, 2, row, port_str, styles.styles.normal);
+            try writeString(&surface, ctx, 2, row, port_str, styles.styles.normal);
             row += 1;
 
             const url = try std.fmt.allocPrint(ctx.arena, "URL: http://localhost:{d}", .{self.server_port});
-            try writeString(&surface, 2, row, url, styles.styles.value);
+            try writeString(&surface, ctx, 2, row, url, styles.styles.value);
         }
         row += 2;
 
         // Options
-        try writeString(&surface, 2, row, "OPTIONS", styles.styles.title);
+        try writeString(&surface, ctx, 2, row, "OPTIONS", styles.styles.title);
         row += 1;
         try drawLine(&surface, row, max_size.width, styles.styles.muted);
         row += 1;
@@ -245,26 +245,26 @@ pub const SettingsView = struct {
             const label_style = if (is_selected) styles.styles.selected else styles.styles.normal;
 
             if (is_selected) {
-                try writeString(&surface, 0, row, ">", styles.styles.value);
+                try writeString(&surface, ctx, 0, row, ">", styles.styles.value);
             }
 
-            try writeString(&surface, 2, row, option.label(), label_style);
+            try writeString(&surface, ctx, 2, row, option.label(), label_style);
             row += 1;
 
-            try writeString(&surface, 4, row, option.description(), styles.styles.muted);
+            try writeString(&surface, ctx, 4, row, option.description(), styles.styles.muted);
             row += 2;
         }
 
         // Confirmation dialog
         if (self.confirming_action) {
             row += 1;
-            try writeString(&surface, 2, row, "Are you sure? (y/n)", styles.styles.err);
+            try writeString(&surface, ctx, 2, row, "Are you sure? (y/n)", styles.styles.err);
         }
 
         // Feedback message
         if (self.feedback_message) |msg| {
             row += 1;
-            try writeString(&surface, 2, row, msg, styles.styles.success);
+            try writeString(&surface, ctx, 2, row, msg, styles.styles.success);
         }
 
         return surface;
@@ -273,22 +273,25 @@ pub const SettingsView = struct {
 
 // Helper functions
 
-fn writeString(surface: *vxfw.Surface, col: u16, row: u16, text: []const u8, style: vaxis.Style) !void {
+fn writeString(surface: *vxfw.Surface, ctx: vxfw.DrawContext, col: u16, row: u16, text: []const u8, style: vaxis.Style) !void {
     var c = col;
-    for (text) |char| {
+    var iter = ctx.graphemeIterator(text);
+    while (iter.next()) |grapheme_result| {
         if (c >= surface.size.width) break;
+        const grapheme = grapheme_result.bytes(text);
+        const width: u8 = @intCast(ctx.stringWidth(grapheme));
         surface.writeCell(c, row, .{
-            .char = .{ .grapheme = &[_]u8{char}, .width = 1 },
+            .char = .{ .grapheme = grapheme, .width = width },
             .style = style,
         });
-        c += 1;
+        c += width;
     }
 }
 
 fn drawLine(surface: *vxfw.Surface, row: u16, width: u16, style: vaxis.Style) !void {
     for (0..width) |x| {
         surface.writeCell(@intCast(x), row, .{
-            .char = .{ .grapheme = "─", .width = 1 },
+            .char = .{ .grapheme = "-", .width = 1 },
             .style = style,
         });
     }
