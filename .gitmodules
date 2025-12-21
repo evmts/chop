@@ -1,0 +1,3 @@
+[submodule "voltaire"]
+	path = voltaire
+	url = ../voltaire
