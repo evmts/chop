@@ -25,13 +25,13 @@ pub fn namehash(ctx: *Context, args: []const []const u8) CliError!void {
     var node: [32]u8 = [_]u8{0} ** 32;
 
     // Split name by dots and process in reverse
-    var labels = std.ArrayList([]const u8).init(ctx.allocator);
-    defer labels.deinit();
+    var labels: std.ArrayList([]const u8) = .{};
+    defer labels.deinit(ctx.allocator);
 
     var iter = std.mem.splitScalar(u8, name, '.');
     while (iter.next()) |label| {
         if (label.len > 0) {
-            labels.append(label) catch return CliError.OutOfMemory;
+            labels.append(ctx.allocator, label) catch return CliError.OutOfMemory;
         }
     }
 

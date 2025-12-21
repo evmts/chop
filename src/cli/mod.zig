@@ -13,14 +13,7 @@ const crypto = @import("crypto");
 
 pub const commands = @import("commands/mod.zig");
 
-pub const CliError = error{
-    InvalidArgument,
-    MissingArgument,
-    InvalidHex,
-    InvalidAddress,
-    EncodingError,
-    OutputError,
-} || std.mem.Allocator.Error;
+pub const CliError = anyerror;
 
 /// Output format for CLI results
 pub const OutputFormat = enum {
@@ -34,17 +27,17 @@ pub const Context = struct {
     stdout: std.fs.File,
     stderr: std.fs.File,
     format: OutputFormat,
-    stdout_buf: [4096]u8 = undefined,
-    stderr_buf: [4096]u8 = undefined,
 
     pub fn print(self: *Context, comptime fmt: []const u8, args: anytype) !void {
-        var writer = self.stdout.writer(&self.stdout_buf);
-        try writer.print(fmt, args);
+        var buf: [4096]u8 = undefined;
+        const msg = std.fmt.bufPrint(&buf, fmt, args) catch return error.OutputError;
+        try self.stdout.writeAll(msg);
     }
 
     pub fn err(self: *Context, comptime fmt: []const u8, args: anytype) !void {
-        var writer = self.stderr.writer(&self.stderr_buf);
-        try writer.print(fmt, args);
+        var buf: [4096]u8 = undefined;
+        const msg = std.fmt.bufPrint(&buf, fmt, args) catch return error.OutputError;
+        try self.stderr.writeAll(msg);
     }
 };
 
@@ -61,17 +54,14 @@ pub fn run(allocator: std.mem.Allocator) !u8 {
     defer args_list.deinit(allocator);
 
     var json_output = false;
-    var stdout_buf: [4096]u8 = undefined;
 
     while (args_iter.next()) |arg| {
         if (std.mem.eql(u8, arg, "-h") or std.mem.eql(u8, arg, "--help")) {
-            var writer = stdout.writer(&stdout_buf);
-            printHelp(&writer) catch return 1;
+            printHelp(stdout) catch return 1;
             return 0;
         }
         if (std.mem.eql(u8, arg, "-V") or std.mem.eql(u8, arg, "--version")) {
-            var writer = stdout.writer(&stdout_buf);
-            writer.print("chop 0.1.0\n", .{}) catch return 1;
+            stdout.writeAll("chop 0.1.0\n") catch return 1;
             return 0;
         }
         if (std.mem.eql(u8, arg, "-j") or std.mem.eql(u8, arg, "--json")) {
@@ -238,8 +228,8 @@ fn handleError(ctx: *Context, err: anyerror) u8 {
     return 1;
 }
 
-fn printHelp(writer: anytype) !void {
-    try writer.writeAll(
+fn printHelp(file: std.fs.File) !void {
+    try file.writeAll(
         \\Chop - A Swiss Army knife for Ethereum (cast-compatible)
         \\
         \\Usage: chop [OPTIONS] <COMMAND>

@@ -26,7 +26,7 @@ pub fn toChecksum(ctx: *Context, args: []const []const u8) CliError!void {
     };
 
     // Get checksummed version
-    const checksummed = addr.toChecksummedHex();
+    const checksummed = addr.toChecksummed();
 
     if (ctx.format == .json) {
         try ctx.print("{{\"address\":\"{s}\"}}\n", .{&checksummed});
@@ -59,8 +59,11 @@ pub fn computeAddress(ctx: *Context, args: []const []const u8) CliError!void {
     };
 
     // Compute contract address
-    const contract_addr = Address.computeContractAddress(deployer, nonce);
-    const checksummed = contract_addr.toChecksummedHex();
+    const contract_addr = Address.getContractAddress(ctx.allocator, deployer, nonce) catch {
+        try ctx.err("error: failed to compute contract address\n", .{});
+        return CliError.EncodingError;
+    };
+    const checksummed = contract_addr.toChecksummed();
 
     if (ctx.format == .json) {
         try ctx.print("{{\"address\":\"{s}\"}}\n", .{&checksummed});
@@ -100,8 +103,8 @@ pub fn create2(ctx: *Context, args: []const []const u8) CliError!void {
     };
 
     // Compute CREATE2 address
-    const contract_addr = Address.computeCreate2Address(deployer, salt, init_code_hash);
-    const checksummed = contract_addr.toChecksummedHex();
+    const contract_addr = Address.getCreate2Address(deployer, salt, init_code_hash);
+    const checksummed = contract_addr.toChecksummed();
 
     if (ctx.format == .json) {
         try ctx.print("{{\"address\":\"{s}\"}}\n", .{&checksummed});

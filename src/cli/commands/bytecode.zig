@@ -45,7 +45,7 @@ pub fn disassemble(ctx: *Context, args: []const []const u8) CliError!void {
     var first = true;
     while (pc < bytecode.len) {
         const op_byte = bytecode[pc];
-        const op = Opcode.from(op_byte);
+        const op: Opcode = @enumFromInt(op_byte);
         const op_name = op.name();
 
         if (ctx.format == .json) {
@@ -120,8 +120,8 @@ pub fn selectors(ctx: *Context, args: []const []const u8) CliError!void {
 
     // Find PUSH4 instructions followed by comparison patterns
     // Typical pattern: PUSH4 <selector> DUP2 EQ PUSH2 <dest> JUMPI
-    var found_selectors = std.ArrayList([4]u8).init(ctx.allocator);
-    defer found_selectors.deinit();
+    var found_selectors: std.ArrayList([4]u8) = .{};
+    defer found_selectors.deinit(ctx.allocator);
 
     var pc: usize = 0;
     while (pc < bytecode.len) {
@@ -151,7 +151,7 @@ pub fn selectors(ctx: *Context, args: []const []const u8) CliError!void {
                     }
                 }
                 if (!exists) {
-                    found_selectors.append(selector) catch return CliError.OutOfMemory;
+                    found_selectors.append(ctx.allocator, selector) catch return CliError.OutOfMemory;
                 }
             }
             pc += 4;

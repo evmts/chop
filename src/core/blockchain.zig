@@ -469,17 +469,19 @@ pub const Blockchain = struct {
                 .balance = 10_000_000_000_000_000_000_000, // 10,000 ETH
                 .nonce = 0,
                 .code = "",
+                .code_hash = "",
                 .private_key = priv_hex,
+                .index = @intCast(i + 1),
             };
 
             try self.accounts.append(self.allocator, account);
 
             // Add to EVM database
-            const evm_addr = Address{ .bytes = addr_bytes };
-            try self.db.put_account(evm_addr, .{
+            try self.db.set_account(addr_bytes, .{
                 .balance = 10_000_000_000_000_000_000_000,
                 .nonce = 0,
                 .code_hash = [_]u8{0} ** 32,
+                .storage_root = [_]u8{0} ** 32,
             });
         }
 

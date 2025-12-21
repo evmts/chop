@@ -105,19 +105,23 @@ pub fn fromRlp(ctx: *Context, args: []const []const u8) CliError!void {
     }
 
     // RLP decode
-    const decoded = Rlp.decode(ctx.allocator, data) catch {
+    const decoded = Rlp.decode(ctx.allocator, data, false) catch {
         try ctx.err("error: RLP decoding failed\n", .{});
         return CliError.EncodingError;
     };
-    defer decoded.deinit(ctx.allocator);
+    defer decoded.data.deinit(ctx.allocator);
 
     // Output based on type
     try outputRlpValue(ctx, decoded);
 }
 
-fn outputRlpValue(ctx: *Context, value: Rlp.Decoded) !void {
+fn outputRlpValue(ctx: *Context, decoded: Rlp.Decoded) !void {
+    try outputRlpData(ctx, decoded.data);
+}
+
+fn outputRlpData(ctx: *Context, value: Rlp.Data) !void {
     switch (value) {
-        .string => |s| {
+        .String => |s| {
             if (ctx.format == .json) {
                 try ctx.print("{{\"type\":\"string\",\"value\":\"0x", .{});
                 for (s) |byte| {
@@ -132,20 +136,20 @@ fn outputRlpValue(ctx: *Context, value: Rlp.Decoded) !void {
                 try ctx.print("\n", .{});
             }
         },
-        .list => |items| {
+        .List => |items| {
             if (ctx.format == .json) {
                 try ctx.print("{{\"type\":\"list\",\"items\":[", .{});
                 for (items, 0..) |item, i| {
                     if (i > 0) try ctx.print(",", .{});
                     switch (item) {
-                        .string => |s| {
+                        .String => |s| {
                             try ctx.print("\"0x", .{});
                             for (s) |byte| {
                                 try ctx.print("{x:0>2}", .{byte});
                             }
                             try ctx.print("\"", .{});
                         },
-                        .list => try ctx.print("\"<list>\"", .{}),
+                        .List => try ctx.print("\"<list>\"", .{}),
                     }
                 }
                 try ctx.print("]}}\n", .{});
@@ -154,13 +158,13 @@ fn outputRlpValue(ctx: *Context, value: Rlp.Decoded) !void {
                 for (items, 0..) |item, i| {
                     if (i > 0) try ctx.print(", ", .{});
                     switch (item) {
-                        .string => |s| {
+                        .String => |s| {
                             try ctx.print("0x", .{});
                             for (s) |byte| {
                                 try ctx.print("{x:0>2}", .{byte});
                             }
                         },
-                        .list => try ctx.print("<list>", .{}),
+                        .List => try ctx.print("<list>", .{}),
                     }
                 }
                 try ctx.print("]\n", .{});
