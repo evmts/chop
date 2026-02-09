@@ -23,12 +23,12 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - `bun run build` produces `dist/` with entry points
 
 ### T1.2 CLI Framework Setup
-- [ ] Root command with `--help`, `--version`, `--json` global flags
-- [ ] `chop --help` prints categorized command list
-- [ ] `chop --version` prints version
-- [ ] Exit code 0 for success, 1 for error
-- [ ] `--json` flag available on all commands
-- [ ] No-args launches TUI stub (prints "TUI not yet implemented")
+- [x] Root command with `--help`, `--version`, `--json` global flags
+- [x] `chop --help` prints categorized command list
+- [x] `chop --version` prints version
+- [x] Exit code 0 for success, 1 for error
+- [x] `--json` flag available on all commands
+- [x] No-args launches TUI stub (prints "TUI not yet implemented")
 
 **Validation**:
 - `bun run bin/chop.ts --help` exits 0, prints help
