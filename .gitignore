@@ -6,6 +6,7 @@ zig-cache/
 # Build artifacts
 chop
 chop-*
+!scripts/chop-workflow/
 *.wasm
 
 # Go
