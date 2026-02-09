@@ -10,3 +10,8 @@ export { Abi, Address, Bytes32, Hash, Hex, Rlp, Selector, Signature } from "./sh
 
 // Shared errors
 export { ChopError } from "./shared/errors.js"
+
+// CLI
+export { cli, root } from "./cli/index.js"
+export { CliError } from "./cli/errors.js"
+export { VERSION } from "./cli/version.js"

@@ -4,6 +4,7 @@ export default defineConfig({
 	entry: {
 		"bin/chop": "bin/chop.ts",
 		"src/index": "src/index.ts",
+		"src/cli/index": "src/cli/index.ts",
 	},
 	format: ["esm"],
 	target: "node22",

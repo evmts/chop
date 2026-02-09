@@ -1,10 +1,6 @@
 #!/usr/bin/env node
-import { NodeRuntime } from "@effect/platform-node"
+import { NodeContext, NodeRuntime } from "@effect/platform-node"
 import { Effect } from "effect"
+import { cli } from "../src/cli/index.js"
 
-const program = Effect.gen(function* () {
-	yield* Effect.log("chop - Ethereum Swiss Army knife")
-	yield* Effect.log("Run with --help for usage")
-})
-
-NodeRuntime.runMain(program)
+cli(process.argv).pipe(Effect.provide(NodeContext.layer), NodeRuntime.runMain)
