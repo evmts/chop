@@ -1,0 +1,38 @@
+{
+	"compilerOptions": {
+		"target": "ES2022",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"lib": ["ES2022"],
+		"outDir": "dist",
+		"rootDir": ".",
+		"declaration": true,
+		"declarationMap": true,
+		"sourceMap": true,
+		"strict": true,
+		"noUncheckedIndexedAccess": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"exactOptionalPropertyTypes": true,
+		"noFallthroughCasesInSwitch": true,
+		"forceConsistentCasingInFileNames": true,
+		"isolatedModules": true,
+		"verbatimModuleSyntax": true,
+		"skipLibCheck": true,
+		"esModuleInterop": false,
+		"resolveJsonModule": true,
+		"paths": {
+			"#cli/*": ["./src/cli/*"],
+			"#tui/*": ["./src/tui/*"],
+			"#node/*": ["./src/node/*"],
+			"#evm/*": ["./src/evm/*"],
+			"#state/*": ["./src/state/*"],
+			"#blockchain/*": ["./src/blockchain/*"],
+			"#mcp/*": ["./src/mcp/*"],
+			"#rpc/*": ["./src/rpc/*"],
+			"#shared/*": ["./src/shared/*"]
+		}
+	},
+	"include": ["src/**/*.ts", "src/**/*.tsx", "bin/**/*.ts", "test/**/*.ts"],
+	"exclude": ["node_modules", "dist"]
+}

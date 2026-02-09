@@ -11,9 +11,14 @@ chop-*
 
 # Go
 vendor/
-dist/
 coverage.txt
 *.coverprofile
+
+# TypeScript / Node
+node_modules/
+dist/
+*.tsbuildinfo
+bun.lock
 
 # IDE
 .vscode/

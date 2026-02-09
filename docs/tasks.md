@@ -7,14 +7,14 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 ## Phase 1: Foundation (CLI Pure Commands)
 
 ### T1.1 Project Scaffolding
-- [ ] `package.json` with all dependencies
-- [ ] `tsconfig.json` with strict mode, ESM, paths
-- [ ] `vitest.config.ts` with @effect/vitest
-- [ ] `tsup.config.ts` with ESM output
-- [ ] `biome.json` with lint + format rules
-- [ ] `bin/chop.ts` entry point (stub)
-- [ ] `src/shared/types.ts` re-exporting voltaire-effect types
-- [ ] `src/shared/errors.ts` with base ChopError
+- [x] `package.json` with all dependencies
+- [x] `tsconfig.json` with strict mode, ESM, paths
+- [x] `vitest.config.ts` with @effect/vitest
+- [x] `tsup.config.ts` with ESM output
+- [x] `biome.json` with lint + format rules
+- [x] `bin/chop.ts` entry point (stub)
+- [x] `src/shared/types.ts` re-exporting voltaire-effect types
+- [x] `src/shared/errors.ts` with base ChopError
 
 **Validation**:
 - `bun run typecheck` passes
