@@ -281,7 +281,7 @@ export const toParams = (types: ReadonlyArray<{ readonly type: string }>): any =
  * `decodeFunction` which expect different internal Parameter types.
  */
 // biome-ignore lint/suspicious/noExplicitAny: bridges dynamic string types to voltaire's branded ABI item type
-const buildAbiItem = (sig: ParsedSignature): any => ({
+export const buildAbiItem = (sig: ParsedSignature): any => ({
 	type: "function" as const,
 	name: sig.name,
 	stateMutability: "nonpayable" as const,
@@ -292,7 +292,7 @@ const buildAbiItem = (sig: ParsedSignature): any => ({
 /**
  * Validate hex string and convert to bytes.
  */
-const validateHexData = (data: string): Effect.Effect<Uint8Array, HexDecodeError> =>
+export const validateHexData = (data: string): Effect.Effect<Uint8Array, HexDecodeError> =>
 	Effect.try({
 		try: () => {
 			if (!data.startsWith("0x")) {
@@ -317,7 +317,7 @@ const validateHexData = (data: string): Effect.Effect<Uint8Array, HexDecodeError
 /**
  * Validate argument count matches expected parameter count.
  */
-const validateArgCount = (expected: number, received: number): Effect.Effect<void, ArgumentCountError> =>
+export const validateArgCount = (expected: number, received: number): Effect.Effect<void, ArgumentCountError> =>
 	expected !== received
 		? Effect.fail(
 				new ArgumentCountError({
@@ -394,6 +394,104 @@ const jsonOption = Options.boolean("json").pipe(
 )
 
 // ============================================================================
+// Handler Logic (testable, separated from CLI wiring)
+// ============================================================================
+
+/** Core abi-encode logic: returns encoded hex string. */
+export const abiEncodeHandler = (
+	sig: string,
+	argsArray: ReadonlyArray<string>,
+	packed: boolean,
+): Effect.Effect<string, InvalidSignatureError | ArgumentCountError | AbiError> =>
+	Effect.gen(function* () {
+		const parsed = yield* parseSignature(sig)
+		yield* validateArgCount(parsed.inputs.length, argsArray.length)
+		// biome-ignore lint/style/noNonNullAssertion: index is safe — validated by validateArgCount above
+		const coerced = yield* Effect.all(parsed.inputs.map((p, i) => coerceArgValue(p.type, argsArray[i]!)))
+
+		return packed
+			? yield* Abi.encodePacked(
+					parsed.inputs.map((p) => p.type),
+					coerced,
+				).pipe(Effect.catchAll(mapExternalError))
+			: Hex.fromBytes(yield* safeEncodeParameters(toParams(parsed.inputs), coerced as [unknown, ...unknown[]]))
+	})
+
+/** Core calldata logic: returns encoded calldata hex string. */
+export const calldataHandler = (
+	sig: string,
+	argsArray: ReadonlyArray<string>,
+): Effect.Effect<string, InvalidSignatureError | ArgumentCountError | AbiError> =>
+	Effect.gen(function* () {
+		const parsed = yield* parseSignature(sig)
+
+		if (parsed.name === "") {
+			return yield* Effect.fail(
+				new InvalidSignatureError({
+					message: "calldata command requires a function name in the signature",
+					signature: sig,
+				}),
+			)
+		}
+
+		yield* validateArgCount(parsed.inputs.length, argsArray.length)
+		// biome-ignore lint/style/noNonNullAssertion: index is safe — validated by validateArgCount above
+		const coerced = yield* Effect.all(parsed.inputs.map((p, i) => coerceArgValue(p.type, argsArray[i]!)))
+
+		const abiItem = buildAbiItem(parsed)
+		return yield* Abi.encodeFunction([abiItem], parsed.name, coerced).pipe(Effect.catchAll(mapExternalError))
+	})
+
+/** Core abi-decode logic: returns array of formatted decoded values. */
+export const abiDecodeHandler = (
+	sig: string,
+	data: string,
+): Effect.Effect<ReadonlyArray<string>, InvalidSignatureError | HexDecodeError | AbiError> =>
+	Effect.gen(function* () {
+		const parsed = yield* parseSignature(sig)
+		const bytes = yield* validateHexData(data)
+		const types = parsed.outputs.length > 0 ? parsed.outputs : parsed.inputs
+		const decoded = yield* safeDecodeParameters(toParams(types), bytes)
+		return Array.from(decoded as ArrayLike<unknown>).map(formatValue)
+	})
+
+/** Core calldata-decode result shape. */
+export interface CalldataDecodeResult {
+	readonly name: string
+	readonly signature: string
+	readonly args: ReadonlyArray<string>
+}
+
+/** Core calldata-decode logic: returns decoded name + args. */
+export const calldataDecodeHandler = (
+	sig: string,
+	data: string,
+): Effect.Effect<CalldataDecodeResult, InvalidSignatureError | HexDecodeError | AbiError> =>
+	Effect.gen(function* () {
+		const parsed = yield* parseSignature(sig)
+		const bytes = yield* validateHexData(data)
+
+		if (parsed.name === "") {
+			return yield* Effect.fail(
+				new InvalidSignatureError({
+					message: "calldata-decode requires a function name in the signature",
+					signature: sig,
+				}),
+			)
+		}
+
+		const abiItem = buildAbiItem(parsed)
+		const decoded = yield* Abi.decodeFunction([abiItem], bytes).pipe(Effect.catchAll(mapExternalError))
+		const formattedArgs = Array.from(decoded.params as ArrayLike<unknown>).map(formatValue)
+
+		return {
+			name: decoded.name,
+			signature: `${decoded.name}(${parsed.inputs.map((p) => p.type).join(",")})`,
+			args: formattedArgs,
+		} satisfies CalldataDecodeResult
+	})
+
+// ============================================================================
 // Commands
 // ============================================================================
 
@@ -413,20 +511,7 @@ export const abiEncodeCommand = Command.make(
 	},
 	({ sig, args: argsArray, packed, json }) =>
 		Effect.gen(function* () {
-			const parsed = yield* parseSignature(sig)
-
-			yield* validateArgCount(parsed.inputs.length, argsArray.length)
-
-			// biome-ignore lint/style/noNonNullAssertion: index is safe — validated by validateArgCount above
-			const coerced = yield* Effect.all(parsed.inputs.map((p, i) => coerceArgValue(p.type, argsArray[i]!)))
-
-			const result = packed
-				? yield* Abi.encodePacked(
-						parsed.inputs.map((p) => p.type),
-						coerced,
-					).pipe(Effect.catchAll(mapExternalError))
-				: Hex.fromBytes(yield* safeEncodeParameters(toParams(parsed.inputs), coerced as [unknown, ...unknown[]]))
-
+			const result = yield* abiEncodeHandler(sig, argsArray, packed)
 			if (json) {
 				yield* Console.log(JSON.stringify({ result }))
 			} else {
@@ -449,25 +534,7 @@ export const calldataCommand = Command.make(
 	},
 	({ sig, args: argsArray, json }) =>
 		Effect.gen(function* () {
-			const parsed = yield* parseSignature(sig)
-
-			if (parsed.name === "") {
-				return yield* Effect.fail(
-					new InvalidSignatureError({
-						message: "calldata command requires a function name in the signature",
-						signature: sig,
-					}),
-				)
-			}
-
-			yield* validateArgCount(parsed.inputs.length, argsArray.length)
-
-			// biome-ignore lint/style/noNonNullAssertion: index is safe — validated by validateArgCount above
-			const coerced = yield* Effect.all(parsed.inputs.map((p, i) => coerceArgValue(p.type, argsArray[i]!)))
-
-			const abiItem = buildAbiItem(parsed)
-			const result = yield* Abi.encodeFunction([abiItem], parsed.name, coerced).pipe(Effect.catchAll(mapExternalError))
-
+			const result = yield* calldataHandler(sig, argsArray)
 			if (json) {
 				yield* Console.log(JSON.stringify({ result }))
 			} else {
@@ -492,16 +559,7 @@ export const abiDecodeCommand = Command.make(
 	},
 	({ sig, data, json }) =>
 		Effect.gen(function* () {
-			const parsed = yield* parseSignature(sig)
-			const bytes = yield* validateHexData(data)
-
-			// Use output types if specified, otherwise use input types
-			const types = parsed.outputs.length > 0 ? parsed.outputs : parsed.inputs
-
-			const decoded = yield* safeDecodeParameters(toParams(types), bytes)
-
-			const formatted = Array.from(decoded as ArrayLike<unknown>).map(formatValue)
-
+			const formatted = yield* abiDecodeHandler(sig, data)
 			if (json) {
 				yield* Console.log(JSON.stringify({ result: formatted }))
 			} else {
@@ -526,33 +584,12 @@ export const calldataDecodeCommand = Command.make(
 	},
 	({ sig, data, json }) =>
 		Effect.gen(function* () {
-			const parsed = yield* parseSignature(sig)
-			const bytes = yield* validateHexData(data)
-
-			if (parsed.name === "") {
-				return yield* Effect.fail(
-					new InvalidSignatureError({
-						message: "calldata-decode requires a function name in the signature",
-						signature: sig,
-					}),
-				)
-			}
-
-			const abiItem = buildAbiItem(parsed)
-			const decoded = yield* Abi.decodeFunction([abiItem], bytes).pipe(Effect.catchAll(mapExternalError))
-
-			const formattedArgs = Array.from(decoded.params as ArrayLike<unknown>).map(formatValue)
-
+			const decoded = yield* calldataDecodeHandler(sig, data)
 			if (json) {
-				yield* Console.log(
-					JSON.stringify({
-						name: decoded.name,
-						args: formattedArgs,
-					}),
-				)
+				yield* Console.log(JSON.stringify({ name: decoded.name, args: decoded.args }))
 			} else {
-				yield* Console.log(`${decoded.name}(${parsed.inputs.map((p) => p.type).join(",")})`)
-				for (const v of formattedArgs) {
+				yield* Console.log(decoded.signature)
+				for (const v of decoded.args) {
 					yield* Console.log(v)
 				}
 			}
