@@ -65,6 +65,43 @@ const UNITS: Record<string, number> = {
 }
 
 // ============================================================================
+// Helpers
+// ============================================================================
+
+/** Valid digits for bases up to 36 */
+const DIGITS = "0123456789abcdefghijklmnopqrstuvwxyz"
+
+/**
+ * Parse a string as a BigInt in an arbitrary base (2-36).
+ *
+ * Unlike Number.parseInt(), this preserves full precision for values > 2^53.
+ * For base 10 we delegate to BigInt() directly; for other bases we
+ * accumulate digit-by-digit.
+ */
+const parseBigIntBase = (value: string, base: number): bigint => {
+	if (base === 10) return BigInt(value)
+
+	const bigBase = BigInt(base)
+	let result = 0n
+	for (const ch of value.toLowerCase()) {
+		const digit = DIGITS.indexOf(ch)
+		if (digit === -1 || digit >= base) {
+			throw new Error(`Invalid digit '${ch}' for base ${base}`)
+		}
+		result = result * bigBase + BigInt(digit)
+	}
+	return result
+}
+
+/**
+ * Format a BigInt as a hex string. Handles negatives as `-0x...` instead of `0x-...`.
+ */
+const formatBigIntHex = (n: bigint): string => {
+	if (n < 0n) return `-0x${(-n).toString(16)}`
+	return `0x${n.toString(16)}`
+}
+
+// ============================================================================
 // Handler Logic (testable, separated from CLI wiring)
 // ============================================================================
 
@@ -208,7 +245,7 @@ export const toHexHandler = (decimal: string): Effect.Effect<string, InvalidNumb
 					value: decimal,
 				}),
 		})
-		return `0x${n.toString(16)}`
+		return formatBigIntHex(n)
 	})
 
 /**
@@ -225,6 +262,9 @@ export const toDecHandler = (hex: string): Effect.Effect<string, InvalidHexError
 			)
 		}
 		const clean = hex.slice(2)
+		if (clean === "") {
+			return "0"
+		}
 		if (!/^[0-9a-fA-F]+$/.test(clean)) {
 			return yield* Effect.fail(
 				new InvalidHexError({
@@ -262,17 +302,13 @@ export const toBaseHandler = (
 			)
 		}
 
-		// Parse value in baseIn
+		// Parse value in baseIn using BigInt-native parsing to avoid precision loss
 		const n = yield* Effect.try({
 			try: () => {
 				// Handle 0x prefix for base 16 input
 				const cleanValue = baseIn === 16 && value.startsWith("0x") ? value.slice(2) : value
-				const parsed = Number.parseInt(cleanValue, baseIn)
-				if (Number.isNaN(parsed)) {
-					throw new Error("parse failed")
-				}
-				// Use BigInt for large numbers
-				return BigInt(parsed)
+				if (cleanValue === "") throw new Error("empty value")
+				return parseBigIntBase(cleanValue, baseIn)
 			},
 			catch: () =>
 				new InvalidNumberError({
@@ -524,7 +560,7 @@ export const shlHandler = (value: string, bits: string): Effect.Effect<string, I
 		})
 
 		const result = n << shift
-		return `0x${result.toString(16)}`
+		return formatBigIntHex(result)
 	})
 
 /**
@@ -557,8 +593,16 @@ export const shrHandler = (value: string, bits: string): Effect.Effect<string, I
 		})
 
 		const result = n >> shift
-		return `0x${result.toString(16)}`
+		return formatBigIntHex(result)
 	})
+
+// ============================================================================
+// Output Helpers
+// ============================================================================
+
+/** Log result as JSON or plain text based on --json flag. */
+const outputResult = (result: string, json: boolean): Effect.Effect<void> =>
+	json ? Console.log(JSON.stringify({ result })) : Console.log(result)
 
 // ============================================================================
 // Commands
@@ -582,11 +626,7 @@ export const fromWeiCommand = Command.make(
 	({ amount, unit, json }) =>
 		Effect.gen(function* () {
 			const result = yield* fromWeiHandler(amount, unit)
-			if (json) {
-				yield* Console.log(JSON.stringify({ result }))
-			} else {
-				yield* Console.log(result)
-			}
+			yield* outputResult(result, json)
 		}).pipe(handleCommandErrors),
 ).pipe(Command.withDescription("Convert wei to ether (or specified unit)"))
 
@@ -608,11 +648,7 @@ export const toWeiCommand = Command.make(
 	({ amount, unit, json }) =>
 		Effect.gen(function* () {
 			const result = yield* toWeiHandler(amount, unit)
-			if (json) {
-				yield* Console.log(JSON.stringify({ result }))
-			} else {
-				yield* Console.log(result)
-			}
+			yield* outputResult(result, json)
 		}).pipe(handleCommandErrors),
 ).pipe(Command.withDescription("Convert ether (or specified unit) to wei"))
 
@@ -630,11 +666,7 @@ export const toHexCommand = Command.make(
 	({ decimal, json }) =>
 		Effect.gen(function* () {
 			const result = yield* toHexHandler(decimal)
-			if (json) {
-				yield* Console.log(JSON.stringify({ result }))
-			} else {
-				yield* Console.log(result)
-			}
+			yield* outputResult(result, json)
 		}).pipe(handleCommandErrors),
 ).pipe(Command.withDescription("Convert decimal to hexadecimal"))
 
@@ -652,11 +684,7 @@ export const toDecCommand = Command.make(
 	({ hex, json }) =>
 		Effect.gen(function* () {
 			const result = yield* toDecHandler(hex)
-			if (json) {
-				yield* Console.log(JSON.stringify({ result }))
-			} else {
-				yield* Console.log(result)
-			}
+			yield* outputResult(result, json)
 		}).pipe(handleCommandErrors),
 ).pipe(Command.withDescription("Convert hexadecimal to decimal"))
 
@@ -679,11 +707,7 @@ export const toBaseCommand = Command.make(
 	({ value, baseIn, baseOut, json }) =>
 		Effect.gen(function* () {
 			const result = yield* toBaseHandler(value, baseIn, baseOut)
-			if (json) {
-				yield* Console.log(JSON.stringify({ result }))
-			} else {
-				yield* Console.log(result)
-			}
+			yield* outputResult(result, json)
 		}).pipe(handleCommandErrors),
 ).pipe(Command.withDescription("Convert between arbitrary bases (2-36)"))
 
@@ -701,11 +725,7 @@ export const fromUtf8Command = Command.make(
 	({ str, json }) =>
 		Effect.gen(function* () {
 			const result = yield* fromUtf8Handler(str)
-			if (json) {
-				yield* Console.log(JSON.stringify({ result }))
-			} else {
-				yield* Console.log(result)
-			}
+			yield* outputResult(result, json)
 		}).pipe(handleCommandErrors),
 ).pipe(Command.withDescription("Convert UTF-8 string to hex"))
 
@@ -723,11 +743,7 @@ export const toUtf8Command = Command.make(
 	({ hex, json }) =>
 		Effect.gen(function* () {
 			const result = yield* toUtf8Handler(hex)
-			if (json) {
-				yield* Console.log(JSON.stringify({ result }))
-			} else {
-				yield* Console.log(result)
-			}
+			yield* outputResult(result, json)
 		}).pipe(handleCommandErrors),
 ).pipe(Command.withDescription("Convert hex to UTF-8 string"))
 
@@ -745,11 +761,7 @@ export const toBytes32Command = Command.make(
 	({ value, json }) =>
 		Effect.gen(function* () {
 			const result = yield* toBytes32Handler(value)
-			if (json) {
-				yield* Console.log(JSON.stringify({ result }))
-			} else {
-				yield* Console.log(result)
-			}
+			yield* outputResult(result, json)
 		}).pipe(handleCommandErrors),
 ).pipe(Command.withDescription("Pad/convert value to bytes32"))
 
@@ -767,11 +779,7 @@ export const fromRlpCommand = Command.make(
 	({ hex, json }) =>
 		Effect.gen(function* () {
 			const result = yield* fromRlpHandler(hex)
-			if (json) {
-				yield* Console.log(JSON.stringify({ result }))
-			} else {
-				yield* Console.log(result)
-			}
+			yield* outputResult(result, json)
 		}).pipe(handleCommandErrors),
 ).pipe(Command.withDescription("RLP-decode hex data"))
 
@@ -797,11 +805,7 @@ export const toRlpCommand = Command.make(
 				)
 			}
 			const result = yield* toRlpHandler(values)
-			if (json) {
-				yield* Console.log(JSON.stringify({ result }))
-			} else {
-				yield* Console.log(result)
-			}
+			yield* outputResult(result, json)
 		}).pipe(handleCommandErrors),
 ).pipe(Command.withDescription("RLP-encode hex values"))
 
@@ -820,11 +824,7 @@ export const shlCommand = Command.make(
 	({ value, bits, json }) =>
 		Effect.gen(function* () {
 			const result = yield* shlHandler(value, bits)
-			if (json) {
-				yield* Console.log(JSON.stringify({ result }))
-			} else {
-				yield* Console.log(result)
-			}
+			yield* outputResult(result, json)
 		}).pipe(handleCommandErrors),
 ).pipe(Command.withDescription("Bitwise shift left"))
 
@@ -843,11 +843,7 @@ export const shrCommand = Command.make(
 	({ value, bits, json }) =>
 		Effect.gen(function* () {
 			const result = yield* shrHandler(value, bits)
-			if (json) {
-				yield* Console.log(JSON.stringify({ result }))
-			} else {
-				yield* Console.log(result)
-			}
+			yield* outputResult(result, json)
 		}).pipe(handleCommandErrors),
 ).pipe(Command.withDescription("Bitwise shift right"))
 

@@ -303,6 +303,13 @@ describe("toHexHandler", () => {
 			}
 		}),
 	)
+
+	it.effect("formats negative numbers as -0x... (not 0x-...)", () =>
+		Effect.gen(function* () {
+			const result = yield* toHexHandler("-255")
+			expect(result).toBe("-0xff")
+		}),
+	)
 })
 
 // ============================================================================
@@ -355,6 +362,13 @@ describe("toDecHandler", () => {
 			if (Either.isLeft(result)) {
 				expect(result.left._tag).toBe("InvalidHexError")
 			}
+		}),
+	)
+
+	it.effect("handles bare '0x' (empty hex) as 0", () =>
+		Effect.gen(function* () {
+			const result = yield* toDecHandler("0x")
+			expect(result).toBe("0")
 		}),
 	)
 })
@@ -429,6 +443,26 @@ describe("toBaseHandler", () => {
 			if (Either.isLeft(result)) {
 				expect(result.left._tag).toBe("InvalidNumberError")
 			}
+		}),
+	)
+
+	it.effect("preserves precision for values larger than 2^53", () =>
+		Effect.gen(function* () {
+			// 9999999999999999999 > Number.MAX_SAFE_INTEGER (9007199254740991)
+			const result = yield* toBaseHandler("9999999999999999999", 10, 16)
+			expect(result).toBe("8ac7230489e7ffff")
+			// Round-trip back to decimal
+			const back = yield* toBaseHandler(result, 16, 10)
+			expect(back).toBe("9999999999999999999")
+		}),
+	)
+
+	it.effect("handles 256-bit values", () =>
+		Effect.gen(function* () {
+			// 2^256 - 1 = max uint256
+			const maxUint256 = "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+			const result = yield* toBaseHandler(maxUint256, 10, 16)
+			expect(result).toBe("f".repeat(64))
 		}),
 	)
 })
