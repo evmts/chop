@@ -1159,7 +1159,9 @@ describe("toHexHandler — boundary conditions", () => {
 
 	it.effect("converts larger than safe integer (uint256 max)", () =>
 		Effect.gen(function* () {
-			const result = yield* toHexHandler("115792089237316195423570985008687907853269984665640564039457584007913129639935")
+			const result = yield* toHexHandler(
+				"115792089237316195423570985008687907853269984665640564039457584007913129639935",
+			)
 			expect(result).toBe("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
 		}),
 	)
@@ -1368,7 +1370,9 @@ describe("toBytes32Handler — edge cases", () => {
 
 	it.effect("converts max uint256", () =>
 		Effect.gen(function* () {
-			const result = yield* toBytes32Handler("115792089237316195423570985008687907853269984665640564039457584007913129639935")
+			const result = yield* toBytes32Handler(
+				"115792089237316195423570985008687907853269984665640564039457584007913129639935",
+			)
 			expect(result).toBe("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
 		}),
 	)
@@ -1485,9 +1489,9 @@ describe("fromWeiCommand.handler — in-process", () => {
 
 	it.effect("handles error path on invalid amount", () =>
 		Effect.gen(function* () {
-			const error = yield* fromWeiCommand.handler({ amount: "not-a-number", unit: "ether", json: false }).pipe(
-				Effect.flip,
-			)
+			const error = yield* fromWeiCommand
+				.handler({ amount: "not-a-number", unit: "ether", json: false })
+				.pipe(Effect.flip)
 			expect(error.message).toContain("Invalid number")
 		}),
 	)
@@ -1547,9 +1551,9 @@ describe("toBaseCommand.handler — in-process", () => {
 
 	it.effect("handles error path on invalid base", () =>
 		Effect.gen(function* () {
-			const error = yield* toBaseCommand.handler({ value: "255", baseIn: 10, baseOut: 37, json: false }).pipe(
-				Effect.flip,
-			)
+			const error = yield* toBaseCommand
+				.handler({ value: "255", baseIn: 10, baseOut: 37, json: false })
+				.pipe(Effect.flip)
 			expect(error.message).toContain("Invalid base-out")
 		}),
 	)
@@ -1562,9 +1566,7 @@ describe("fromUtf8Command.handler — in-process", () => {
 })
 
 describe("toUtf8Command.handler — in-process", () => {
-	it.effect("handles valid hex with plain output", () =>
-		toUtf8Command.handler({ hex: "0x68656c6c6f", json: false }),
-	)
+	it.effect("handles valid hex with plain output", () => toUtf8Command.handler({ hex: "0x68656c6c6f", json: false }))
 
 	it.effect("handles valid hex with JSON output", () => toUtf8Command.handler({ hex: "0x68656c6c6f", json: true }))
 
@@ -1577,26 +1579,20 @@ describe("toUtf8Command.handler — in-process", () => {
 })
 
 describe("toBytes32Command.handler — in-process", () => {
-	it.effect("handles valid hex with plain output", () =>
-		toBytes32Command.handler({ value: "0xdeadbeef", json: false }),
-	)
+	it.effect("handles valid hex with plain output", () => toBytes32Command.handler({ value: "0xdeadbeef", json: false }))
 
 	it.effect("handles valid hex with JSON output", () => toBytes32Command.handler({ value: "0xdeadbeef", json: true }))
 
 	it.effect("handles error path on too-large value", () =>
 		Effect.gen(function* () {
-			const error = yield* toBytes32Command
-				.handler({ value: "0x" + "ff".repeat(33), json: false })
-				.pipe(Effect.flip)
+			const error = yield* toBytes32Command.handler({ value: `0x${"ff".repeat(33)}`, json: false }).pipe(Effect.flip)
 			expect(error.message).toContain("too large")
 		}),
 	)
 })
 
 describe("fromRlpCommand.handler — in-process", () => {
-	it.effect("handles valid hex with plain output", () =>
-		fromRlpCommand.handler({ hex: "0x83646f67", json: false }),
-	)
+	it.effect("handles valid hex with plain output", () => fromRlpCommand.handler({ hex: "0x83646f67", json: false }))
 
 	it.effect("handles valid hex with JSON output", () => fromRlpCommand.handler({ hex: "0x83646f67", json: true }))
 
@@ -1626,13 +1622,9 @@ describe("toRlpCommand.handler — in-process", () => {
 })
 
 describe("shlCommand.handler — in-process", () => {
-	it.effect("handles valid shift with plain output", () =>
-		shlCommand.handler({ value: "1", bits: "8", json: false }),
-	)
+	it.effect("handles valid shift with plain output", () => shlCommand.handler({ value: "1", bits: "8", json: false }))
 
-	it.effect("handles valid shift with JSON output", () =>
-		shlCommand.handler({ value: "1", bits: "8", json: true }),
-	)
+	it.effect("handles valid shift with JSON output", () => shlCommand.handler({ value: "1", bits: "8", json: true }))
 
 	it.effect("handles error path on invalid value", () =>
 		Effect.gen(function* () {
@@ -1643,13 +1635,9 @@ describe("shlCommand.handler — in-process", () => {
 })
 
 describe("shrCommand.handler — in-process", () => {
-	it.effect("handles valid shift with plain output", () =>
-		shrCommand.handler({ value: "256", bits: "8", json: false }),
-	)
+	it.effect("handles valid shift with plain output", () => shrCommand.handler({ value: "256", bits: "8", json: false }))
 
-	it.effect("handles valid shift with JSON output", () =>
-		shrCommand.handler({ value: "256", bits: "8", json: true }),
-	)
+	it.effect("handles valid shift with JSON output", () => shrCommand.handler({ value: "256", bits: "8", json: true }))
 
 	it.effect("handles error path on invalid value", () =>
 		Effect.gen(function* () {
@@ -1692,7 +1680,7 @@ describe("fromWeiHandler — additional boundary conditions", () => {
 			const result = yield* fromWeiHandler(maxUint256)
 			// Should produce a very large number with 18 decimal places
 			expect(result).toContain(".")
-			expect(result.split(".")[1]!.length).toBe(18)
+			expect(result.split(".")[1]?.length).toBe(18)
 		}),
 	)
 
@@ -1815,7 +1803,7 @@ describe("toHexHandler — additional edge cases", () => {
 			const result = yield* toHexHandler(
 				"115792089237316195423570985008687907853269984665640564039457584007913129639935",
 			)
-			expect(result).toBe("0x" + "f".repeat(64))
+			expect(result).toBe(`0x${"f".repeat(64)}`)
 		}),
 	)
 
@@ -1993,7 +1981,7 @@ describe("fromUtf8Handler — additional edge cases", () => {
 		Effect.gen(function* () {
 			const longStr = "a".repeat(1000)
 			const result = yield* fromUtf8Handler(longStr)
-			expect(result).toBe("0x" + "61".repeat(1000))
+			expect(result).toBe(`0x${"61".repeat(1000)}`)
 		}),
 	)
 
@@ -2363,7 +2351,7 @@ describe("fromWeiHandler — unit edge cases", () => {
 			expect(Either.isLeft(result)).toBe(true)
 			if (Either.isLeft(result)) {
 				expect(result.left._tag).toBe("InvalidNumberError")
-				expect(result.left.value).toBe("hello")
+				if (result.left._tag === "InvalidNumberError") expect(result.left.value).toBe("hello")
 			}
 		}),
 	)
@@ -2468,7 +2456,7 @@ describe("toBytes32Handler — numeric and hex boundary cases", () => {
 		Effect.gen(function* () {
 			const maxUint256 = "115792089237316195423570985008687907853269984665640564039457584007913129639935"
 			const result = yield* toBytes32Handler(maxUint256)
-			expect(result).toBe("0x" + "f".repeat(64))
+			expect(result).toBe(`0x${"f".repeat(64)}`)
 		}),
 	)
 
@@ -2653,7 +2641,7 @@ describe("shlHandler / shrHandler — very large shift and hex input", () => {
 			expect(result).toMatch(/^0x1[0]+$/)
 			// The number of hex zero digits should correspond to 1000/4 = 250 zeros
 			const hexPart = result.slice(2) // remove 0x
-			expect(hexPart).toBe("1" + "0".repeat(250))
+			expect(hexPart).toBe(`1${"0".repeat(250)}`)
 		}),
 	)
 
@@ -2748,4 +2736,3 @@ describe("fromRlpHandler — BrandedRlp list type decoding", () => {
 		}),
 	)
 })
-

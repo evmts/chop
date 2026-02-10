@@ -632,15 +632,6 @@ describe("hashMessageHandler — edge cases", () => {
 describe("keccakHandler — cross-validation", () => {
 	it.effect("keccak of hex '0x68656c6c6f' (hello in hex) ≠ keccak of string '0x68656c6c6f'", () =>
 		Effect.gen(function* () {
-			const hexAsBytes = yield* keccakHandler("0x68656c6c6f")
-			const hexAsString = yield* keccakHandler("hello")
-			// 0x68656c6c6f as hex bytes should produce a different hash than the string "hello"
-			// Actually, wait - let me reconsider. The user wants:
-			// - "0x68656c6c6f" treated as hex (bytes [0x68, 0x65, 0x6c, 0x6c, 0x6f])
-			// - "0x68656c6c6f" treated as string (the literal string "0x68656c6c6f")
-			// We need to compare hex interpretation vs string interpretation of the same input
-			const stringLiteral = "0x68656c6c6f"
-
 			// Hash the hex bytes (0x prefix triggers hex mode)
 			const hashOfHexBytes = yield* keccakHandler("0x68656c6c6f")
 
@@ -1028,7 +1019,7 @@ describe("keccakHandler — more hex with leading zeros", () => {
 
 	it.effect("handles 32 zero bytes (0x + 64 zeros)", () =>
 		Effect.gen(function* () {
-			const result = yield* keccakHandler("0x" + "00".repeat(32))
+			const result = yield* keccakHandler(`0x${"00".repeat(32)}`)
 			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
 			expect(result.length).toBe(66)
 		}),
@@ -1120,7 +1111,7 @@ describe("keccakHandler — more boundary conditions", () => {
 	it.effect("hashes very large hex input (1000+ hex chars)", () =>
 		Effect.gen(function* () {
 			// 1024 hex chars = 512 bytes
-			const largeHex = "0x" + "ab".repeat(512)
+			const largeHex = `0x${"ab".repeat(512)}`
 			const result = yield* keccakHandler(largeHex)
 			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
 			expect(result.length).toBe(66)
@@ -1231,7 +1222,7 @@ describe("sigHandler — more boundary conditions", () => {
 
 	it.effect("handles very long function name (100 chars)", () =>
 		Effect.gen(function* () {
-			const longName = "f".repeat(100) + "(uint256)"
+			const longName = `${"f".repeat(100)}(uint256)`
 			const result = yield* sigHandler(longName)
 			expect(result).toMatch(/^0x[0-9a-f]{8}$/)
 			expect(result.length).toBe(10)
@@ -1442,7 +1433,7 @@ describe("cross-validation tests", () => {
 			const fullHash = yield* keccakHandler("transfer(address,uint256)")
 			const selectorResult = yield* sigHandler("transfer(address,uint256)")
 			// sig returns the first 4 bytes (8 hex chars) of the keccak hash
-			const first4Bytes = "0x" + fullHash.slice(2, 10)
+			const first4Bytes = `0x${fullHash.slice(2, 10)}`
 			expect(selectorResult).toBe(first4Bytes)
 		}),
 	)
@@ -1474,7 +1465,7 @@ describe("cross-validation tests", () => {
 			const selectorResult = yield* sigHandler(input)
 			const topicResult = yield* sigEventHandler(input)
 			// The selector should be the first 4 bytes of the topic
-			const topicFirst4 = "0x" + topicResult.slice(2, 10)
+			const topicFirst4 = `0x${topicResult.slice(2, 10)}`
 			expect(selectorResult).toBe(topicFirst4)
 		}),
 	)
@@ -1483,7 +1474,7 @@ describe("cross-validation tests", () => {
 		Effect.gen(function* () {
 			const fullHash = yield* keccakHandler("Approval(address,address,uint256)")
 			const selectorResult = yield* sigHandler("Approval(address,address,uint256)")
-			const first4Bytes = "0x" + fullHash.slice(2, 10)
+			const first4Bytes = `0x${fullHash.slice(2, 10)}`
 			expect(selectorResult).toBe(first4Bytes)
 		}),
 	)
@@ -1497,9 +1488,9 @@ describe("cross-validation tests", () => {
 			// sig-event = full keccak
 			expect(top).toBe(fullHash)
 			// sig = first 4 bytes of keccak
-			expect(sel).toBe("0x" + fullHash.slice(2, 10))
+			expect(sel).toBe(`0x${fullHash.slice(2, 10)}`)
 			// sig = first 4 bytes of sig-event
-			expect(sel).toBe("0x" + top.slice(2, 10))
+			expect(sel).toBe(`0x${top.slice(2, 10)}`)
 		}),
 	)
 })

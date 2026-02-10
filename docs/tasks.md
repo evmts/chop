@@ -107,12 +107,12 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - Invalid hex → exit 1
 
 ### T1.8 Phase 1 Gate
-- [ ] All T1.1-T1.7 tasks complete
-- [ ] `bun run test` all passing
-- [ ] `bun run test:coverage` ≥ 80% on `src/cli/`
-- [ ] `bun run lint` clean
-- [ ] `bun run typecheck` clean
-- [ ] `bun run build` succeeds
+- [x] All T1.1-T1.7 tasks complete
+- [x] `bun run test` all passing
+- [x] `bun run test:coverage` ≥ 80% on `src/cli/`
+- [x] `bun run lint` clean
+- [x] `bun run typecheck` clean
+- [x] `bun run build` succeeds
 
 ---
 

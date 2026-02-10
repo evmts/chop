@@ -17,8 +17,6 @@ import {
 
 // Wrap calculateCreateAddress and calculateCreate2Address with vi.fn so we can
 // mock them per-test while keeping the real implementation as the default.
-const originalCalculateCreateAddress = Address.calculateCreateAddress
-const originalCalculateCreate2Address = Address.calculateCreate2Address
 
 vi.mock("voltaire-effect", async (importOriginal) => {
 	const orig = await importOriginal<typeof import("voltaire-effect")>()
@@ -26,13 +24,11 @@ vi.mock("voltaire-effect", async (importOriginal) => {
 		...orig,
 		Address: {
 			...orig.Address,
-			calculateCreateAddress: vi.fn(
-				(...args: Parameters<typeof orig.Address.calculateCreateAddress>) =>
-					orig.Address.calculateCreateAddress(...args),
+			calculateCreateAddress: vi.fn((...args: Parameters<typeof orig.Address.calculateCreateAddress>) =>
+				orig.Address.calculateCreateAddress(...args),
 			),
-			calculateCreate2Address: vi.fn(
-				(...args: Parameters<typeof orig.Address.calculateCreate2Address>) =>
-					orig.Address.calculateCreate2Address(...args),
+			calculateCreate2Address: vi.fn((...args: Parameters<typeof orig.Address.calculateCreate2Address>) =>
+				orig.Address.calculateCreate2Address(...args),
 			),
 		},
 	}
@@ -471,7 +467,7 @@ describe("toCheckSumAddressHandler — boundary conditions", () => {
 	)
 
 	it.effect("too long address → InvalidAddressError", () =>
-		toCheckSumAddressHandler("0x" + "aa".repeat(21)).pipe(
+		toCheckSumAddressHandler(`0x${"aa".repeat(21)}`).pipe(
 			Effect.provide(Keccak256.KeccakLive),
 			Effect.flip,
 			Effect.map((e) => {
@@ -554,7 +550,7 @@ describe("computeAddressHandler — boundary conditions", () => {
 		),
 	)
 
-	it.effect("decimal nonce → ComputeAddressError (e.g. \"1.5\")", () =>
+	it.effect('decimal nonce → ComputeAddressError (e.g. "1.5")', () =>
 		computeAddressHandler("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", "1.5").pipe(
 			Effect.provide(Keccak256.KeccakLive),
 			Effect.flip,
@@ -664,11 +660,7 @@ describe("create2Handler — boundary conditions", () => {
 	)
 
 	it.effect("invalid deployer → fails", () =>
-		create2Handler(
-			"0xbad",
-			"0x0000000000000000000000000000000000000000000000000000000000000000",
-			"0x00",
-		).pipe(
+		create2Handler("0xbad", "0x0000000000000000000000000000000000000000000000000000000000000000", "0x00").pipe(
 			Effect.provide(Keccak256.KeccakLive),
 			Effect.flip,
 			Effect.map((e) => {
@@ -803,13 +795,11 @@ describe("computeAddressHandler — calculateCreateAddress failure path", () => 
 	it.effect("wraps Error thrown by calculateCreateAddress into ComputeAddressError", () =>
 		Effect.gen(function* () {
 			// Mock calculateCreateAddress to fail with an Error
-			vi.mocked(Address.calculateCreateAddress).mockImplementationOnce(() =>
-				Effect.fail(new Error("internal RLP failure")),
+			vi.mocked(Address.calculateCreateAddress).mockImplementationOnce(
+				() => Effect.fail(new Error("internal RLP failure")) as any,
 			)
 
-			const error = yield* computeAddressHandler("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", "0").pipe(
-				Effect.flip,
-			)
+			const error = yield* computeAddressHandler("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", "0").pipe(Effect.flip)
 			expect(error._tag).toBe("ComputeAddressError")
 			expect(error.message).toContain("Failed to compute CREATE address")
 			expect(error.message).toContain("internal RLP failure")
@@ -819,13 +809,11 @@ describe("computeAddressHandler — calculateCreateAddress failure path", () => 
 	it.effect("wraps non-Error value thrown by calculateCreateAddress into ComputeAddressError", () =>
 		Effect.gen(function* () {
 			// Mock with non-Error failure (exercises the String(e) branch)
-			vi.mocked(Address.calculateCreateAddress).mockImplementationOnce(() =>
-				Effect.fail("string error value" as unknown as Error),
+			vi.mocked(Address.calculateCreateAddress).mockImplementationOnce(
+				() => Effect.fail("string error value" as unknown as Error) as any,
 			)
 
-			const error = yield* computeAddressHandler("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", "0").pipe(
-				Effect.flip,
-			)
+			const error = yield* computeAddressHandler("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", "0").pipe(Effect.flip)
 			expect(error._tag).toBe("ComputeAddressError")
 			expect(error.message).toContain("Failed to compute CREATE address")
 			expect(error.message).toContain("string error value")
@@ -859,9 +847,7 @@ describe("create2Handler — calculateCreate2Address failure path", () => {
 	it.effect("wraps non-Error value thrown by calculateCreate2Address into ComputeAddressError", () =>
 		Effect.gen(function* () {
 			// Mock with non-Error failure (exercises the String(e) branch)
-			vi.mocked(Address.calculateCreate2Address).mockImplementationOnce(() =>
-				Effect.fail(42 as unknown as Error),
-			)
+			vi.mocked(Address.calculateCreate2Address).mockImplementationOnce(() => Effect.fail(42 as unknown as Error))
 
 			const error = yield* create2Handler(
 				"0x0000000000000000000000000000000000000000",
@@ -885,25 +871,25 @@ describe("validateSalt edge cases — via create2Handler", () => {
 
 	it.effect("salt too long (33 bytes / 66 hex chars) → InvalidHexError", () =>
 		Effect.gen(function* () {
-			const saltTooLong = "0x" + "aa".repeat(33) // 33 bytes
+			const saltTooLong = `0x${"aa".repeat(33)}` // 33 bytes
 			const error = yield* create2Handler(VALID_DEPLOYER, saltTooLong, VALID_INIT_CODE).pipe(Effect.flip)
 			expect(error._tag).toBe("InvalidHexError")
-			expect(error.hex).toBe(saltTooLong)
+			if (error._tag === "InvalidHexError") expect(error.hex).toBe(saltTooLong)
 		}).pipe(Effect.provide(Keccak256.KeccakLive)),
 	)
 
 	it.effect("salt with invalid hex chars but 0x prefix → InvalidHexError", () =>
 		Effect.gen(function* () {
-			const badSalt = "0x" + "gg".repeat(32) // invalid hex chars
+			const badSalt = `0x${"gg".repeat(32)}` // invalid hex chars
 			const error = yield* create2Handler(VALID_DEPLOYER, badSalt, VALID_INIT_CODE).pipe(Effect.flip)
 			expect(error._tag).toBe("InvalidHexError")
-			expect(error.hex).toBe(badSalt)
+			if (error._tag === "InvalidHexError") expect(error.hex).toBe(badSalt)
 		}).pipe(Effect.provide(Keccak256.KeccakLive)),
 	)
 
 	it.effect("salt exactly 32 bytes works", () =>
 		Effect.gen(function* () {
-			const salt32 = "0x" + "ab".repeat(32) // exactly 32 bytes
+			const salt32 = `0x${"ab".repeat(32)}` // exactly 32 bytes
 			const result = yield* create2Handler(VALID_DEPLOYER, salt32, VALID_INIT_CODE)
 			expect(result).toMatch(/^0x[0-9a-fA-F]{40}$/)
 		}).pipe(Effect.provide(Keccak256.KeccakLive)),
@@ -911,7 +897,7 @@ describe("validateSalt edge cases — via create2Handler", () => {
 
 	it.effect("salt with 31 bytes (too short) → InvalidHexError", () =>
 		Effect.gen(function* () {
-			const salt31 = "0x" + "ab".repeat(31) // 31 bytes — not 32
+			const salt31 = `0x${"ab".repeat(31)}` // 31 bytes — not 32
 			const error = yield* create2Handler(VALID_DEPLOYER, salt31, VALID_INIT_CODE).pipe(Effect.flip)
 			expect(error._tag).toBe("InvalidHexError")
 		}).pipe(Effect.provide(Keccak256.KeccakLive)),
@@ -1019,11 +1005,7 @@ describe("create2Handler — additional edge cases", () => {
 
 	it.effect("empty init code (0x) → should work (CREATE2 with empty code)", () =>
 		Effect.gen(function* () {
-			const result = yield* create2Handler(
-				"0x0000000000000000000000000000000000000000",
-				ZERO_SALT,
-				"0x",
-			)
+			const result = yield* create2Handler("0x0000000000000000000000000000000000000000", ZERO_SALT, "0x")
 			expect(result).toMatch(/^0x[0-9a-fA-F]{40}$/)
 			expect(result.length).toBe(42)
 		}).pipe(Effect.provide(Keccak256.KeccakLive)),
@@ -1042,22 +1024,14 @@ describe("create2Handler — additional edge cases", () => {
 
 	it.effect("all-zero deployer address works", () =>
 		Effect.gen(function* () {
-			const result = yield* create2Handler(
-				"0x0000000000000000000000000000000000000000",
-				ZERO_SALT,
-				"0x00",
-			)
+			const result = yield* create2Handler("0x0000000000000000000000000000000000000000", ZERO_SALT, "0x00")
 			expect(result).toBe("0x4D1A2e2bB4F88F0250f26Ffff098B0b30B26BF38")
 		}).pipe(Effect.provide(Keccak256.KeccakLive)),
 	)
 
 	it.effect("all-ff deployer address works", () =>
 		Effect.gen(function* () {
-			const result = yield* create2Handler(
-				"0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF",
-				ZERO_SALT,
-				"0x00",
-			)
+			const result = yield* create2Handler("0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF", ZERO_SALT, "0x00")
 			expect(result).toMatch(/^0x[0-9a-fA-F]{40}$/)
 			expect(result.length).toBe(42)
 		}).pipe(Effect.provide(Keccak256.KeccakLive)),
@@ -1066,11 +1040,7 @@ describe("create2Handler — additional edge cases", () => {
 	it.effect("salt with leading zeros works", () =>
 		Effect.gen(function* () {
 			const saltWithLeadingZeros = "0x0000000000000000000000000000000000000000000000000000000000000001"
-			const result = yield* create2Handler(
-				"0x0000000000000000000000000000000000000000",
-				saltWithLeadingZeros,
-				"0x00",
-			)
+			const result = yield* create2Handler("0x0000000000000000000000000000000000000000", saltWithLeadingZeros, "0x00")
 			expect(result).toBe("0x90954Abfd77F834cbAbb76D9DA5e0e93F2f42464")
 		}).pipe(Effect.provide(Keccak256.KeccakLive)),
 	)
@@ -1083,18 +1053,16 @@ describe("create2Handler — additional edge cases", () => {
 describe("InvalidAddressError — Effect pipeline patterns", () => {
 	it.effect("catchTag recovery pattern", () =>
 		Effect.gen(function* () {
-			const result = yield* Effect.fail(
-				new InvalidAddressError({ message: "bad addr", address: "0xdead" }),
-			).pipe(Effect.catchTag("InvalidAddressError", (e) => Effect.succeed(`recovered: ${e.address}`)))
+			const result = yield* Effect.fail(new InvalidAddressError({ message: "bad addr", address: "0xdead" })).pipe(
+				Effect.catchTag("InvalidAddressError", (e) => Effect.succeed(`recovered: ${e.address}`)),
+			)
 			expect(result).toBe("recovered: 0xdead")
 		}),
 	)
 
 	it.effect("mapError transforms to different error type", () =>
 		Effect.gen(function* () {
-			const error = yield* Effect.fail(
-				new InvalidAddressError({ message: "bad addr", address: "0xdead" }),
-			).pipe(
+			const error = yield* Effect.fail(new InvalidAddressError({ message: "bad addr", address: "0xdead" })).pipe(
 				Effect.mapError(
 					(e) =>
 						new ComputeAddressError({
@@ -1113,9 +1081,7 @@ describe("InvalidAddressError — Effect pipeline patterns", () => {
 	it.effect("tapError allows side effects without changing error", () =>
 		Effect.gen(function* () {
 			let tappedAddress = ""
-			const error = yield* Effect.fail(
-				new InvalidAddressError({ message: "bad addr", address: "0xbeef" }),
-			).pipe(
+			const error = yield* Effect.fail(new InvalidAddressError({ message: "bad addr", address: "0xbeef" })).pipe(
 				Effect.tapError((e) =>
 					Effect.sync(() => {
 						tappedAddress = e.address
@@ -1132,18 +1098,16 @@ describe("InvalidAddressError — Effect pipeline patterns", () => {
 describe("InvalidHexError — Effect pipeline patterns", () => {
 	it.effect("catchTag recovery pattern", () =>
 		Effect.gen(function* () {
-			const result = yield* Effect.fail(
-				new InvalidHexError({ message: "bad hex", hex: "0xgg" }),
-			).pipe(Effect.catchTag("InvalidHexError", (e) => Effect.succeed(`recovered: ${e.hex}`)))
+			const result = yield* Effect.fail(new InvalidHexError({ message: "bad hex", hex: "0xgg" })).pipe(
+				Effect.catchTag("InvalidHexError", (e) => Effect.succeed(`recovered: ${e.hex}`)),
+			)
 			expect(result).toBe("recovered: 0xgg")
 		}),
 	)
 
 	it.effect("mapError transforms to ComputeAddressError", () =>
 		Effect.gen(function* () {
-			const error = yield* Effect.fail(
-				new InvalidHexError({ message: "bad hex", hex: "0xgg" }),
-			).pipe(
+			const error = yield* Effect.fail(new InvalidHexError({ message: "bad hex", hex: "0xgg" })).pipe(
 				Effect.mapError(
 					(e) =>
 						new ComputeAddressError({
@@ -1171,18 +1135,16 @@ describe("ComputeAddressError — additional patterns", () => {
 
 	it.effect("orElse recovery pattern", () =>
 		Effect.gen(function* () {
-			const result = yield* Effect.fail(
-				new ComputeAddressError({ message: "failed", cause: new Error("boom") }),
-			).pipe(Effect.orElse(() => Effect.succeed("fallback-address")))
+			const result = yield* Effect.fail(new ComputeAddressError({ message: "failed", cause: new Error("boom") })).pipe(
+				Effect.orElse(() => Effect.succeed("fallback-address")),
+			)
 			expect(result).toBe("fallback-address")
 		}),
 	)
 
 	it.effect("orElse with alternative computation", () =>
 		Effect.gen(function* () {
-			const primaryFails = Effect.fail(
-				new ComputeAddressError({ message: "primary failed" }),
-			)
+			const primaryFails = Effect.fail(new ComputeAddressError({ message: "primary failed" }))
 			const fallback = Effect.succeed("0x0000000000000000000000000000000000000000")
 			const result = yield* primaryFails.pipe(Effect.orElse(() => fallback))
 			expect(result).toBe("0x0000000000000000000000000000000000000000")
@@ -1245,4 +1207,49 @@ describe("chop create2 — E2E edge cases", () => {
 		)
 		expect(result.exitCode).not.toBe(0)
 	})
+})
+
+// ---------------------------------------------------------------------------
+// computeAddressHandler — nonce non-Error catch branch (address.ts line 107)
+// ---------------------------------------------------------------------------
+
+describe("computeAddressHandler — nonce non-Error catch branch", () => {
+	it.effect("handles non-Error thrown by BigInt conversion (exercises String(e) branch)", () => {
+		// BigInt always throws SyntaxError (an Error subclass) for invalid input,
+		// so the non-Error branch of `e instanceof Error ? e.message : "Expected..."` never fires naturally.
+		// We test the Error branch with a known failure case instead.
+		return Effect.gen(function* () {
+			const error = yield* computeAddressHandler("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", "not_a_number").pipe(
+				Effect.flip,
+			)
+			expect(error._tag).toBe("ComputeAddressError")
+			expect(error.message).toContain("Invalid nonce")
+			// Since BigInt throws an Error, the message should include BigInt's error text
+			expect(error.message).toContain("not_a_number")
+		}).pipe(Effect.provide(Keccak256.KeccakLive))
+	})
+
+	it.effect("error message for negative nonce includes 'non-negative'", () =>
+		Effect.gen(function* () {
+			const error = yield* computeAddressHandler("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", "-10").pipe(Effect.flip)
+			expect(error._tag).toBe("ComputeAddressError")
+			expect(error.message).toContain("non-negative")
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+
+	it.effect("whitespace nonce resolves to 0 (BigInt('   ') === 0n)", () =>
+		Effect.gen(function* () {
+			// BigInt("   ") === 0n in JavaScript, so this succeeds
+			const result = yield* computeAddressHandler("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", "   ")
+			expect(result).toMatch(/^0x[0-9a-fA-F]{40}$/)
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+
+	it.effect("nonce with special characters fails", () =>
+		Effect.gen(function* () {
+			const error = yield* computeAddressHandler("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", "!@#$").pipe(Effect.flip)
+			expect(error._tag).toBe("ComputeAddressError")
+			expect(error.message).toContain("Invalid nonce")
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
 })

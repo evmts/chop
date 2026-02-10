@@ -1509,14 +1509,14 @@ describe("abiEncodeHandler — extended edge cases", () => {
 		Effect.gen(function* () {
 			const maxU256 = (2n ** 256n - 1n).toString()
 			const result = yield* abiEncodeHandler("(uint256)", [maxU256], false)
-			expect(result).toBe("0x" + "ff".repeat(32))
+			expect(result).toBe(`0x${"ff".repeat(32)}`)
 		}),
 	)
 
 	it.effect("encodes zero address", () =>
 		Effect.gen(function* () {
 			const result = yield* abiEncodeHandler("(address)", ["0x0000000000000000000000000000000000000000"], false)
-			expect(result).toBe("0x" + "00".repeat(32))
+			expect(result).toBe(`0x${"00".repeat(32)}`)
 		}),
 	)
 
@@ -1568,7 +1568,7 @@ describe("abiEncodeHandler — extended edge cases", () => {
 	it.effect("encodes negative int256", () =>
 		Effect.gen(function* () {
 			const result = yield* abiEncodeHandler("(int256)", ["-1"], false)
-			expect(result).toBe("0x" + "ff".repeat(32))
+			expect(result).toBe(`0x${"ff".repeat(32)}`)
 		}),
 	)
 })
@@ -1607,8 +1607,10 @@ describe("calldataHandler — extended edge cases", () => {
 		Effect.gen(function* () {
 			const error = yield* calldataHandler("totalSupply()", ["unexpected"]).pipe(Effect.flip)
 			expect(error._tag).toBe("ArgumentCountError")
-			expect(error.expected).toBe(0)
-			expect(error.received).toBe(1)
+			if (error._tag === "ArgumentCountError") {
+				expect(error.expected).toBe(0)
+				expect(error.received).toBe(1)
+			}
 		}),
 	)
 
@@ -1653,7 +1655,7 @@ describe("abiDecodeHandler — extended edge cases", () => {
 
 	it.effect("decodes max uint256", () =>
 		Effect.gen(function* () {
-			const encoded = "0x" + "ff".repeat(32)
+			const encoded = `0x${"ff".repeat(32)}`
 			const decoded = yield* abiDecodeHandler("(uint256)", encoded)
 			expect(decoded).toEqual([(2n ** 256n - 1n).toString()])
 		}),
@@ -2207,7 +2209,7 @@ describe("abiEncodeHandler — uint256 max value", () => {
 	it.effect("encode address zero → succeeds", () =>
 		Effect.gen(function* () {
 			const result = yield* abiEncodeHandler("(address)", ["0x0000000000000000000000000000000000000000"], false)
-			expect(result).toBe("0x" + "00".repeat(32))
+			expect(result).toBe(`0x${"00".repeat(32)}`)
 		}),
 	)
 })
@@ -2657,7 +2659,10 @@ describe("formatValue — additional edge cases", () => {
 	})
 
 	it("formats deeply nested arrays", () => {
-		const result = formatValue([[1n, 2n], [3n, [4n, 5n]]])
+		const result = formatValue([
+			[1n, 2n],
+			[3n, [4n, 5n]],
+		])
 		expect(result).toBe("[[1, 2], [3, [4, 5]]]")
 	})
 
@@ -2720,14 +2725,14 @@ describe("abiEncodeHandler — additional boundary conditions", () => {
 		Effect.gen(function* () {
 			const maxU256 = (2n ** 256n - 1n).toString()
 			const result = yield* abiEncodeHandler("(uint256)", [maxU256], false)
-			expect(result).toBe("0x" + "ff".repeat(32))
+			expect(result).toBe(`0x${"ff".repeat(32)}`)
 		}),
 	)
 
 	it.effect("encodes zero address", () =>
 		Effect.gen(function* () {
 			const result = yield* abiEncodeHandler("(address)", ["0x0000000000000000000000000000000000000000"], false)
-			expect(result).toBe("0x" + "00".repeat(32))
+			expect(result).toBe(`0x${"00".repeat(32)}`)
 		}),
 	)
 
@@ -2756,9 +2761,7 @@ describe("chop abi-encode --json (E2E)", () => {
 	})
 
 	it("produces valid JSON output for multiple params", () => {
-		const result = runCli(
-			"abi-encode --json '(address,uint256)' 0x0000000000000000000000000000000000001234 42",
-		)
+		const result = runCli("abi-encode --json '(address,uint256)' 0x0000000000000000000000000000000000001234 42")
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed.result.startsWith("0x")).toBe(true)
@@ -2901,10 +2904,7 @@ describe("parseSignature — deeply nested and tuple edge cases", () => {
 describe("coerceArgValue — array types and fallthrough", () => {
 	it.effect("coerces address[] with single element", () =>
 		Effect.gen(function* () {
-			const result = yield* coerceArgValue(
-				"address[]",
-				'["0x0000000000000000000000000000000000000001"]',
-			)
+			const result = yield* coerceArgValue("address[]", '["0x0000000000000000000000000000000000000001"]')
 			expect(Array.isArray(result)).toBe(true)
 			const arr = result as unknown[]
 			expect(arr.length).toBe(1)
@@ -2997,11 +2997,7 @@ describe("abiEncodeHandler — packed encoding edge cases", () => {
 	it.effect("packed encoding with string and uint256 succeeds", () =>
 		Effect.gen(function* () {
 			// Abi.encodePacked supports string type, so this should succeed
-			const result = yield* abiEncodeHandler(
-				"(string,uint256)",
-				["hello", "42"],
-				true,
-			)
+			const result = yield* abiEncodeHandler("(string,uint256)", ["hello", "42"], true)
 			expect(result.startsWith("0x")).toBe(true)
 		}),
 	)

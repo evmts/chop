@@ -12,7 +12,7 @@ import { Args, Command } from "@effect/cli"
 import { hashHex, hashString, selector, topic } from "@tevm/voltaire/Keccak256"
 import { Console, Data, Effect } from "effect"
 import { Hex, Keccak256 } from "voltaire-effect"
-import { hashMessage, type KeccakService } from "voltaire-effect/crypto"
+import { type KeccakService, hashMessage } from "voltaire-effect/crypto"
 import { handleCommandErrors, jsonOption } from "../shared.js"
 
 // ============================================================================

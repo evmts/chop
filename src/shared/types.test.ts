@@ -5,9 +5,9 @@
  * and usable from the shared types module.
  */
 
-import { describe, expect, it } from "vitest"
 import { it as itEffect } from "@effect/vitest"
 import { Effect, Schema } from "effect"
+import { describe, expect, it } from "vitest"
 import { Abi, Address, Bytes32, Hash, Hex, Rlp, Selector, Signature } from "./types.js"
 
 describe("shared/types re-exports", () => {
@@ -128,7 +128,7 @@ describe("Address — functional tests", () => {
 	})
 
 	it("rejects too-long address", () => {
-		expect(Address.isValid("0x" + "aa".repeat(21))).toBe(false)
+		expect(Address.isValid(`0x${"aa".repeat(21)}`)).toBe(false)
 	})
 
 	it("accepts address without 0x prefix (voltaire-effect is lenient)", () => {
@@ -151,18 +151,24 @@ describe("Address — functional tests", () => {
 
 	it("equals compares addresses case-insensitively", () => {
 		expect(
-			Address.equals("0xd8da6bf26964af9d7eed9e03e53415d37aa96045", "0xD8DA6BF26964AF9D7EED9E03E53415D37AA96045"),
+			Address.equals(
+				"0xd8da6bf26964af9d7eed9e03e53415d37aa96045" as any,
+				"0xD8DA6BF26964AF9D7EED9E03E53415D37AA96045" as any,
+			),
 		).toBe(true)
 	})
 
 	it("equals returns false for different addresses", () => {
 		expect(
-			Address.equals("0xd8da6bf26964af9d7eed9e03e53415d37aa96045", "0x0000000000000000000000000000000000000000"),
+			Address.equals(
+				"0xd8da6bf26964af9d7eed9e03e53415d37aa96045" as any,
+				"0x0000000000000000000000000000000000000000" as any,
+			),
 		).toBe(false)
 	})
 
 	it("equals with same lowercase addresses", () => {
-		const addr = "0xd8da6bf26964af9d7eed9e03e53415d37aa96045"
+		const addr = "0xd8da6bf26964af9d7eed9e03e53415d37aa96045" as any
 		expect(Address.equals(addr, addr)).toBe(true)
 	})
 
@@ -381,7 +387,7 @@ describe("Hash — actual computation tests", () => {
 
 	itEffect.effect("fromHex of valid 32-byte hex → valid Hash", () =>
 		Effect.gen(function* () {
-			const hex = "0x" + "ab".repeat(32)
+			const hex = `0x${"ab".repeat(32)}`
 			const hash = yield* Hash.fromHex(hex)
 			expect(hash).toBeInstanceOf(Uint8Array)
 			expect(hash.length).toBe(32)
@@ -422,7 +428,7 @@ describe("Hash — actual computation tests", () => {
 		Effect.gen(function* () {
 			const nonZero = new Uint8Array(32)
 			nonZero[0] = 0x01
-			const result = yield* Hash.isZero(nonZero)
+			const result = yield* Hash.isZero(nonZero as any)
 			expect(result).toBe(false)
 		}),
 	)
