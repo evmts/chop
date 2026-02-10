@@ -205,20 +205,19 @@ describe("computeAddressHandler", () => {
 // ---------------------------------------------------------------------------
 
 describe("create2Handler", () => {
-	it.effect("computes CREATE2 address for known vector", () =>
+	it.effect("computes CREATE2 address for EIP-1014 test vector 0", () =>
 		Effect.gen(function* () {
-			// Known test vector from EIP-1014
+			// EIP-1014 Example 0:
 			// deployer: 0x0000000000000000000000000000000000000000
 			// salt: 0x0000000000000000000000000000000000000000000000000000000000000000
 			// init-code: 0x00 (single zero byte)
-			// Expected: keccak256(0xff ++ deployer ++ salt ++ keccak256(0x00))[12:]
+			// Expected: 0x4D1A2e2bB4F88F0250f26Ffff098B0b30B26BF38
 			const result = yield* create2Handler(
 				"0x0000000000000000000000000000000000000000",
 				"0x0000000000000000000000000000000000000000000000000000000000000000",
 				"0x00",
 			)
-			// This is the known CREATE2 result for the EIP-1014 test vector
-			expect(result).toMatch(/^0x[0-9a-fA-F]{40}$/)
+			expect(result).toBe("0x4D1A2e2bB4F88F0250f26Ffff098B0b30B26BF38")
 		}).pipe(Effect.provide(Keccak256.KeccakLive)),
 	)
 
@@ -227,13 +226,13 @@ describe("create2Handler", () => {
 			// deployer: 0x0000000000000000000000000000000000000000
 			// salt: 0x0000000000000000000000000000000000000000000000000000000000000001
 			// init-code: 0x00
+			// Expected: 0x90954Abfd77F834cbAbb76D9DA5e0e93F2f42464
 			const result = yield* create2Handler(
 				"0x0000000000000000000000000000000000000000",
 				"0x0000000000000000000000000000000000000000000000000000000000000001",
 				"0x00",
 			)
-			expect(result).toMatch(/^0x[0-9a-fA-F]{40}$/)
-			expect(result.length).toBe(42)
+			expect(result).toBe("0x90954Abfd77F834cbAbb76D9DA5e0e93F2f42464")
 		}).pipe(Effect.provide(Keccak256.KeccakLive)),
 	)
 
@@ -244,8 +243,8 @@ describe("create2Handler", () => {
 				"0x0000000000000000000000000000000000000000000000000000000000000000",
 				"0x00",
 			)
-			// Should be checksummed (42 chars, 0x prefixed, hex)
-			expect(result).toMatch(/^0x[0-9a-fA-F]{40}$/)
+			// EIP-1014 test vector 0 — exact checksummed output
+			expect(result).toBe("0x4D1A2e2bB4F88F0250f26Ffff098B0b30B26BF38")
 		}).pipe(Effect.provide(Keccak256.KeccakLive)),
 	)
 
@@ -395,13 +394,12 @@ describe("chop compute-address (E2E)", () => {
 })
 
 describe("chop create2 (E2E)", () => {
-	it("computes CREATE2 address", () => {
+	it("computes CREATE2 address for EIP-1014 test vector", () => {
 		const result = runCli(
 			"create2 --deployer 0x0000000000000000000000000000000000000000 --salt 0x0000000000000000000000000000000000000000000000000000000000000000 --init-code 0x00",
 		)
 		expect(result.exitCode).toBe(0)
-		const output = result.stdout.trim()
-		expect(output).toMatch(/^0x[0-9a-fA-F]{40}$/)
+		expect(result.stdout.trim()).toBe("0x4D1A2e2bB4F88F0250f26Ffff098B0b30B26BF38")
 	})
 
 	it("produces JSON output with --json flag", () => {
@@ -410,7 +408,7 @@ describe("chop create2 (E2E)", () => {
 		)
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
-		expect(parsed.result).toMatch(/^0x[0-9a-fA-F]{40}$/)
+		expect(parsed.result).toBe("0x4D1A2e2bB4F88F0250f26Ffff098B0b30B26BF38")
 	})
 
 	it("exits 1 on invalid deployer", () => {

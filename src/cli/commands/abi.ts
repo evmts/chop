@@ -12,6 +12,11 @@ import { Args, Command, Options } from "@effect/cli"
 import { decodeParameters, encodeParameters } from "@tevm/voltaire/Abi"
 import { Console, Data, Effect } from "effect"
 import { Abi, Hex } from "voltaire-effect"
+import {
+	jsonOption,
+	handleCommandErrors as sharedHandleCommandErrors,
+	validateHexData as sharedValidateHexData,
+} from "../shared.js"
 
 // ============================================================================
 // Error Types
@@ -293,26 +298,7 @@ export const buildAbiItem = (sig: ParsedSignature): any => ({
  * Validate hex string and convert to bytes.
  */
 export const validateHexData = (data: string): Effect.Effect<Uint8Array, HexDecodeError> =>
-	Effect.try({
-		try: () => {
-			if (!data.startsWith("0x")) {
-				throw new Error("Hex data must start with 0x")
-			}
-			const clean = data.slice(2)
-			if (!/^[0-9a-fA-F]*$/.test(clean)) {
-				throw new Error("Invalid hex characters")
-			}
-			if (clean.length % 2 !== 0) {
-				throw new Error("Odd-length hex string")
-			}
-			return Hex.toBytes(data)
-		},
-		catch: (e) =>
-			new HexDecodeError({
-				message: `Invalid hex data: ${e instanceof Error ? e.message : String(e)}`,
-				data,
-			}),
-	})
+	sharedValidateHexData(data, (message, d) => new HexDecodeError({ message, data: d }))
 
 /**
  * Validate argument count matches expected parameter count.
@@ -379,19 +365,9 @@ const mapExternalError = (e: unknown): Effect.Effect<never, AbiError> =>
  * Prints the error message to stderr and re-fails so the CLI exits non-zero.
  * Catches both our tagged errors and voltaire-effect errors.
  */
-const handleCommandErrors = <A>(
-	effect: Effect.Effect<A, InvalidSignatureError | ArgumentCountError | HexDecodeError | AbiError, never>,
-): Effect.Effect<A, InvalidSignatureError | ArgumentCountError | HexDecodeError | AbiError, never> =>
-	effect.pipe(Effect.tapError((e) => Console.error(e.message)))
+const handleCommandErrors = sharedHandleCommandErrors
 
-// ============================================================================
-// Shared Options
-// ============================================================================
-
-const jsonOption = Options.boolean("json").pipe(
-	Options.withAlias("j"),
-	Options.withDescription("Output results as JSON"),
-)
+// jsonOption imported from ../shared.js
 
 // ============================================================================
 // Handler Logic (testable, separated from CLI wiring)

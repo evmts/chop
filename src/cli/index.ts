@@ -7,19 +7,14 @@
 
 import { Command, Options } from "@effect/cli"
 import { Console } from "effect"
-import { abiDecodeCommand, abiEncodeCommand, calldataCommand, calldataDecodeCommand } from "./commands/abi.js"
-import { computeAddressCommand, create2Command, toCheckSumAddressCommand } from "./commands/address.js"
+import { abiCommands } from "./commands/abi.js"
+import { addressCommands } from "./commands/address.js"
+import { jsonOption } from "./shared.js"
 import { VERSION } from "./version.js"
 
 // ---------------------------------------------------------------------------
 // Global Options
 // ---------------------------------------------------------------------------
-
-/** --json / -j: Output results as JSON */
-const jsonOption = Options.boolean("json").pipe(
-	Options.withAlias("j"),
-	Options.withDescription("Output results as JSON"),
-)
 
 /** --rpc-url / -r: Ethereum JSON-RPC endpoint URL */
 const rpcUrlOption = Options.text("rpc-url").pipe(
@@ -44,15 +39,7 @@ export const root = Command.make(
 	({ json: _json, rpcUrl: _rpcUrl }) => Console.log("TUI not yet implemented"),
 ).pipe(
 	Command.withDescription("Ethereum Swiss Army knife"),
-	Command.withSubcommands([
-		abiEncodeCommand,
-		calldataCommand,
-		abiDecodeCommand,
-		calldataDecodeCommand,
-		toCheckSumAddressCommand,
-		computeAddressCommand,
-		create2Command,
-	]),
+	Command.withSubcommands([...abiCommands, ...addressCommands]),
 )
 
 // ---------------------------------------------------------------------------

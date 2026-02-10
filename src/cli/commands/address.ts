@@ -9,13 +9,12 @@
 
 import { Args, Command, Options } from "@effect/cli"
 import { Console, Data, Effect } from "effect"
-import { Address, Hash, Hex, Keccak256 } from "voltaire-effect"
+import { Address, Hash, Keccak256 } from "voltaire-effect"
+import { handleCommandErrors, jsonOption, validateHexData } from "../shared.js"
 
 // ============================================================================
 // Error Types
 // ============================================================================
-
-type AddressCommandError = InvalidAddressError | InvalidHexError | ComputeAddressError
 
 /** Error for invalid Ethereum addresses */
 export class InvalidAddressError extends Data.TaggedError("InvalidAddressError")<{
@@ -36,15 +35,6 @@ export class ComputeAddressError extends Data.TaggedError("ComputeAddressError")
 }> {}
 
 // ============================================================================
-// Shared Options
-// ============================================================================
-
-const jsonOption = Options.boolean("json").pipe(
-	Options.withAlias("j"),
-	Options.withDescription("Output results as JSON"),
-)
-
-// ============================================================================
 // Validation Helpers
 // ============================================================================
 
@@ -62,27 +52,8 @@ const validateAddress = (raw: string) =>
 	)
 
 /** Validate hex data and convert to Uint8Array */
-const validateHexData = (raw: string): Effect.Effect<Uint8Array, InvalidHexError> =>
-	Effect.try({
-		try: () => {
-			if (!raw.startsWith("0x")) {
-				throw new Error("Hex data must start with 0x")
-			}
-			const clean = raw.slice(2)
-			if (!/^[0-9a-fA-F]*$/.test(clean)) {
-				throw new Error("Invalid hex characters")
-			}
-			if (clean.length % 2 !== 0) {
-				throw new Error("Odd-length hex string")
-			}
-			return Hex.toBytes(raw)
-		},
-		catch: (e) =>
-			new InvalidHexError({
-				message: `Invalid hex data: ${e instanceof Error ? e.message : String(e)}`,
-				hex: raw,
-			}),
-	})
+const validateHexDataAsInvalidHex = (raw: string): Effect.Effect<Uint8Array, InvalidHexError> =>
+	validateHexData(raw, (message, hex) => new InvalidHexError({ message, hex }))
 
 /** Validate a 32-byte salt from hex string */
 const validateSalt = (raw: string) =>
@@ -106,18 +77,6 @@ const validateSalt = (raw: string) =>
 			),
 		)
 	})
-
-// ============================================================================
-// Unified Error Handler
-// ============================================================================
-
-/**
- * Unified error handler for all address commands.
- * Prints the error message to stderr and re-fails so the CLI exits non-zero.
- */
-const handleCommandErrors = <A, E extends AddressCommandError>(
-	effect: Effect.Effect<A, E, never>,
-): Effect.Effect<A, E, never> => effect.pipe(Effect.tapError((e) => Console.error(e.message)))
 
 // ============================================================================
 // Handler Logic (testable, separated from CLI wiring)
@@ -169,7 +128,7 @@ export const create2Handler = (rawDeployer: string, rawSalt: string, rawInitCode
 	Effect.gen(function* () {
 		const deployer = yield* validateAddress(rawDeployer)
 		const salt = yield* validateSalt(rawSalt)
-		const initCode = yield* validateHexData(rawInitCode)
+		const initCode = yield* validateHexDataAsInvalidHex(rawInitCode)
 
 		const contractAddr = yield* Address.calculateCreate2Address(deployer, salt, initCode).pipe(
 			Effect.catchAll((e) =>
