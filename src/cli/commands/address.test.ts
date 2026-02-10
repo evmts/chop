@@ -654,3 +654,120 @@ describe("create2Handler — boundary conditions", () => {
 		),
 	)
 })
+
+// ============================================================================
+// In-process Command Handler Tests (coverage for Command.make blocks)
+// ============================================================================
+
+import { addressCommands } from "./address.js"
+
+describe("toCheckSumAddressCommand.handler — in-process", () => {
+	it.effect("handles lowercase address with plain output", () =>
+		toCheckSumAddressCommand.handler({ addr: "0xd8da6bf26964af9d7eed9e03e53415d37aa96045", json: false }),
+	)
+
+	it.effect("handles lowercase address with JSON output", () =>
+		toCheckSumAddressCommand.handler({ addr: "0xd8da6bf26964af9d7eed9e03e53415d37aa96045", json: true }),
+	)
+
+	it.effect("handles zero address", () =>
+		toCheckSumAddressCommand.handler({ addr: "0x0000000000000000000000000000000000000000", json: false }),
+	)
+
+	it.effect("handles invalid address error path", () =>
+		Effect.gen(function* () {
+			const error = yield* toCheckSumAddressCommand.handler({ addr: "0xbad", json: false }).pipe(Effect.flip)
+			expect(error.message).toContain("Invalid address")
+		}),
+	)
+})
+
+describe("computeAddressCommand.handler — in-process", () => {
+	it.effect("handles deployer + nonce with plain output", () =>
+		computeAddressCommand.handler({
+			deployer: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+			nonce: "0",
+			json: false,
+		}),
+	)
+
+	it.effect("handles deployer + nonce with JSON output", () =>
+		computeAddressCommand.handler({
+			deployer: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+			nonce: "0",
+			json: true,
+		}),
+	)
+
+	it.effect("handles invalid deployer error path", () =>
+		Effect.gen(function* () {
+			const error = yield* computeAddressCommand
+				.handler({ deployer: "0xbad", nonce: "0", json: false })
+				.pipe(Effect.flip)
+			expect(error.message).toContain("Invalid address")
+		}),
+	)
+
+	it.effect("handles invalid nonce error path", () =>
+		Effect.gen(function* () {
+			const error = yield* computeAddressCommand
+				.handler({ deployer: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", nonce: "abc", json: false })
+				.pipe(Effect.flip)
+			expect(error.message).toContain("Invalid nonce")
+		}),
+	)
+})
+
+describe("create2Command.handler — in-process", () => {
+	it.effect("handles valid create2 args with plain output", () =>
+		create2Command.handler({
+			deployer: "0x0000000000000000000000000000000000000000",
+			salt: "0x0000000000000000000000000000000000000000000000000000000000000000",
+			initCode: "0x00",
+			json: false,
+		}),
+	)
+
+	it.effect("handles valid create2 args with JSON output", () =>
+		create2Command.handler({
+			deployer: "0x0000000000000000000000000000000000000000",
+			salt: "0x0000000000000000000000000000000000000000000000000000000000000000",
+			initCode: "0x00",
+			json: true,
+		}),
+	)
+
+	it.effect("handles invalid deployer error path", () =>
+		Effect.gen(function* () {
+			const error = yield* create2Command
+				.handler({
+					deployer: "0xbad",
+					salt: "0x0000000000000000000000000000000000000000000000000000000000000000",
+					initCode: "0x00",
+					json: false,
+				})
+				.pipe(Effect.flip)
+			expect(error.message).toContain("Invalid address")
+		}),
+	)
+
+	it.effect("handles invalid salt error path", () =>
+		Effect.gen(function* () {
+			const error = yield* create2Command
+				.handler({
+					deployer: "0x0000000000000000000000000000000000000000",
+					salt: "0x01",
+					initCode: "0x00",
+					json: false,
+				})
+				.pipe(Effect.flip)
+			expect(error.message).toContain("Invalid salt")
+		}),
+	)
+})
+
+describe("address command exports — count", () => {
+	it("exports 3 address commands", () => {
+		expect(addressCommands.length).toBe(3)
+	})
+})

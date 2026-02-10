@@ -661,3 +661,55 @@ describe("keccakHandler — cross-validation", () => {
 		}),
 	)
 })
+
+// ============================================================================
+// In-process Command Handler Tests (coverage for Command.make blocks)
+// ============================================================================
+
+describe("keccakCommand.handler — in-process", () => {
+	it.effect("handles text input with plain output", () => keccakCommand.handler({ data: "hello", json: false }))
+
+	it.effect("handles text input with JSON output", () => keccakCommand.handler({ data: "hello", json: true }))
+
+	it.effect("handles hex input with plain output", () => keccakCommand.handler({ data: "0xdeadbeef", json: false }))
+
+	it.effect("handles hex input with JSON output", () => keccakCommand.handler({ data: "0xdeadbeef", json: true }))
+
+	it.effect("handles empty string input", () => keccakCommand.handler({ data: "", json: false }))
+})
+
+describe("sigCommand.handler — in-process", () => {
+	it.effect("handles function signature with plain output", () =>
+		sigCommand.handler({ signature: "transfer(address,uint256)", json: false }),
+	)
+
+	it.effect("handles function signature with JSON output", () =>
+		sigCommand.handler({ signature: "transfer(address,uint256)", json: true }),
+	)
+
+	it.effect("handles no-arg function signature", () => sigCommand.handler({ signature: "totalSupply()", json: false }))
+})
+
+describe("sigEventCommand.handler — in-process", () => {
+	it.effect("handles event signature with plain output", () =>
+		sigEventCommand.handler({ signature: "Transfer(address,address,uint256)", json: false }),
+	)
+
+	it.effect("handles event signature with JSON output", () =>
+		sigEventCommand.handler({ signature: "Transfer(address,address,uint256)", json: true }),
+	)
+})
+
+describe("hashMessageCommand.handler — in-process", () => {
+	it.effect("handles text message with plain output", () =>
+		hashMessageCommand.handler({ message: "hello world", json: false }),
+	)
+
+	it.effect("handles text message with JSON output", () =>
+		hashMessageCommand.handler({ message: "hello world", json: true }),
+	)
+
+	it.effect("handles empty message", () => hashMessageCommand.handler({ message: "", json: false }))
+
+	it.effect("handles unicode message", () => hashMessageCommand.handler({ message: "🎉", json: true }))
+})
