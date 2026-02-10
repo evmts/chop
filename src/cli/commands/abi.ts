@@ -36,6 +36,12 @@ export class HexDecodeError extends Data.TaggedError("HexDecodeError")<{
 	readonly data: string
 }> {}
 
+/** Error for ABI encoding/decoding failures from voltaire */
+export class AbiError extends Data.TaggedError("AbiError")<{
+	readonly message: string
+	readonly cause?: unknown
+}> {}
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -51,6 +57,49 @@ export interface ParsedSignature {
 // ============================================================================
 
 /**
+ * Extract the content inside balanced parentheses starting at position `start`.
+ * Returns the inner string and the index after the closing paren.
+ * Handles nested parens for tuple types like `(uint256,address)`.
+ */
+const extractParenContent = (str: string, start: number): { content: string; end: number } | null => {
+	if (str[start] !== "(") return null
+	let depth = 0
+	for (let i = start; i < str.length; i++) {
+		if (str[i] === "(") depth++
+		else if (str[i] === ")") {
+			depth--
+			if (depth === 0) {
+				return { content: str.slice(start + 1, i), end: i + 1 }
+			}
+		}
+	}
+	return null
+}
+
+/**
+ * Split a comma-separated type list respecting nested parentheses.
+ * e.g. "uint256,(address,bool),bytes" → ["uint256", "(address,bool)", "bytes"]
+ */
+const splitTypes = (str: string): string[] => {
+	if (str.trim() === "") return []
+	const parts: string[] = []
+	let depth = 0
+	let current = ""
+	for (const ch of str) {
+		if (ch === "(") depth++
+		else if (ch === ")") depth--
+		if (ch === "," && depth === 0) {
+			parts.push(current.trim())
+			current = ""
+		} else {
+			current += ch
+		}
+	}
+	if (current.trim() !== "") parts.push(current.trim())
+	return parts
+}
+
+/**
  * Parse a human-readable function signature into structured form.
  *
  * Supported formats:
@@ -58,6 +107,7 @@ export interface ParsedSignature {
  * - `"balanceOf(address)(uint256)"` → name + inputs + outputs
  * - `"(address,uint256)"` → inputs only (no function name)
  * - `"totalSupply()"` → name with no inputs
+ * - `"foo((uint256,address),bytes)"` → tuple types
  */
 export const parseSignature = (sig: string): Effect.Effect<ParsedSignature, InvalidSignatureError> =>
 	Effect.gen(function* () {
@@ -71,9 +121,12 @@ export const parseSignature = (sig: string): Effect.Effect<ParsedSignature, Inva
 			)
 		}
 
-		// Match: optionalName(types) optionally followed by (types)
-		const match = trimmed.match(/^([a-zA-Z_][a-zA-Z0-9_]*)?\(([^)]*)\)(?:\(([^)]*)\))?$/)
-		if (!match) {
+		// Find the start of the first paren group
+		const parenIdx = trimmed.indexOf("(")
+		const name = trimmed.slice(0, parenIdx)
+
+		// Validate name if present
+		if (name !== "" && !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) {
 			return yield* Effect.fail(
 				new InvalidSignatureError({
 					message: `Invalid signature format: "${sig}"`,
@@ -82,46 +135,116 @@ export const parseSignature = (sig: string): Effect.Effect<ParsedSignature, Inva
 			)
 		}
 
-		const [, name = "", inputsStr, outputsStr] = match
+		// Extract input types (first paren group)
+		const inputGroup = extractParenContent(trimmed, parenIdx)
+		if (!inputGroup) {
+			return yield* Effect.fail(
+				new InvalidSignatureError({
+					message: `Invalid signature format: "${sig}"`,
+					signature: sig,
+				}),
+			)
+		}
+
+		// Extract output types (optional second paren group)
+		let outputsStr: string | undefined
+		if (inputGroup.end < trimmed.length) {
+			const outputGroup = extractParenContent(trimmed, inputGroup.end)
+			if (!outputGroup || outputGroup.end !== trimmed.length) {
+				return yield* Effect.fail(
+					new InvalidSignatureError({
+						message: `Invalid signature format: "${sig}"`,
+						signature: sig,
+					}),
+				)
+			}
+			outputsStr = outputGroup.content
+		}
 
 		const parseTypes = (str: string | undefined): ReadonlyArray<{ readonly type: string }> => {
 			if (!str || str.trim() === "") return []
-			return str.split(",").map((t) => ({ type: t.trim() }))
+			return splitTypes(str).map((t) => ({ type: t.trim() }))
 		}
 
 		return {
 			name,
-			inputs: parseTypes(inputsStr),
+			inputs: parseTypes(inputGroup.content),
 			outputs: parseTypes(outputsStr),
 		} satisfies ParsedSignature
 	})
 
 /**
  * Coerce a CLI string argument to the appropriate Solidity type.
+ * Returns an Effect to handle conversion errors gracefully.
  *
  * - `address` → `Uint8Array` (20 bytes)
  * - `uint*` / `int*` → `bigint`
  * - `bool` → `boolean`
  * - `string` → pass-through
  * - `bytes*` → `Uint8Array`
+ * - `T[]` / `T[N]` → parsed JSON array, with each element coerced
  */
-export const coerceArgValue = (type: string, raw: string): unknown => {
+export const coerceArgValue = (type: string, raw: string): Effect.Effect<unknown, AbiError> => {
+	// Handle array types: address[], uint256[3], (uint256,address)[], etc.
+	const arrayMatch = type.match(/^(.+?)(\[\d*\])$/)
+	if (arrayMatch) {
+		// biome-ignore lint/style/noNonNullAssertion: regex groups are guaranteed by match
+		const baseType = arrayMatch[1]!
+		return Effect.try({
+			try: () => JSON.parse(raw) as unknown[],
+			catch: () =>
+				new AbiError({
+					message: `Invalid array value for type ${type}: expected JSON array, got "${raw}"`,
+				}),
+		}).pipe(
+			Effect.flatMap((arr) => {
+				if (!Array.isArray(arr)) {
+					return Effect.fail(
+						new AbiError({
+							message: `Invalid array value for type ${type}: expected JSON array, got "${raw}"`,
+						}),
+					)
+				}
+				return Effect.all(arr.map((item) => coerceArgValue(baseType, String(item))))
+			}),
+		)
+	}
+
 	if (type === "address") {
-		return Hex.toBytes(raw)
+		return Effect.try({
+			try: () => Hex.toBytes(raw),
+			catch: (e) =>
+				new AbiError({
+					message: `Invalid address value: ${e instanceof Error ? e.message : String(e)}`,
+				}),
+		})
 	}
 	if (type.startsWith("uint") || type.startsWith("int")) {
-		return BigInt(raw)
+		return Effect.try({
+			try: () => BigInt(raw),
+			catch: () =>
+				new AbiError({
+					message: `Invalid integer value for type ${type}: "${raw}"`,
+				}),
+		})
 	}
 	if (type === "bool") {
-		return raw === "true" || raw === "1"
+		return Effect.succeed(raw === "true" || raw === "1")
 	}
 	if (type === "string") {
-		return raw
+		return Effect.succeed(raw)
 	}
 	if (type.startsWith("bytes")) {
-		return Hex.toBytes(raw)
+		return Effect.try({
+			try: () => Hex.toBytes(raw),
+			catch: (e) =>
+				new AbiError({
+					message: `Invalid bytes value: ${e instanceof Error ? e.message : String(e)}`,
+				}),
+		})
 	}
-	return raw
+	// Tuple types and unknown types — pass through
+	return Effect.succeed(raw)
 }
 
 /**
@@ -150,7 +273,7 @@ export const formatValue = (value: unknown): string => {
  * incompatible at the TS level. We cast through `any` to bridge both.
  */
 // biome-ignore lint/suspicious/noExplicitAny: bridges dynamic string types to voltaire's branded AbiType union
-const toParams = (types: ReadonlyArray<{ readonly type: string }>): any => types
+export const toParams = (types: ReadonlyArray<{ readonly type: string }>): any => types
 
 /**
  * Build an ABI function item from a parsed signature.
@@ -162,8 +285,8 @@ const buildAbiItem = (sig: ParsedSignature): any => ({
 	type: "function" as const,
 	name: sig.name,
 	stateMutability: "nonpayable" as const,
-	inputs: sig.inputs.map((p) => ({ type: p.type, name: p.type })),
-	outputs: sig.outputs.map((p) => ({ type: p.type, name: p.type })),
+	inputs: sig.inputs.map((p, i) => ({ type: p.type, name: `arg${i}` })),
+	outputs: sig.outputs.map((p, i) => ({ type: p.type, name: `out${i}` })),
 })
 
 /**
@@ -205,6 +328,62 @@ const validateArgCount = (expected: number, received: number): Effect.Effect<voi
 			)
 		: Effect.void
 
+/**
+ * Wrap raw encodeParameters in Effect.try for proper error handling.
+ */
+const safeEncodeParameters = (
+	// biome-ignore lint/suspicious/noExplicitAny: bridges dynamic types to voltaire's branded ABI type
+	params: any,
+	values: [unknown, ...unknown[]],
+): Effect.Effect<Uint8Array, AbiError> =>
+	Effect.try({
+		try: () => encodeParameters(params, values),
+		catch: (e) =>
+			new AbiError({
+				message: `ABI encoding failed: ${e instanceof Error ? e.message : String(e)}`,
+				cause: e,
+			}),
+	})
+
+/**
+ * Wrap raw decodeParameters in Effect.try for proper error handling.
+ */
+const safeDecodeParameters = (
+	// biome-ignore lint/suspicious/noExplicitAny: bridges dynamic types to voltaire's branded ABI type
+	params: any,
+	data: Uint8Array,
+): Effect.Effect<unknown, AbiError> =>
+	Effect.try({
+		try: () => decodeParameters(params, data),
+		catch: (e) =>
+			new AbiError({
+				message: `ABI decoding failed: ${e instanceof Error ? e.message : String(e)}`,
+				cause: e,
+			}),
+	})
+
+/**
+ * Map voltaire-effect errors (which lack proper _tag) to our AbiError.
+ * Used as a catchAll fallback after catching our own tagged errors.
+ */
+const mapExternalError = (e: unknown): Effect.Effect<never, AbiError> =>
+	Effect.fail(
+		new AbiError({
+			message: e instanceof Error ? e.message : String(e),
+			cause: e,
+		}),
+	)
+
+/**
+ * Unified error handler for all ABI commands.
+ * Prints the error message to stderr and re-fails so the CLI exits non-zero.
+ * Catches both our tagged errors and voltaire-effect errors.
+ */
+const handleCommandErrors = <A>(
+	effect: Effect.Effect<A, InvalidSignatureError | ArgumentCountError | HexDecodeError | AbiError, never>,
+): Effect.Effect<A, InvalidSignatureError | ArgumentCountError | HexDecodeError | AbiError, never> =>
+	effect.pipe(Effect.tapError((e) => Console.error(e.message)))
+
 // ============================================================================
 // Shared Options
 // ============================================================================
@@ -239,30 +418,21 @@ export const abiEncodeCommand = Command.make(
 			yield* validateArgCount(parsed.inputs.length, argsArray.length)
 
 			// biome-ignore lint/style/noNonNullAssertion: index is safe — validated by validateArgCount above
-			const coerced = parsed.inputs.map((p, i) => coerceArgValue(p.type, argsArray[i]!))
+			const coerced = yield* Effect.all(parsed.inputs.map((p, i) => coerceArgValue(p.type, argsArray[i]!)))
 
-			let result: string
-
-			if (packed) {
-				const types = parsed.inputs.map((p) => p.type)
-				const hex = yield* Abi.encodePacked(types, coerced)
-				result = hex
-			} else {
-				const encoded = encodeParameters(toParams(parsed.inputs), coerced as [unknown, ...unknown[]])
-				result = Hex.fromBytes(encoded)
-			}
+			const result = packed
+				? yield* Abi.encodePacked(
+						parsed.inputs.map((p) => p.type),
+						coerced,
+					).pipe(Effect.catchAll(mapExternalError))
+				: Hex.fromBytes(yield* safeEncodeParameters(toParams(parsed.inputs), coerced as [unknown, ...unknown[]]))
 
 			if (json) {
 				yield* Console.log(JSON.stringify({ result }))
 			} else {
 				yield* Console.log(result)
 			}
-		}).pipe(
-			Effect.catchTags({
-				InvalidSignatureError: (e) => Console.error(e.message).pipe(Effect.andThen(Effect.fail(e))),
-				ArgumentCountError: (e) => Console.error(e.message).pipe(Effect.andThen(Effect.fail(e))),
-			}),
-		),
+		}).pipe(handleCommandErrors),
 ).pipe(Command.withDescription("ABI-encode values according to a function signature"))
 
 /**
@@ -293,22 +463,17 @@ export const calldataCommand = Command.make(
 			yield* validateArgCount(parsed.inputs.length, argsArray.length)
 
 			// biome-ignore lint/style/noNonNullAssertion: index is safe — validated by validateArgCount above
-			const coerced = parsed.inputs.map((p, i) => coerceArgValue(p.type, argsArray[i]!))
+			const coerced = yield* Effect.all(parsed.inputs.map((p, i) => coerceArgValue(p.type, argsArray[i]!)))
 
 			const abiItem = buildAbiItem(parsed)
-			const result = yield* Abi.encodeFunction([abiItem], parsed.name, coerced)
+			const result = yield* Abi.encodeFunction([abiItem], parsed.name, coerced).pipe(Effect.catchAll(mapExternalError))
 
 			if (json) {
 				yield* Console.log(JSON.stringify({ result }))
 			} else {
 				yield* Console.log(result)
 			}
-		}).pipe(
-			Effect.catchTags({
-				InvalidSignatureError: (e) => Console.error(e.message).pipe(Effect.andThen(Effect.fail(e))),
-				ArgumentCountError: (e) => Console.error(e.message).pipe(Effect.andThen(Effect.fail(e))),
-			}),
-		),
+		}).pipe(handleCommandErrors),
 ).pipe(Command.withDescription("Encode function calldata (selector + ABI args)"))
 
 /**
@@ -333,7 +498,7 @@ export const abiDecodeCommand = Command.make(
 			// Use output types if specified, otherwise use input types
 			const types = parsed.outputs.length > 0 ? parsed.outputs : parsed.inputs
 
-			const decoded = decodeParameters(toParams(types), bytes)
+			const decoded = yield* safeDecodeParameters(toParams(types), bytes)
 
 			const formatted = Array.from(decoded as ArrayLike<unknown>).map(formatValue)
 
@@ -344,12 +509,7 @@ export const abiDecodeCommand = Command.make(
 					yield* Console.log(v)
 				}
 			}
-		}).pipe(
-			Effect.catchTags({
-				InvalidSignatureError: (e) => Console.error(e.message).pipe(Effect.andThen(Effect.fail(e))),
-				HexDecodeError: (e) => Console.error(e.message).pipe(Effect.andThen(Effect.fail(e))),
-			}),
-		),
+		}).pipe(handleCommandErrors),
 ).pipe(Command.withDescription("Decode ABI-encoded data"))
 
 /**
@@ -379,7 +539,7 @@ export const calldataDecodeCommand = Command.make(
 			}
 
 			const abiItem = buildAbiItem(parsed)
-			const decoded = yield* Abi.decodeFunction([abiItem], bytes)
+			const decoded = yield* Abi.decodeFunction([abiItem], bytes).pipe(Effect.catchAll(mapExternalError))
 
 			const formattedArgs = Array.from(decoded.params as ArrayLike<unknown>).map(formatValue)
 
@@ -396,12 +556,7 @@ export const calldataDecodeCommand = Command.make(
 					yield* Console.log(v)
 				}
 			}
-		}).pipe(
-			Effect.catchTags({
-				InvalidSignatureError: (e) => Console.error(e.message).pipe(Effect.andThen(Effect.fail(e))),
-				HexDecodeError: (e) => Console.error(e.message).pipe(Effect.andThen(Effect.fail(e))),
-			}),
-		),
+		}).pipe(handleCommandErrors),
 ).pipe(Command.withDescription("Decode function calldata"))
 
 // ============================================================================

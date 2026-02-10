@@ -5,20 +5,15 @@ import { Effect } from "effect"
 import { expect } from "vitest"
 import { Abi, Hex } from "voltaire-effect"
 import {
+	AbiError,
 	ArgumentCountError,
 	HexDecodeError,
 	InvalidSignatureError,
 	coerceArgValue,
 	formatValue,
 	parseSignature,
+	toParams,
 } from "./abi.js"
-
-/**
- * Bridge our dynamic string types to voltaire's branded AbiType.
- * Uses `any` because voltaire exports two conflicting Parameter types.
- */
-// biome-ignore lint/suspicious/noExplicitAny: bridges dynamic string types to voltaire's branded AbiType union
-const toParams = (types: ReadonlyArray<{ readonly type: string }>): any => types
 
 // ---------------------------------------------------------------------------
 // parseSignature
@@ -69,6 +64,30 @@ describe("parseSignature", () => {
 		}),
 	)
 
+	it.effect("parses signature with tuple types", () =>
+		Effect.gen(function* () {
+			const result = yield* parseSignature("foo((uint256,address))")
+			expect(result.name).toBe("foo")
+			expect(result.inputs).toEqual([{ type: "(uint256,address)" }])
+		}),
+	)
+
+	it.effect("parses signature with nested tuple types", () =>
+		Effect.gen(function* () {
+			const result = yield* parseSignature("bar((uint256,(address,bool)),bytes)")
+			expect(result.name).toBe("bar")
+			expect(result.inputs).toEqual([{ type: "(uint256,(address,bool))" }, { type: "bytes" }])
+		}),
+	)
+
+	it.effect("parses signature with tuple array types", () =>
+		Effect.gen(function* () {
+			const result = yield* parseSignature("baz((uint256,address)[],uint8)")
+			expect(result.name).toBe("baz")
+			expect(result.inputs).toEqual([{ type: "(uint256,address)[]" }, { type: "uint8" }])
+		}),
+	)
+
 	it.effect("fails on empty string", () =>
 		Effect.gen(function* () {
 			const error = yield* parseSignature("").pipe(Effect.flip)
@@ -96,57 +115,122 @@ describe("parseSignature", () => {
 // ---------------------------------------------------------------------------
 
 describe("coerceArgValue", () => {
-	it("coerces address to Uint8Array", () => {
-		const result = coerceArgValue("address", "0x0000000000000000000000000000000000001234")
-		expect(result).toBeInstanceOf(Uint8Array)
-		expect((result as Uint8Array).length).toBe(20)
-	})
+	it.effect("coerces address to Uint8Array", () =>
+		Effect.gen(function* () {
+			const result = yield* coerceArgValue("address", "0x0000000000000000000000000000000000001234")
+			expect(result).toBeInstanceOf(Uint8Array)
+			expect((result as Uint8Array).length).toBe(20)
+		}),
+	)
 
-	it("coerces uint256 to bigint", () => {
-		const result = coerceArgValue("uint256", "1000000000000000000")
-		expect(result).toBe(1000000000000000000n)
-	})
+	it.effect("coerces uint256 to bigint", () =>
+		Effect.gen(function* () {
+			const result = yield* coerceArgValue("uint256", "1000000000000000000")
+			expect(result).toBe(1000000000000000000n)
+		}),
+	)
 
-	it("coerces uint8 to bigint", () => {
-		expect(coerceArgValue("uint8", "255")).toBe(255n)
-	})
+	it.effect("coerces uint8 to bigint", () =>
+		Effect.gen(function* () {
+			const result = yield* coerceArgValue("uint8", "255")
+			expect(result).toBe(255n)
+		}),
+	)
 
-	it("coerces int256 to bigint (negative)", () => {
-		expect(coerceArgValue("int256", "-42")).toBe(-42n)
-	})
+	it.effect("coerces int256 to bigint (negative)", () =>
+		Effect.gen(function* () {
+			const result = yield* coerceArgValue("int256", "-42")
+			expect(result).toBe(-42n)
+		}),
+	)
 
-	it("coerces bool true", () => {
-		expect(coerceArgValue("bool", "true")).toBe(true)
-	})
+	it.effect("coerces bool true", () =>
+		Effect.gen(function* () {
+			const result = yield* coerceArgValue("bool", "true")
+			expect(result).toBe(true)
+		}),
+	)
 
-	it("coerces bool false", () => {
-		expect(coerceArgValue("bool", "false")).toBe(false)
-	})
+	it.effect("coerces bool false", () =>
+		Effect.gen(function* () {
+			const result = yield* coerceArgValue("bool", "false")
+			expect(result).toBe(false)
+		}),
+	)
 
-	it("coerces bool from 1", () => {
-		expect(coerceArgValue("bool", "1")).toBe(true)
-	})
+	it.effect("coerces bool from 1", () =>
+		Effect.gen(function* () {
+			const result = yield* coerceArgValue("bool", "1")
+			expect(result).toBe(true)
+		}),
+	)
 
-	it("coerces bool from 0", () => {
-		expect(coerceArgValue("bool", "0")).toBe(false)
-	})
+	it.effect("coerces bool from 0", () =>
+		Effect.gen(function* () {
+			const result = yield* coerceArgValue("bool", "0")
+			expect(result).toBe(false)
+		}),
+	)
 
-	it("passes through string type", () => {
-		expect(coerceArgValue("string", "hello")).toBe("hello")
-	})
+	it.effect("passes through string type", () =>
+		Effect.gen(function* () {
+			const result = yield* coerceArgValue("string", "hello")
+			expect(result).toBe("hello")
+		}),
+	)
 
-	it("coerces bytes32 to Uint8Array", () => {
-		const hex = `0x${"ab".repeat(32)}`
-		const result = coerceArgValue("bytes32", hex)
-		expect(result).toBeInstanceOf(Uint8Array)
-		expect((result as Uint8Array).length).toBe(32)
-	})
+	it.effect("coerces bytes32 to Uint8Array", () =>
+		Effect.gen(function* () {
+			const hex = `0x${"ab".repeat(32)}`
+			const result = yield* coerceArgValue("bytes32", hex)
+			expect(result).toBeInstanceOf(Uint8Array)
+			expect((result as Uint8Array).length).toBe(32)
+		}),
+	)
 
-	it("coerces bytes to Uint8Array", () => {
-		const result = coerceArgValue("bytes", "0xdeadbeef")
-		expect(result).toBeInstanceOf(Uint8Array)
-		expect((result as Uint8Array).length).toBe(4)
-	})
+	it.effect("coerces bytes to Uint8Array", () =>
+		Effect.gen(function* () {
+			const result = yield* coerceArgValue("bytes", "0xdeadbeef")
+			expect(result).toBeInstanceOf(Uint8Array)
+			expect((result as Uint8Array).length).toBe(4)
+		}),
+	)
+
+	it.effect("fails gracefully on invalid address hex", () =>
+		Effect.gen(function* () {
+			const error = yield* coerceArgValue("address", "not-hex").pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+		}),
+	)
+
+	it.effect("fails gracefully on invalid bytes hex", () =>
+		Effect.gen(function* () {
+			const error = yield* coerceArgValue("bytes32", "not-hex").pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+		}),
+	)
+
+	it.effect("coerces uint256[] array type", () =>
+		Effect.gen(function* () {
+			const result = yield* coerceArgValue("uint256[]", "[1,2,3]")
+			expect(result).toEqual([1n, 2n, 3n])
+		}),
+	)
+
+	it.effect("coerces address[] array type", () =>
+		Effect.gen(function* () {
+			const result = yield* coerceArgValue("address[]", '["0x0000000000000000000000000000000000001234"]')
+			expect(Array.isArray(result)).toBe(true)
+			expect((result as unknown[])[0]).toBeInstanceOf(Uint8Array)
+		}),
+	)
+
+	it.effect("fails on invalid array JSON", () =>
+		Effect.gen(function* () {
+			const error = yield* coerceArgValue("uint256[]", "not-json").pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+		}),
+	)
 })
 
 // ---------------------------------------------------------------------------
@@ -186,7 +270,7 @@ describe("abi-encode integration", () => {
 			const sig = yield* parseSignature("transfer(address,uint256)")
 			const rawArgs = ["0x0000000000000000000000000000000000001234", "1000000000000000000"]
 			// biome-ignore lint/style/noNonNullAssertion: index safe — validated by arg count check
-			const coerced = sig.inputs.map((p, i) => coerceArgValue(p.type, rawArgs[i]!))
+			const coerced = yield* Effect.all(sig.inputs.map((p, i) => coerceArgValue(p.type, rawArgs[i]!)))
 
 			const encoded = encodeParameters(toParams(sig.inputs), coerced as [unknown, ...unknown[]])
 			const hex = Hex.fromBytes(encoded)
@@ -200,7 +284,7 @@ describe("abi-encode integration", () => {
 	it.effect("encodes single bool correctly", () =>
 		Effect.gen(function* () {
 			const sig = yield* parseSignature("approve(bool)")
-			const coerced = [coerceArgValue("bool", "true")]
+			const coerced = yield* Effect.all([coerceArgValue("bool", "true")])
 			const encoded = encodeParameters(toParams(sig.inputs), coerced as [unknown, ...unknown[]])
 			const hex = Hex.fromBytes(encoded)
 
@@ -239,13 +323,13 @@ describe("calldata integration", () => {
 			const sig = yield* parseSignature("transfer(address,uint256)")
 			const rawArgs = ["0x0000000000000000000000000000000000001234", "1000000000000000000"]
 			// biome-ignore lint/style/noNonNullAssertion: index safe — validated by arg count check
-			const coerced = sig.inputs.map((p, i) => coerceArgValue(p.type, rawArgs[i]!))
+			const coerced = yield* Effect.all(sig.inputs.map((p, i) => coerceArgValue(p.type, rawArgs[i]!)))
 
 			const abiItem = {
 				type: "function" as const,
 				name: sig.name,
 				stateMutability: "nonpayable" as const,
-				inputs: toParams(sig.inputs.map((p) => ({ type: p.type, name: p.type }))),
+				inputs: toParams(sig.inputs.map((p, i) => ({ type: p.type, name: `arg${i}` }))),
 				outputs: toParams([]),
 			}
 
@@ -280,7 +364,7 @@ describe("calldata-decode integration", () => {
 				type: "function" as const,
 				name: sig.name,
 				stateMutability: "nonpayable" as const,
-				inputs: toParams(sig.inputs.map((p) => ({ type: p.type, name: p.type }))),
+				inputs: toParams(sig.inputs.map((p, i) => ({ type: p.type, name: `arg${i}` }))),
 				outputs: toParams([]),
 			}
 
@@ -303,12 +387,12 @@ describe("calldata-decode integration", () => {
 // ---------------------------------------------------------------------------
 
 describe("round-trip", () => {
-	it.effect("abi-encode → abi-decode produces original values", () =>
+	it.effect("abi-encode -> abi-decode produces original values", () =>
 		Effect.gen(function* () {
 			const sig = yield* parseSignature("transfer(address,uint256)")
 			const rawArgs = ["0x0000000000000000000000000000000000001234", "1000000000000000000"]
 			// biome-ignore lint/style/noNonNullAssertion: index safe — validated by arg count check
-			const coerced = sig.inputs.map((p, i) => coerceArgValue(p.type, rawArgs[i]!))
+			const coerced = yield* Effect.all(sig.inputs.map((p, i) => coerceArgValue(p.type, rawArgs[i]!)))
 
 			const encoded = encodeParameters(toParams(sig.inputs), coerced as [unknown, ...unknown[]])
 			const decoded = decodeParameters(toParams(sig.inputs), encoded)
@@ -318,18 +402,18 @@ describe("round-trip", () => {
 		}),
 	)
 
-	it.effect("calldata-encode → calldata-decode produces original values", () =>
+	it.effect("calldata-encode -> calldata-decode produces original values", () =>
 		Effect.gen(function* () {
 			const sig = yield* parseSignature("transfer(address,uint256)")
 			const rawArgs = ["0x0000000000000000000000000000000000001234", "1000000000000000000"]
 			// biome-ignore lint/style/noNonNullAssertion: index safe — validated by arg count check
-			const coerced = sig.inputs.map((p, i) => coerceArgValue(p.type, rawArgs[i]!))
+			const coerced = yield* Effect.all(sig.inputs.map((p, i) => coerceArgValue(p.type, rawArgs[i]!)))
 
 			const abiItem = {
 				type: "function" as const,
 				name: sig.name,
 				stateMutability: "nonpayable" as const,
-				inputs: toParams(sig.inputs.map((p) => ({ type: p.type, name: p.type }))),
+				inputs: toParams(sig.inputs.map((p, i) => ({ type: p.type, name: `arg${i}` }))),
 				outputs: toParams([]),
 			}
 
@@ -385,6 +469,14 @@ describe("error handling", () => {
 		})
 		expect(error._tag).toBe("InvalidSignatureError")
 		expect(error.signature).toBe("bad")
+	})
+
+	it("AbiError has correct tag and fields", () => {
+		const error = new AbiError({
+			message: "encoding failed",
+		})
+		expect(error._tag).toBe("AbiError")
+		expect(error.message).toBe("encoding failed")
 	})
 })
 
@@ -450,6 +542,21 @@ describe("chop abi-encode (E2E)", () => {
 	it("exits 1 on wrong arg count", () => {
 		const result = runCli("abi-encode 'transfer(address,uint256)' 0x0000000000000000000000000000000000001234")
 		expect(result.exitCode).not.toBe(0)
+	})
+
+	it("encodes with --packed flag", () => {
+		const result = runCli("abi-encode --packed '(uint16,bool)' 1 true")
+		expect(result.exitCode).toBe(0)
+		const output = result.stdout.trim()
+		// packed encoding: uint16(1) = 0x0001, bool(true) = 0x01
+		expect(output).toBe("0x000101")
+	})
+
+	it("produces JSON output with --packed --json flags", () => {
+		const result = runCli("abi-encode --packed --json '(uint16,bool)' 1 true")
+		expect(result.exitCode).toBe(0)
+		const parsed = JSON.parse(result.stdout.trim())
+		expect(parsed.result).toBe("0x000101")
 	})
 })
 
