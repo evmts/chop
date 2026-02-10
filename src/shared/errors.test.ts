@@ -169,9 +169,7 @@ describe("ChopError — Effect pipeline patterns", () => {
 				ChopError | { readonly _tag: "OtherError"; readonly message: string }
 			>
 
-			const result = yield* program.pipe(
-				Effect.catchTag("ChopError", (e) => Effect.succeed(`chop: ${e.message}`)),
-			)
+			const result = yield* program.pipe(Effect.catchTag("ChopError", (e) => Effect.succeed(`chop: ${e.message}`)))
 			expect(result).toBe("chop: chop")
 		}),
 	)

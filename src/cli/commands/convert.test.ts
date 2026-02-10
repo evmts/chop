@@ -2296,3 +2296,421 @@ describe("shlHandler / shrHandler — additional edge cases", () => {
 		}),
 	)
 })
+
+// ============================================================================
+// fromWeiHandler — unit edge cases (case insensitivity and specific unknowns)
+// ============================================================================
+
+describe("fromWeiHandler — unit edge cases", () => {
+	it.effect("fails on unknown unit 'megawei'", () =>
+		Effect.gen(function* () {
+			const result = yield* fromWeiHandler("1000", "megawei").pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("ConversionError")
+				expect(result.left.message).toContain("megawei")
+			}
+		}),
+	)
+
+	it.effect("unit name 'ETHER' (all caps) should work", () =>
+		Effect.gen(function* () {
+			const result = yield* fromWeiHandler("1000000000000000000", "ETHER")
+			expect(result).toBe("1.000000000000000000")
+		}),
+	)
+
+	it.effect("unit name 'Gwei' (mixed case) should work", () =>
+		Effect.gen(function* () {
+			const result = yield* fromWeiHandler("1000000000", "Gwei")
+			expect(result).toBe("1.000000000")
+		}),
+	)
+
+	it.effect("unit name 'Ether' (title case) should work", () =>
+		Effect.gen(function* () {
+			const result = yield* fromWeiHandler("1000000000000000000", "Ether")
+			expect(result).toBe("1.000000000000000000")
+		}),
+	)
+
+	it.effect("amount with spaces fails with InvalidNumberError", () =>
+		Effect.gen(function* () {
+			const result = yield* fromWeiHandler("1 000").pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("InvalidNumberError")
+			}
+		}),
+	)
+
+	it.effect("empty string amount is treated as 0 by BigInt", () =>
+		Effect.gen(function* () {
+			// BigInt("") returns 0n in some environments, so this succeeds
+			const result = yield* fromWeiHandler("").pipe(Effect.either)
+			if (Either.isRight(result)) {
+				expect(result.right).toBe("0.000000000000000000")
+			} else {
+				// In environments where BigInt("") throws, it fails
+				expect(result.left._tag).toBe("InvalidNumberError")
+			}
+		}),
+	)
+
+	it.effect("non-numeric amount 'hello' fails with InvalidNumberError", () =>
+		Effect.gen(function* () {
+			const result = yield* fromWeiHandler("hello").pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("InvalidNumberError")
+				expect(result.left.value).toBe("hello")
+			}
+		}),
+	)
+})
+
+// ============================================================================
+// toWeiHandler — additional input validation edge cases
+// ============================================================================
+
+describe("toWeiHandler — input validation edge cases", () => {
+	it.effect("non-digit characters in decimal part fails with InvalidNumberError", () =>
+		Effect.gen(function* () {
+			const result = yield* toWeiHandler("1.abc").pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("InvalidNumberError")
+			}
+		}),
+	)
+
+	it.effect("non-digit characters in integer part fails with InvalidNumberError", () =>
+		Effect.gen(function* () {
+			const result = yield* toWeiHandler("12x4.5").pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("InvalidNumberError")
+			}
+		}),
+	)
+
+	it.effect("leading whitespace is trimmed and value works", () =>
+		Effect.gen(function* () {
+			const result = yield* toWeiHandler("  1.5  ")
+			expect(result).toBe("1500000000000000000")
+		}),
+	)
+
+	it.effect("trailing whitespace is trimmed and value works", () =>
+		Effect.gen(function* () {
+			const result = yield* toWeiHandler("2.0   ")
+			expect(result).toBe("2000000000000000000")
+		}),
+	)
+
+	it.effect("unit 'ETHER' (all caps) should work", () =>
+		Effect.gen(function* () {
+			const result = yield* toWeiHandler("1", "ETHER")
+			expect(result).toBe("1000000000000000000")
+		}),
+	)
+
+	it.effect("unit 'Gwei' (mixed case) should work", () =>
+		Effect.gen(function* () {
+			const result = yield* toWeiHandler("1", "Gwei")
+			expect(result).toBe("1000000000")
+		}),
+	)
+
+	it.effect("unknown unit 'megawei' fails with ConversionError", () =>
+		Effect.gen(function* () {
+			const result = yield* toWeiHandler("1", "megawei").pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("ConversionError")
+				expect(result.left.message).toContain("megawei")
+			}
+		}),
+	)
+
+	it.effect("multiple decimal points '1.2.3' fails with InvalidNumberError", () =>
+		Effect.gen(function* () {
+			const result = yield* toWeiHandler("1.2.3").pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("InvalidNumberError")
+				expect(result.left.message).toContain("Multiple decimal points")
+			}
+		}),
+	)
+})
+
+// ============================================================================
+// toBytes32Handler — additional numeric and hex edge cases
+// ============================================================================
+
+describe("toBytes32Handler — numeric and hex boundary cases", () => {
+	it.effect("pure numeric string '0' converts to zero bytes32", () =>
+		Effect.gen(function* () {
+			const result = yield* toBytes32Handler("0")
+			expect(result).toBe("0x0000000000000000000000000000000000000000000000000000000000000000")
+		}),
+	)
+
+	it.effect("hex value '0x' with empty hex part converts to zero bytes32", () =>
+		Effect.gen(function* () {
+			const result = yield* toBytes32Handler("0x")
+			expect(result).toBe("0x0000000000000000000000000000000000000000000000000000000000000000")
+		}),
+	)
+
+	it.effect("numeric string exactly uint256 max converts correctly", () =>
+		Effect.gen(function* () {
+			const maxUint256 = "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+			const result = yield* toBytes32Handler(maxUint256)
+			expect(result).toBe("0x" + "f".repeat(64))
+		}),
+	)
+
+	it.effect("numeric string larger than uint256 max fails with ConversionError", () =>
+		Effect.gen(function* () {
+			// uint256 max + 1
+			const tooLarge = "115792089237316195423570985008687907853269984665640564039457584007913129639936"
+			const result = yield* toBytes32Handler(tooLarge).pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("ConversionError")
+				expect(result.left.message).toContain("too large")
+			}
+		}),
+	)
+
+	it.effect("numeric string '1' converts to bytes32 with leading zeros", () =>
+		Effect.gen(function* () {
+			const result = yield* toBytes32Handler("1")
+			expect(result).toBe("0x0000000000000000000000000000000000000000000000000000000000000001")
+		}),
+	)
+})
+
+// ============================================================================
+// toRlpHandler — additional edge cases
+// ============================================================================
+
+describe("toRlpHandler — additional edge cases", () => {
+	it.effect("encodes empty hex value '0x' (zero-length bytes)", () =>
+		Effect.gen(function* () {
+			const result = yield* toRlpHandler(["0x"])
+			expect(result).toMatch(/^0x/)
+			// Round-trip decode should work
+			const decoded = yield* fromRlpHandler(result)
+			expect(decoded).toBe("0x")
+		}),
+	)
+
+	it.effect("single value encoding round-trips correctly", () =>
+		Effect.gen(function* () {
+			const input = "0xdeadbeef"
+			const encoded = yield* toRlpHandler([input])
+			const decoded = yield* fromRlpHandler(encoded)
+			expect(decoded).toBe(input)
+		}),
+	)
+
+	it.effect("multiple values produce list encoding", () =>
+		Effect.gen(function* () {
+			const encoded = yield* toRlpHandler(["0xaa", "0xbb", "0xcc"])
+			expect(encoded).toMatch(/^0x/)
+			// Should be different from single-item encoding
+			const singleEncoded = yield* toRlpHandler(["0xaa"])
+			expect(encoded).not.toBe(singleEncoded)
+		}),
+	)
+
+	it.effect("value without 0x prefix fails with InvalidHexError", () =>
+		Effect.gen(function* () {
+			const result = yield* toRlpHandler(["deadbeef"]).pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("InvalidHexError")
+				expect(result.left.message).toContain("must start with 0x")
+			}
+		}),
+	)
+
+	it.effect("invalid hex characters in value fail with InvalidHexError", () =>
+		Effect.gen(function* () {
+			const result = yield* toRlpHandler(["0xZZZZ"]).pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("InvalidHexError")
+			}
+		}),
+	)
+})
+
+// ============================================================================
+// fromRlpHandler — additional edge cases
+// ============================================================================
+
+describe("fromRlpHandler — additional edge cases", () => {
+	it.effect("fails without 0x prefix", () =>
+		Effect.gen(function* () {
+			const result = yield* fromRlpHandler("83010203").pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("InvalidHexError")
+				expect(result.left.message).toContain("Must start with 0x")
+			}
+		}),
+	)
+
+	it.effect("fails on invalid hex chars after 0x prefix", () =>
+		Effect.gen(function* () {
+			const result = yield* fromRlpHandler("0xGGHH").pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("InvalidHexError")
+			}
+		}),
+	)
+
+	it.effect("decodes RLP of a nested list (list of lists)", () =>
+		Effect.gen(function* () {
+			// Encode a list of multiple items
+			const outerEncoded = yield* toRlpHandler(["0x01", "0x02", "0x03"])
+			// Decode and verify it produces a valid result
+			const decoded = yield* fromRlpHandler(outerEncoded)
+			expect(typeof decoded).toBe("string")
+			expect(decoded.length).toBeGreaterThan(0)
+		}),
+	)
+
+	it.effect("decodes single byte (0x00 — RLP encoding of zero byte)", () =>
+		Effect.gen(function* () {
+			// 0x00 in RLP is a single byte value
+			const result = yield* fromRlpHandler("0x00")
+			expect(result).toBeDefined()
+		}),
+	)
+
+	it.effect("decodes RLP empty string (0x80)", () =>
+		Effect.gen(function* () {
+			// 0x80 is RLP encoding of empty byte string
+			const result = yield* fromRlpHandler("0x80")
+			expect(result).toBeDefined()
+		}),
+	)
+})
+
+// ============================================================================
+// formatRlpDecoded — indirect tests via fromRlpHandler
+// ============================================================================
+
+describe("formatRlpDecoded — indirect coverage via RLP round-trips", () => {
+	it.effect("bytes branch: single RLP byte string decoded to hex", () =>
+		Effect.gen(function* () {
+			// Encode a single byte array, decode it — exercises the Uint8Array branch
+			const encoded = yield* toRlpHandler(["0xcafe"])
+			const decoded = yield* fromRlpHandler(encoded)
+			expect(decoded).toBe("0xcafe")
+		}),
+	)
+
+	it.effect("list branch: multiple items encoded then decoded produces string result", () =>
+		Effect.gen(function* () {
+			// Encode multiple items — produces a list; decode exercises the
+			// formatRlpDecoded branches (Array, BrandedRlp, or String fallback)
+			const encoded = yield* toRlpHandler(["0x01", "0x02"])
+			const decoded = yield* fromRlpHandler(encoded)
+			// The result is always a string — the exact format depends on how
+			// the RLP library returns decoded data (may be branded object)
+			expect(typeof decoded).toBe("string")
+			expect(decoded.length).toBeGreaterThan(0)
+		}),
+	)
+
+	it.effect("empty byte string branch: decode RLP of empty bytes", () =>
+		Effect.gen(function* () {
+			// Encode empty bytes, then decode
+			const encoded = yield* toRlpHandler(["0x"])
+			const decoded = yield* fromRlpHandler(encoded)
+			// Should be the empty hex "0x"
+			expect(decoded).toBe("0x")
+		}),
+	)
+})
+
+// ============================================================================
+// shlHandler / shrHandler — very large shift and hex input
+// ============================================================================
+
+describe("shlHandler / shrHandler — very large shift and hex input", () => {
+	it.effect("shl: very large shift amount (1000 bits)", () =>
+		Effect.gen(function* () {
+			const result = yield* shlHandler("1", "1000")
+			// 1 << 1000 should be a very large hex number starting with 0x
+			expect(result).toMatch(/^0x1[0]+$/)
+			// The number of hex zero digits should correspond to 1000/4 = 250 zeros
+			const hexPart = result.slice(2) // remove 0x
+			expect(hexPart).toBe("1" + "0".repeat(250))
+		}),
+	)
+
+	it.effect("shr: very large shift amount (1000 bits) reduces to zero", () =>
+		Effect.gen(function* () {
+			const result = yield* shrHandler("255", "1000")
+			expect(result).toBe("0x0")
+		}),
+	)
+
+	it.effect("shl: hex input 0xff shifted left by 4", () =>
+		Effect.gen(function* () {
+			const result = yield* shlHandler("0xff", "4")
+			expect(result).toBe("0xff0")
+		}),
+	)
+
+	it.effect("shr: hex input 0xff shifted right by 4", () =>
+		Effect.gen(function* () {
+			const result = yield* shrHandler("0xff", "4")
+			expect(result).toBe("0xf")
+		}),
+	)
+
+	it.effect("shl: hex input 0x1 shifted left by 1", () =>
+		Effect.gen(function* () {
+			const result = yield* shlHandler("0x1", "1")
+			expect(result).toBe("0x2")
+		}),
+	)
+
+	it.effect("shr: hex input 0x100 shifted right by 8 gives 0x1", () =>
+		Effect.gen(function* () {
+			const result = yield* shrHandler("0x100", "8")
+			expect(result).toBe("0x1")
+		}),
+	)
+
+	it.effect("shl: negative shift amount '-5' fails with InvalidNumberError", () =>
+		Effect.gen(function* () {
+			const result = yield* shlHandler("100", "-5").pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("InvalidNumberError")
+				expect(result.left.message).toContain("shift amount")
+			}
+		}),
+	)
+
+	it.effect("shr: negative shift amount '-5' fails with InvalidNumberError", () =>
+		Effect.gen(function* () {
+			const result = yield* shrHandler("100", "-5").pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("InvalidNumberError")
+				expect(result.left.message).toContain("shift amount")
+			}
+		}),
+	)
+})

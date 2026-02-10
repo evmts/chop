@@ -2841,3 +2841,276 @@ describe("chop calldata-decode --json (E2E)", () => {
 		expect(parsed.args).toEqual([])
 	})
 })
+
+// ---------------------------------------------------------------------------
+// parseSignature — extractParenContent & splitTypes edge cases
+// ---------------------------------------------------------------------------
+
+describe("parseSignature — deeply nested and tuple edge cases", () => {
+	it.effect("parses 3+ levels of nesting: foo(((uint256)))", () =>
+		Effect.gen(function* () {
+			const result = yield* parseSignature("foo(((uint256)))")
+			expect(result.name).toBe("foo")
+			expect(result.inputs.length).toBe(1)
+			expect(result.inputs[0]?.type).toBe("((uint256))")
+		}),
+	)
+
+	it.effect("parses empty inner tuple: foo(())", () =>
+		Effect.gen(function* () {
+			const result = yield* parseSignature("foo(())")
+			expect(result.name).toBe("foo")
+			expect(result.inputs.length).toBe(1)
+			expect(result.inputs[0]?.type).toBe("()")
+		}),
+	)
+
+	it.effect("parses single tuple param: foo((uint256,address))", () =>
+		Effect.gen(function* () {
+			const result = yield* parseSignature("foo((uint256,address))")
+			expect(result.name).toBe("foo")
+			expect(result.inputs.length).toBe(1)
+			expect(result.inputs[0]?.type).toBe("(uint256,address)")
+		}),
+	)
+
+	it.effect("parses multiple tuple params: foo((uint256,address),(bool,bytes))", () =>
+		Effect.gen(function* () {
+			const result = yield* parseSignature("foo((uint256,address),(bool,bytes))")
+			expect(result.name).toBe("foo")
+			expect(result.inputs.length).toBe(2)
+			expect(result.inputs[0]?.type).toBe("(uint256,address)")
+			expect(result.inputs[1]?.type).toBe("(bool,bytes)")
+		}),
+	)
+
+	it.effect("parses array of tuples: foo((uint256,address)[])", () =>
+		Effect.gen(function* () {
+			const result = yield* parseSignature("foo((uint256,address)[])")
+			expect(result.name).toBe("foo")
+			expect(result.inputs.length).toBe(1)
+			expect(result.inputs[0]?.type).toBe("(uint256,address)[]")
+		}),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// coerceArgValue — untested array and fallthrough paths
+// ---------------------------------------------------------------------------
+
+describe("coerceArgValue — array types and fallthrough", () => {
+	it.effect("coerces address[] with single element", () =>
+		Effect.gen(function* () {
+			const result = yield* coerceArgValue(
+				"address[]",
+				'["0x0000000000000000000000000000000000000001"]',
+			)
+			expect(Array.isArray(result)).toBe(true)
+			const arr = result as unknown[]
+			expect(arr.length).toBe(1)
+			expect(arr[0]).toBeInstanceOf(Uint8Array)
+			expect((arr[0] as Uint8Array).length).toBe(20)
+		}),
+	)
+
+	it.effect("coerces bool[] with string-valued booleans", () =>
+		Effect.gen(function* () {
+			const result = yield* coerceArgValue("bool[]", '["true","false"]')
+			expect(result).toEqual([true, false])
+		}),
+	)
+
+	it.effect("coerces bytes32[] with valid hex elements", () =>
+		Effect.gen(function* () {
+			const hex = `0x${"00".repeat(31)}01`
+			const result = yield* coerceArgValue("bytes32[]", `["${hex}"]`)
+			expect(Array.isArray(result)).toBe(true)
+			const arr = result as unknown[]
+			expect(arr.length).toBe(1)
+			expect(arr[0]).toBeInstanceOf(Uint8Array)
+			expect((arr[0] as Uint8Array).length).toBe(32)
+		}),
+	)
+
+	it.effect("coerces fixed-size array uint256[3]", () =>
+		Effect.gen(function* () {
+			const result = yield* coerceArgValue("uint256[3]", "[1,2,3]")
+			expect(result).toEqual([1n, 2n, 3n])
+		}),
+	)
+
+	it.effect("fails with AbiError for non-JSON string on array type", () =>
+		Effect.gen(function* () {
+			const error = yield* coerceArgValue("uint256[]", "not-json").pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+			expect(error.message).toContain("expected JSON array")
+		}),
+	)
+
+	it.effect("fails with AbiError for JSON object on array type (non-array branch)", () =>
+		Effect.gen(function* () {
+			const error = yield* coerceArgValue("uint256[]", '{"a":1}').pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+			expect(error.message).toContain("expected JSON array")
+		}),
+	)
+
+	it.effect("coerces nested array uint256[][] recursively", () =>
+		Effect.gen(function* () {
+			// For uint256[][], the regex strips one [] layer, so baseType = "uint256[]"
+			// Each inner element gets String()-ified, so [1,2] becomes "1,2" which is not valid JSON.
+			// The correct input format for nested arrays is an array of JSON-stringified inner arrays.
+			const result = yield* coerceArgValue("uint256[][]", '["[1,2]","[3,4]"]')
+			expect(result).toEqual([
+				[1n, 2n],
+				[3n, 4n],
+			])
+		}),
+	)
+
+	it.effect("unknown/custom type falls through and returns raw string", () =>
+		Effect.gen(function* () {
+			const result = yield* coerceArgValue("customType", "someValue")
+			expect(result).toBe("someValue")
+		}),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// abiEncodeHandler — packed encoding with multiple types
+// ---------------------------------------------------------------------------
+
+describe("abiEncodeHandler — packed encoding edge cases", () => {
+	it.effect("packed encoding with address, uint256, and bool", () =>
+		Effect.gen(function* () {
+			const result = yield* abiEncodeHandler(
+				"(address,uint256,bool)",
+				["0x0000000000000000000000000000000000000001", "100", "true"],
+				true,
+			)
+			expect(result.startsWith("0x")).toBe(true)
+			// packed encoding: 20 bytes address + 32 bytes uint256 + 1 byte bool = 53 bytes = 106 hex chars + "0x"
+			expect(result.length).toBe(108)
+		}),
+	)
+
+	it.effect("packed encoding with string and uint256 succeeds", () =>
+		Effect.gen(function* () {
+			// Abi.encodePacked supports string type, so this should succeed
+			const result = yield* abiEncodeHandler(
+				"(string,uint256)",
+				["hello", "42"],
+				true,
+			)
+			expect(result.startsWith("0x")).toBe(true)
+		}),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// calldataDecodeHandler — zero-arg function and bool args
+// ---------------------------------------------------------------------------
+
+describe("calldataDecodeHandler — zero-arg and bool edge cases", () => {
+	it.effect("decodes zero-arg function (totalSupply) calldata", () =>
+		Effect.gen(function* () {
+			// First encode totalSupply calldata
+			const calldata = yield* calldataHandler("totalSupply()", [])
+			// Then decode it
+			const result = yield* calldataDecodeHandler("totalSupply()", calldata)
+			expect(result.name).toBe("totalSupply")
+			expect(result.signature).toBe("totalSupply()")
+			expect(result.args).toEqual([])
+		}),
+	)
+
+	it.effect("decodes calldata with bool argument", () =>
+		Effect.gen(function* () {
+			// Encode a function that takes a bool
+			const calldata = yield* calldataHandler("setApproval(bool)", ["true"])
+			// Decode and verify
+			const result = yield* calldataDecodeHandler("setApproval(bool)", calldata)
+			expect(result.name).toBe("setApproval")
+			expect(result.signature).toBe("setApproval(bool)")
+			expect(result.args.length).toBe(1)
+			// bool decodes to "true"
+			expect(result.args[0]).toBe("true")
+		}),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// abiDecodeHandler — outputs vs inputs selection
+// ---------------------------------------------------------------------------
+
+describe("abiDecodeHandler — output vs input type selection", () => {
+	it.effect("uses outputs when signature has both inputs and outputs", () =>
+		Effect.gen(function* () {
+			// Encode a single uint256 value
+			const encoded = yield* abiEncodeHandler("(uint256)", ["42"], false)
+			// Decode with a signature that has outputs: balanceOf(address)(uint256)
+			// The decoder should use the output types (uint256), not the input types (address)
+			const result = yield* abiDecodeHandler("balanceOf(address)(uint256)", encoded)
+			expect(result.length).toBe(1)
+			expect(result[0]).toBe("42")
+		}),
+	)
+
+	it.effect("uses inputs when signature has no outputs", () =>
+		Effect.gen(function* () {
+			// Encode a uint256 value
+			const encoded = yield* abiEncodeHandler("(uint256)", ["999"], false)
+			// Decode with a signature that has only inputs (no outputs)
+			const result = yield* abiDecodeHandler("(uint256)", encoded)
+			expect(result.length).toBe(1)
+			expect(result[0]).toBe("999")
+		}),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// safeEncodeParameters — error path via invalid types
+// ---------------------------------------------------------------------------
+
+describe("safeEncodeParameters — error path with invalid types", () => {
+	it.effect("fails with AbiError when encoding with an invalid Solidity type", () =>
+		Effect.gen(function* () {
+			// Pass a completely invalid type that gets past coercion (falls through to passthrough)
+			// but fails during actual ABI encoding
+			const error = yield* abiEncodeHandler("(invalidType999)", ["someValue"], false).pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+			expect(error.message).toContain("encoding failed")
+		}),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// safeDecodeParameters — error path with truncated data
+// ---------------------------------------------------------------------------
+
+describe("safeDecodeParameters — error path with truncated/invalid data", () => {
+	it.effect("fails with AbiError when decoding truncated data for uint256", () =>
+		Effect.gen(function* () {
+			// Valid hex but too short for a uint256 (needs 32 bytes = 64 hex chars, only providing 4)
+			const error = yield* abiDecodeHandler("(uint256)", "0xdeadbeef").pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+			expect(error.message).toContain("decoding failed")
+		}),
+	)
+
+	it.effect("fails with AbiError when decoding empty data for a type that expects data", () =>
+		Effect.gen(function* () {
+			const error = yield* abiDecodeHandler("(uint256,address)", "0x").pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+		}),
+	)
+
+	it.effect("fails with AbiError when decoding corrupted mid-stream data", () =>
+		Effect.gen(function* () {
+			// Provide one valid uint256 slot but signature expects two params
+			const oneSlot = `0x${"00".repeat(32)}`
+			const error = yield* abiDecodeHandler("(uint256,uint256)", oneSlot).pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+		}),
+	)
+})

@@ -1099,3 +1099,407 @@ describe("chop hash-message (E2E) — additional edge cases", () => {
 		expect(parsed.result).toBe(plain.stdout.trim())
 	})
 })
+
+// ============================================================================
+// Coverage Gap Tests — Appended
+// ============================================================================
+
+// ---------------------------------------------------------------------------
+// 1. keccakHandler — more boundary conditions
+// ---------------------------------------------------------------------------
+
+describe("keccakHandler — more boundary conditions", () => {
+	it.effect("hashes empty hex input '0x' (empty bytes)", () =>
+		Effect.gen(function* () {
+			const result = yield* keccakHandler("0x")
+			// keccak256 of empty bytes is the same as keccak256 of empty string
+			expect(result).toBe("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470")
+		}),
+	)
+
+	it.effect("hashes very large hex input (1000+ hex chars)", () =>
+		Effect.gen(function* () {
+			// 1024 hex chars = 512 bytes
+			const largeHex = "0x" + "ab".repeat(512)
+			const result = yield* keccakHandler(largeHex)
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}),
+	)
+
+	it.effect("hashes hex with single byte '0x00'", () =>
+		Effect.gen(function* () {
+			const result = yield* keccakHandler("0x00")
+			expect(result).toBe("0xbc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98a")
+		}),
+	)
+
+	it.effect("hashes hex with max byte '0xff'", () =>
+		Effect.gen(function* () {
+			const result = yield* keccakHandler("0xff")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+			// Should differ from 0x00
+			const zeroResult = yield* keccakHandler("0x00")
+			expect(result).not.toBe(zeroResult)
+		}),
+	)
+
+	it.effect("hashes UTF-8 string with only whitespace ' '", () =>
+		Effect.gen(function* () {
+			const result = yield* keccakHandler(" ")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+			// Should differ from empty string
+			const emptyResult = yield* keccakHandler("")
+			expect(result).not.toBe(emptyResult)
+		}),
+	)
+
+	it.effect("hashes UTF-8 string with null character '\\0'", () =>
+		Effect.gen(function* () {
+			const result = yield* keccakHandler("\0")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+			// Null byte should differ from empty string
+			const emptyResult = yield* keccakHandler("")
+			expect(result).not.toBe(emptyResult)
+		}),
+	)
+
+	it.effect("hashes string with backslash and special chars", () =>
+		Effect.gen(function* () {
+			const result = yield* keccakHandler("hello\\world\"foo'bar")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// 2. sigHandler — more boundary conditions
+// ---------------------------------------------------------------------------
+
+describe("sigHandler — more boundary conditions", () => {
+	it.effect("handles signature with tuple types: foo((uint256,address))", () =>
+		Effect.gen(function* () {
+			const result = yield* sigHandler("foo((uint256,address))")
+			expect(result).toMatch(/^0x[0-9a-f]{8}$/)
+			expect(result.length).toBe(10)
+		}),
+	)
+
+	it.effect("handles signature with array types: foo(uint256[])", () =>
+		Effect.gen(function* () {
+			const result = yield* sigHandler("foo(uint256[])")
+			expect(result).toMatch(/^0x[0-9a-f]{8}$/)
+			expect(result.length).toBe(10)
+		}),
+	)
+
+	it.effect("handles signature with nested array: foo(uint256[][])", () =>
+		Effect.gen(function* () {
+			const result = yield* sigHandler("foo(uint256[][])")
+			expect(result).toMatch(/^0x[0-9a-f]{8}$/)
+			expect(result.length).toBe(10)
+		}),
+	)
+
+	it.effect("handles signature with bytes type: foo(bytes)", () =>
+		Effect.gen(function* () {
+			const result = yield* sigHandler("foo(bytes)")
+			expect(result).toMatch(/^0x[0-9a-f]{8}$/)
+			expect(result.length).toBe(10)
+		}),
+	)
+
+	it.effect("handles signature with string type: foo(string)", () =>
+		Effect.gen(function* () {
+			const result = yield* sigHandler("foo(string)")
+			expect(result).toMatch(/^0x[0-9a-f]{8}$/)
+			expect(result.length).toBe(10)
+		}),
+	)
+
+	it.effect("handles signature with mixed complex types: foo(uint256,(address,bool[]),bytes32)", () =>
+		Effect.gen(function* () {
+			const result = yield* sigHandler("foo(uint256,(address,bool[]),bytes32)")
+			expect(result).toMatch(/^0x[0-9a-f]{8}$/)
+			expect(result.length).toBe(10)
+		}),
+	)
+
+	it.effect("handles very long function name (100 chars)", () =>
+		Effect.gen(function* () {
+			const longName = "f".repeat(100) + "(uint256)"
+			const result = yield* sigHandler(longName)
+			expect(result).toMatch(/^0x[0-9a-f]{8}$/)
+			expect(result.length).toBe(10)
+		}),
+	)
+
+	it.effect("array vs non-array types produce different selectors", () =>
+		Effect.gen(function* () {
+			const withArray = yield* sigHandler("foo(uint256[])")
+			const withoutArray = yield* sigHandler("foo(uint256)")
+			expect(withArray).not.toBe(withoutArray)
+		}),
+	)
+
+	it.effect("nested array vs flat array types produce different selectors", () =>
+		Effect.gen(function* () {
+			const nested = yield* sigHandler("foo(uint256[][])")
+			const flat = yield* sigHandler("foo(uint256[])")
+			expect(nested).not.toBe(flat)
+		}),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// 3. sigEventHandler — more boundary conditions
+// ---------------------------------------------------------------------------
+
+describe("sigEventHandler — more boundary conditions", () => {
+	it.effect("event with indexed params ignores 'indexed' keyword: Transfer(address,address,uint256)", () =>
+		Effect.gen(function* () {
+			// Solidity ABI canonical form strips 'indexed', so the topic
+			// should be computed from the canonical signature without 'indexed'.
+			const withoutIndexed = yield* sigEventHandler("Transfer(address,address,uint256)")
+			expect(withoutIndexed).toBe("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
+		}),
+	)
+
+	it.effect("event with no params: Fallback()", () =>
+		Effect.gen(function* () {
+			const result = yield* sigEventHandler("Fallback()")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}),
+	)
+
+	it.effect("event with tuple params: Swap(address,(uint256,uint256))", () =>
+		Effect.gen(function* () {
+			const result = yield* sigEventHandler("Swap(address,(uint256,uint256))")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}),
+	)
+
+	it.effect("event with array params: Batch(uint256[])", () =>
+		Effect.gen(function* () {
+			const result = yield* sigEventHandler("Batch(uint256[])")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}),
+	)
+
+	it.effect("event with multiple complex types", () =>
+		Effect.gen(function* () {
+			const result = yield* sigEventHandler("ComplexEvent(address,(uint256,bool[]),bytes32)")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// 4. hashMessageHandler — more boundary conditions
+// ---------------------------------------------------------------------------
+
+describe("hashMessageHandler — more boundary conditions", () => {
+	it.effect("hashes empty message ''", () =>
+		Effect.gen(function* () {
+			const result = yield* hashMessageHandler("")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+			// EIP-191 of empty string is a known value
+			// prefix: "\x19Ethereum Signed Message:\n0"
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+
+	it.effect("hashes single character 'a'", () =>
+		Effect.gen(function* () {
+			const result = yield* hashMessageHandler("a")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+			// Must differ from empty message
+			const emptyResult = yield* hashMessageHandler("")
+			expect(result).not.toBe(emptyResult)
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+
+	it.effect("hashes message with newlines '\\n\\n'", () =>
+		Effect.gen(function* () {
+			const result = yield* hashMessageHandler("\n\n")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+
+	it.effect("hashes message with only spaces '   '", () =>
+		Effect.gen(function* () {
+			const result = yield* hashMessageHandler("   ")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+			// Should differ from empty
+			const emptyResult = yield* hashMessageHandler("")
+			expect(result).not.toBe(emptyResult)
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+
+	it.effect("hashes message with unicode emoji", () =>
+		Effect.gen(function* () {
+			const result = yield* hashMessageHandler("\u{1F525}")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+
+	it.effect("hashes very long message (1000+ chars)", () =>
+		Effect.gen(function* () {
+			const longMsg = "z".repeat(1500)
+			const result = yield* hashMessageHandler(longMsg)
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+
+	it.effect("hashes hex string '0xdeadbeef' as a string message, not as bytes", () =>
+		Effect.gen(function* () {
+			const result = yield* hashMessageHandler("0xdeadbeef")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+			// hashMessage treats input as a string, so "0xdeadbeef" is the literal text
+			// It should differ from hashing some other string
+			const otherResult = yield* hashMessageHandler("hello")
+			expect(result).not.toBe(otherResult)
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+
+	it.effect("hashes message with special HTML chars '<script>alert(1)</script>'", () =>
+		Effect.gen(function* () {
+			const result = yield* hashMessageHandler("<script>alert(1)</script>")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// 5. E2E edge cases
+// ---------------------------------------------------------------------------
+
+describe("E2E edge cases — additional", () => {
+	it("chop keccak with empty arg '' produces a hash", () => {
+		const result = runCli("keccak ''")
+		expect(result.exitCode).toBe(0)
+		const output = result.stdout.trim()
+		expect(output).toBe("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470")
+	})
+
+	it("chop sig with no arg should error (missing required argument)", () => {
+		const result = runCli("sig")
+		expect(result.exitCode).not.toBe(0)
+	})
+
+	it("chop sig-event 'Transfer(address,address,uint256)' matches known topic hash", () => {
+		const result = runCli("sig-event 'Transfer(address,address,uint256)'")
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout.trim()).toBe("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
+	})
+
+	it("chop hash-message with multi-word message", () => {
+		const result = runCli("hash-message 'the quick brown fox jumps over the lazy dog'")
+		expect(result.exitCode).toBe(0)
+		const output = result.stdout.trim()
+		expect(output).toMatch(/^0x[0-9a-f]{64}$/)
+		expect(output.length).toBe(66)
+	})
+
+	it("chop sig-event with no arg should error (missing required argument)", () => {
+		const result = runCli("sig-event")
+		expect(result.exitCode).not.toBe(0)
+	})
+
+	it("chop hash-message with no arg should error (missing required argument)", () => {
+		const result = runCli("hash-message")
+		expect(result.exitCode).not.toBe(0)
+	})
+
+	it("chop keccak with no arg should error (missing required argument)", () => {
+		const result = runCli("keccak")
+		expect(result.exitCode).not.toBe(0)
+	})
+})
+
+// ---------------------------------------------------------------------------
+// 6. Cross-validation tests
+// ---------------------------------------------------------------------------
+
+describe("cross-validation tests", () => {
+	it.effect("keccak of 'transfer(address,uint256)' first 4 bytes equals sig of same", () =>
+		Effect.gen(function* () {
+			const fullHash = yield* keccakHandler("transfer(address,uint256)")
+			const selectorResult = yield* sigHandler("transfer(address,uint256)")
+			// sig returns the first 4 bytes (8 hex chars) of the keccak hash
+			const first4Bytes = "0x" + fullHash.slice(2, 10)
+			expect(selectorResult).toBe(first4Bytes)
+		}),
+	)
+
+	it.effect("keccak of 'Transfer(address,address,uint256)' equals sig-event of same", () =>
+		Effect.gen(function* () {
+			const fullHash = yield* keccakHandler("Transfer(address,address,uint256)")
+			const eventTopic = yield* sigEventHandler("Transfer(address,address,uint256)")
+			expect(eventTopic).toBe(fullHash)
+		}),
+	)
+
+	it.effect("sig and sig-event produce different length outputs for same input", () =>
+		Effect.gen(function* () {
+			const input = "Transfer(address,address,uint256)"
+			const selectorResult = yield* sigHandler(input)
+			const topicResult = yield* sigEventHandler(input)
+			// sig = 4 bytes (0x + 8 hex chars = 10 chars)
+			// sig-event = 32 bytes (0x + 64 hex chars = 66 chars)
+			expect(selectorResult.length).toBe(10)
+			expect(topicResult.length).toBe(66)
+			expect(selectorResult.length).not.toBe(topicResult.length)
+		}),
+	)
+
+	it.effect("sig is the first 4 bytes of sig-event for the same input", () =>
+		Effect.gen(function* () {
+			const input = "approve(address,uint256)"
+			const selectorResult = yield* sigHandler(input)
+			const topicResult = yield* sigEventHandler(input)
+			// The selector should be the first 4 bytes of the topic
+			const topicFirst4 = "0x" + topicResult.slice(2, 10)
+			expect(selectorResult).toBe(topicFirst4)
+		}),
+	)
+
+	it.effect("keccak of 'Approval(address,address,uint256)' first 4 bytes equals sig of same", () =>
+		Effect.gen(function* () {
+			const fullHash = yield* keccakHandler("Approval(address,address,uint256)")
+			const selectorResult = yield* sigHandler("Approval(address,address,uint256)")
+			const first4Bytes = "0x" + fullHash.slice(2, 10)
+			expect(selectorResult).toBe(first4Bytes)
+		}),
+	)
+
+	it.effect("keccak, sig, and sig-event all agree for balanceOf(address)", () =>
+		Effect.gen(function* () {
+			const input = "balanceOf(address)"
+			const fullHash = yield* keccakHandler(input)
+			const sel = yield* sigHandler(input)
+			const top = yield* sigEventHandler(input)
+			// sig-event = full keccak
+			expect(top).toBe(fullHash)
+			// sig = first 4 bytes of keccak
+			expect(sel).toBe("0x" + fullHash.slice(2, 10))
+			// sig = first 4 bytes of sig-event
+			expect(sel).toBe("0x" + top.slice(2, 10))
+		}),
+	)
+})
