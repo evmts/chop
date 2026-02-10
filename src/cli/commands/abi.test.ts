@@ -9,9 +9,13 @@ import {
 	ArgumentCountError,
 	HexDecodeError,
 	InvalidSignatureError,
+	abiDecodeCommand,
 	abiDecodeHandler,
+	abiEncodeCommand,
 	abiEncodeHandler,
 	buildAbiItem,
+	calldataCommand,
+	calldataDecodeCommand,
 	calldataDecodeHandler,
 	calldataHandler,
 	coerceArgValue,
@@ -1521,4 +1525,352 @@ describe("calldataDecodeHandler", () => {
 			expect(error._tag).toBe("InvalidSignatureError")
 		}),
 	)
+})
+
+// ---------------------------------------------------------------------------
+// abiEncodeHandler — additional boundary + edge cases
+// ---------------------------------------------------------------------------
+
+describe("abiEncodeHandler — extended edge cases", () => {
+	it.effect("encodes max uint256 value", () =>
+		Effect.gen(function* () {
+			const maxU256 = (2n ** 256n - 1n).toString()
+			const result = yield* abiEncodeHandler("(uint256)", [maxU256], false)
+			expect(result).toBe("0x" + "ff".repeat(32))
+		}),
+	)
+
+	it.effect("encodes zero address", () =>
+		Effect.gen(function* () {
+			const result = yield* abiEncodeHandler(
+				"(address)",
+				["0x0000000000000000000000000000000000000000"],
+				false,
+			)
+			expect(result).toBe("0x" + "00".repeat(32))
+		}),
+	)
+
+	it.effect("encodes multiple params of different types", () =>
+		Effect.gen(function* () {
+			const result = yield* abiEncodeHandler(
+				"(uint256,bool,uint8)",
+				["42", "true", "7"],
+				false,
+			)
+			expect(result.startsWith("0x")).toBe(true)
+			// 3 * 32 bytes = 192 hex chars + 0x
+			expect(result.length).toBe(2 + 3 * 64)
+		}),
+	)
+
+	it.effect("packed encoding with string type", () =>
+		Effect.gen(function* () {
+			const result = yield* abiEncodeHandler("(string)", ["hello"], true)
+			expect(result.startsWith("0x")).toBe(true)
+		}),
+	)
+
+	it.effect("packed encoding with bytes type", () =>
+		Effect.gen(function* () {
+			const result = yield* abiEncodeHandler("(bytes)", ["0xdeadbeef"], true)
+			expect(result).toBe("0xdeadbeef")
+		}),
+	)
+
+	it.effect("packed encoding with address", () =>
+		Effect.gen(function* () {
+			const result = yield* abiEncodeHandler(
+				"(address)",
+				["0x0000000000000000000000000000000000001234"],
+				true,
+			)
+			expect(result.startsWith("0x")).toBe(true)
+		}),
+	)
+
+	it.effect("fails on invalid address for standard encoding", () =>
+		Effect.gen(function* () {
+			const error = yield* abiEncodeHandler(
+				"(address)",
+				["not-an-address"],
+				false,
+			).pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+		}),
+	)
+
+	it.effect("fails on invalid uint value (non-numeric string)", () =>
+		Effect.gen(function* () {
+			const error = yield* abiEncodeHandler(
+				"(uint256)",
+				["not-a-number"],
+				false,
+			).pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+			expect(error.message).toContain("Invalid integer")
+		}),
+	)
+
+	it.effect("encodes negative int256", () =>
+		Effect.gen(function* () {
+			const result = yield* abiEncodeHandler("(int256)", ["-1"], false)
+			expect(result).toBe("0x" + "ff".repeat(32))
+		}),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// calldataHandler — additional boundary + edge cases
+// ---------------------------------------------------------------------------
+
+describe("calldataHandler — extended edge cases", () => {
+	it.effect("encodes approve(address,uint256) calldata", () =>
+		Effect.gen(function* () {
+			const result = yield* calldataHandler("approve(address,uint256)", [
+				"0x0000000000000000000000000000000000001234",
+				"1000000000000000000",
+			])
+			expect(result.startsWith("0x095ea7b3")).toBe(true)
+		}),
+	)
+
+	it.effect("encodes balanceOf(address) calldata", () =>
+		Effect.gen(function* () {
+			const result = yield* calldataHandler("balanceOf(address)", [
+				"0x0000000000000000000000000000000000001234",
+			])
+			expect(result.startsWith("0x70a08231")).toBe(true)
+		}),
+	)
+
+	it.effect("encodes single bool param", () =>
+		Effect.gen(function* () {
+			const result = yield* calldataHandler("setBool(bool)", ["true"])
+			expect(result.startsWith("0x")).toBe(true)
+			expect(result.length).toBe(10 + 64) // selector + 1 param
+		}),
+	)
+
+	it.effect("fails with excess args", () =>
+		Effect.gen(function* () {
+			const error = yield* calldataHandler("totalSupply()", ["unexpected"]).pipe(Effect.flip)
+			expect(error._tag).toBe("ArgumentCountError")
+			expect(error.expected).toBe(0)
+			expect(error.received).toBe(1)
+		}),
+	)
+
+	it.effect("encodes underscored function name", () =>
+		Effect.gen(function* () {
+			const result = yield* calldataHandler("_internal_call(uint256)", ["42"])
+			expect(result.startsWith("0x")).toBe(true)
+			expect(result.length).toBe(10 + 64)
+		}),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// abiDecodeHandler — additional boundary + edge cases
+// ---------------------------------------------------------------------------
+
+describe("abiDecodeHandler — extended edge cases", () => {
+	it.effect("decodes multiple values (3 params)", () =>
+		Effect.gen(function* () {
+			// First encode 3 values, then decode
+			const encoded = yield* abiEncodeHandler("(uint256,bool,uint8)", ["42", "true", "7"], false)
+			const decoded = yield* abiDecodeHandler("(uint256,bool,uint8)", encoded)
+			expect(decoded).toEqual(["42", "true", "7"])
+		}),
+	)
+
+	it.effect("decodes single bool", () =>
+		Effect.gen(function* () {
+			const encoded = "0x0000000000000000000000000000000000000000000000000000000000000001"
+			const decoded = yield* abiDecodeHandler("(bool)", encoded)
+			expect(decoded).toEqual(["true"])
+		}),
+	)
+
+	it.effect("decodes zero value", () =>
+		Effect.gen(function* () {
+			const encoded = "0x0000000000000000000000000000000000000000000000000000000000000000"
+			const decoded = yield* abiDecodeHandler("(uint256)", encoded)
+			expect(decoded).toEqual(["0"])
+		}),
+	)
+
+	it.effect("decodes max uint256", () =>
+		Effect.gen(function* () {
+			const encoded = "0x" + "ff".repeat(32)
+			const decoded = yield* abiDecodeHandler("(uint256)", encoded)
+			expect(decoded).toEqual([(2n ** 256n - 1n).toString()])
+		}),
+	)
+
+	it.effect("uses output types over input types when both present", () =>
+		Effect.gen(function* () {
+			// balanceOf(address)(uint256) — should decode with uint256 output type
+			const encoded = "0x000000000000000000000000000000000000000000000000000000000000002a"
+			const decoded = yield* abiDecodeHandler("balanceOf(address)(uint256)", encoded)
+			expect(decoded).toEqual(["42"])
+		}),
+	)
+
+	it.effect("fails on empty hex without actual data", () =>
+		Effect.gen(function* () {
+			const error = yield* abiDecodeHandler("(uint256)", "0x").pipe(Effect.flip)
+			// This should fail at decoding — not enough data for uint256
+			expect(error._tag).toBe("AbiError")
+		}),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// calldataDecodeHandler — additional boundary + edge cases
+// ---------------------------------------------------------------------------
+
+describe("calldataDecodeHandler — extended edge cases", () => {
+	it.effect("round-trips approve calldata", () =>
+		Effect.gen(function* () {
+			const sig = "approve(address,uint256)"
+			const encoded = yield* calldataHandler(sig, [
+				"0x0000000000000000000000000000000000001234",
+				"1000000000000000000",
+			])
+			const decoded = yield* calldataDecodeHandler(sig, encoded)
+			expect(decoded.name).toBe("approve")
+			expect(decoded.signature).toBe("approve(address,uint256)")
+			expect(decoded.args[0]).toBe("0x0000000000000000000000000000000000001234")
+			expect(decoded.args[1]).toBe("1000000000000000000")
+		}),
+	)
+
+	it.effect("round-trips totalSupply calldata (no args)", () =>
+		Effect.gen(function* () {
+			const sig = "totalSupply()"
+			const encoded = yield* calldataHandler(sig, [])
+			const decoded = yield* calldataDecodeHandler(sig, encoded)
+			expect(decoded.name).toBe("totalSupply")
+			expect(decoded.signature).toBe("totalSupply()")
+			expect(decoded.args).toEqual([])
+		}),
+	)
+
+	it.effect("round-trips setBool calldata", () =>
+		Effect.gen(function* () {
+			const sig = "setBool(bool)"
+			const encoded = yield* calldataHandler(sig, ["true"])
+			const decoded = yield* calldataDecodeHandler(sig, encoded)
+			expect(decoded.name).toBe("setBool")
+			expect(decoded.args[0]).toBe("true")
+		}),
+	)
+
+	it.effect("returns correct result shape", () =>
+		Effect.gen(function* () {
+			const result = yield* calldataDecodeHandler(
+				"transfer(address,uint256)",
+				"0xa9059cbb00000000000000000000000000000000000000000000000000000000000012340000000000000000000000000000000000000000000000000de0b6b3a7640000",
+			)
+			// Verify satisfies CalldataDecodeResult
+			expect(typeof result.name).toBe("string")
+			expect(typeof result.signature).toBe("string")
+			expect(Array.isArray(result.args)).toBe(true)
+			expect(result.args.every((a) => typeof a === "string")).toBe(true)
+		}),
+	)
+
+	it.effect("fails on mismatched selector", () =>
+		Effect.gen(function* () {
+			// Use a calldata with the wrong selector for the given signature
+			const error = yield* calldataDecodeHandler(
+				"approve(address,uint256)",
+				// This is transfer's calldata, not approve's
+				"0xa9059cbb00000000000000000000000000000000000000000000000000000000000012340000000000000000000000000000000000000000000000000de0b6b3a7640000",
+			).pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+		}),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// Handler round-trip consistency
+// ---------------------------------------------------------------------------
+
+describe("handler round-trip consistency", () => {
+	it.effect("abiEncode → abiDecode preserves values for multiple types", () =>
+		Effect.gen(function* () {
+			const sig = "(address,uint256,bool)"
+			const args = [
+				"0x0000000000000000000000000000000000001234",
+				"999999999999999999",
+				"false",
+			]
+			const encoded = yield* abiEncodeHandler(sig, args, false)
+			const decoded = yield* abiDecodeHandler(sig, encoded)
+			expect(decoded[0]).toBe("0x0000000000000000000000000000000000001234")
+			expect(decoded[1]).toBe("999999999999999999")
+			expect(decoded[2]).toBe("false")
+		}),
+	)
+
+	it.effect("calldata → calldataDecode preserves all values for 3-arg function", () =>
+		Effect.gen(function* () {
+			const sig = "setValues(uint256,bool,uint8)"
+			const args = ["1000", "true", "255"]
+			const encoded = yield* calldataHandler(sig, args)
+			const decoded = yield* calldataDecodeHandler(sig, encoded)
+			expect(decoded.name).toBe("setValues")
+			expect(decoded.args[0]).toBe("1000")
+			expect(decoded.args[1]).toBe("true")
+			expect(decoded.args[2]).toBe("255")
+		}),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// abiCommands export
+// ---------------------------------------------------------------------------
+
+describe("abiCommands export", () => {
+	it("exports 4 commands", () => {
+		// abiCommands is already imported at the top of the file as individual commands
+		// Verify the 4 exported commands exist
+		expect(abiEncodeCommand).toBeDefined()
+		expect(calldataCommand).toBeDefined()
+		expect(abiDecodeCommand).toBeDefined()
+		expect(calldataDecodeCommand).toBeDefined()
+	})
+})
+
+// ---------------------------------------------------------------------------
+// Error structural equality (Data.TaggedError semantics)
+// ---------------------------------------------------------------------------
+
+describe("ABI error types — structural equality", () => {
+	it("InvalidSignatureError with same fields are structurally equal", () => {
+		const a = new InvalidSignatureError({ message: "bad", signature: "x" })
+		const b = new InvalidSignatureError({ message: "bad", signature: "x" })
+		expect(a).toEqual(b)
+	})
+
+	it("ArgumentCountError with same fields are structurally equal", () => {
+		const a = new ArgumentCountError({ message: "wrong", expected: 2, received: 1 })
+		const b = new ArgumentCountError({ message: "wrong", expected: 2, received: 1 })
+		expect(a).toEqual(b)
+	})
+
+	it("HexDecodeError with same fields are structurally equal", () => {
+		const a = new HexDecodeError({ message: "bad hex", data: "0xgg" })
+		const b = new HexDecodeError({ message: "bad hex", data: "0xgg" })
+		expect(a).toEqual(b)
+	})
+
+	it("AbiError with different messages have different message properties", () => {
+		const a = new AbiError({ message: "one" })
+		const b = new AbiError({ message: "two" })
+		expect(a.message).not.toBe(b.message)
+		expect(a._tag).toBe(b._tag) // same tag
+	})
 })
