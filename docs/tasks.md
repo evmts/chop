@@ -52,9 +52,9 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - Wrong arg count → exit 1, descriptive error
 
 ### T1.4 Address Utility Commands
-- [ ] `chop to-check-sum-address <addr>`
-- [ ] `chop compute-address --deployer <addr> --nonce <n>`
-- [ ] `chop create2 --deployer <addr> --salt <hex> --init-code <hex>`
+- [x] `chop to-check-sum-address <addr>`
+- [x] `chop compute-address --deployer <addr> --nonce <n>`
+- [x] `chop create2 --deployer <addr> --salt <hex> --init-code <hex>`
 
 **Validation**:
 - `chop to-check-sum-address 0xd8da6bf26964af9d7eed9e03e53415d37aa96045` → `0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045`
