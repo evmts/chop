@@ -85,10 +85,10 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - Overflow/underflow → descriptive error
 
 ### T1.6 Cryptographic Commands
-- [ ] `chop keccak <data>`
-- [ ] `chop sig <signature>`
-- [ ] `chop sig-event <signature>`
-- [ ] `chop hash-message <message>`
+- [x] `chop keccak <data>`
+- [x] `chop sig <signature>`
+- [x] `chop sig-event <signature>`
+- [x] `chop hash-message <message>`
 
 **Validation**:
 - `chop keccak "transfer(address,uint256)"` → `0xa9059cbb...` (full 32 bytes)
