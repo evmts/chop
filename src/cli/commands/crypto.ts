@@ -12,7 +12,7 @@ import { Args, Command } from "@effect/cli"
 import { hashHex, hashString, selector, topic } from "@tevm/voltaire/Keccak256"
 import { Console, Data, Effect } from "effect"
 import { Hex, Keccak256 } from "voltaire-effect"
-import { hashMessage } from "voltaire-effect/crypto"
+import { hashMessage, type KeccakService } from "voltaire-effect/crypto"
 import { handleCommandErrors, jsonOption } from "../shared.js"
 
 // ============================================================================
@@ -87,8 +87,18 @@ export const sigEventHandler = (signature: string): Effect.Effect<string, Crypto
  * then computes keccak256 of the prefixed message.
  * Requires KeccakService.
  */
-export const hashMessageHandler = (message: string) =>
-	hashMessage(message).pipe(Effect.map((hash) => Hex.fromBytes(hash)))
+export const hashMessageHandler = (message: string): Effect.Effect<string, CryptoError, KeccakService> =>
+	hashMessage(message).pipe(
+		Effect.map((hash) => Hex.fromBytes(hash)),
+		Effect.catchAllDefect((defect) =>
+			Effect.fail(
+				new CryptoError({
+					message: `EIP-191 hash failed: ${defect instanceof Error ? defect.message : String(defect)}`,
+					cause: defect,
+				}),
+			),
+		),
+	)
 
 // ============================================================================
 // Commands

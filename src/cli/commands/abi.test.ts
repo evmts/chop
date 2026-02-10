@@ -1,9 +1,9 @@
-import { execSync } from "node:child_process"
 import { describe, it } from "@effect/vitest"
 import { decodeParameters, encodeParameters } from "@tevm/voltaire/Abi"
 import { Effect } from "effect"
 import { expect } from "vitest"
 import { Abi, Hex } from "voltaire-effect"
+import { runCli } from "../test-helpers.js"
 import {
 	AbiError,
 	ArgumentCountError,
@@ -494,34 +494,6 @@ describe("error handling", () => {
 // ---------------------------------------------------------------------------
 // E2E CLI tests
 // ---------------------------------------------------------------------------
-
-function runCli(args: string): {
-	stdout: string
-	stderr: string
-	exitCode: number
-} {
-	try {
-		const stdout = execSync(`bun run bin/chop.ts ${args}`, {
-			cwd: process.cwd(),
-			encoding: "utf-8",
-			timeout: 15_000,
-			env: { ...process.env, NO_COLOR: "1" },
-			stdio: ["pipe", "pipe", "pipe"],
-		})
-		return { stdout, stderr: "", exitCode: 0 }
-	} catch (error) {
-		const e = error as {
-			stdout?: string
-			stderr?: string
-			status?: number
-		}
-		return {
-			stdout: (e.stdout ?? "").toString(),
-			stderr: (e.stderr ?? "").toString(),
-			exitCode: e.status ?? 1,
-		}
-	}
-}
 
 describe("chop abi-encode (E2E)", () => {
 	it("encodes transfer(address,uint256) correctly", () => {
@@ -1542,22 +1514,14 @@ describe("abiEncodeHandler — extended edge cases", () => {
 
 	it.effect("encodes zero address", () =>
 		Effect.gen(function* () {
-			const result = yield* abiEncodeHandler(
-				"(address)",
-				["0x0000000000000000000000000000000000000000"],
-				false,
-			)
+			const result = yield* abiEncodeHandler("(address)", ["0x0000000000000000000000000000000000000000"], false)
 			expect(result).toBe("0x" + "00".repeat(32))
 		}),
 	)
 
 	it.effect("encodes multiple params of different types", () =>
 		Effect.gen(function* () {
-			const result = yield* abiEncodeHandler(
-				"(uint256,bool,uint8)",
-				["42", "true", "7"],
-				false,
-			)
+			const result = yield* abiEncodeHandler("(uint256,bool,uint8)", ["42", "true", "7"], false)
 			expect(result.startsWith("0x")).toBe(true)
 			// 3 * 32 bytes = 192 hex chars + 0x
 			expect(result.length).toBe(2 + 3 * 64)
@@ -1580,33 +1544,21 @@ describe("abiEncodeHandler — extended edge cases", () => {
 
 	it.effect("packed encoding with address", () =>
 		Effect.gen(function* () {
-			const result = yield* abiEncodeHandler(
-				"(address)",
-				["0x0000000000000000000000000000000000001234"],
-				true,
-			)
+			const result = yield* abiEncodeHandler("(address)", ["0x0000000000000000000000000000000000001234"], true)
 			expect(result.startsWith("0x")).toBe(true)
 		}),
 	)
 
 	it.effect("fails on invalid address for standard encoding", () =>
 		Effect.gen(function* () {
-			const error = yield* abiEncodeHandler(
-				"(address)",
-				["not-an-address"],
-				false,
-			).pipe(Effect.flip)
+			const error = yield* abiEncodeHandler("(address)", ["not-an-address"], false).pipe(Effect.flip)
 			expect(error._tag).toBe("AbiError")
 		}),
 	)
 
 	it.effect("fails on invalid uint value (non-numeric string)", () =>
 		Effect.gen(function* () {
-			const error = yield* abiEncodeHandler(
-				"(uint256)",
-				["not-a-number"],
-				false,
-			).pipe(Effect.flip)
+			const error = yield* abiEncodeHandler("(uint256)", ["not-a-number"], false).pipe(Effect.flip)
 			expect(error._tag).toBe("AbiError")
 			expect(error.message).toContain("Invalid integer")
 		}),
@@ -1637,9 +1589,7 @@ describe("calldataHandler — extended edge cases", () => {
 
 	it.effect("encodes balanceOf(address) calldata", () =>
 		Effect.gen(function* () {
-			const result = yield* calldataHandler("balanceOf(address)", [
-				"0x0000000000000000000000000000000000001234",
-			])
+			const result = yield* calldataHandler("balanceOf(address)", ["0x0000000000000000000000000000000000001234"])
 			expect(result.startsWith("0x70a08231")).toBe(true)
 		}),
 	)
@@ -1734,10 +1684,7 @@ describe("calldataDecodeHandler — extended edge cases", () => {
 	it.effect("round-trips approve calldata", () =>
 		Effect.gen(function* () {
 			const sig = "approve(address,uint256)"
-			const encoded = yield* calldataHandler(sig, [
-				"0x0000000000000000000000000000000000001234",
-				"1000000000000000000",
-			])
+			const encoded = yield* calldataHandler(sig, ["0x0000000000000000000000000000000000001234", "1000000000000000000"])
 			const decoded = yield* calldataDecodeHandler(sig, encoded)
 			expect(decoded.name).toBe("approve")
 			expect(decoded.signature).toBe("approve(address,uint256)")
@@ -1802,11 +1749,7 @@ describe("handler round-trip consistency", () => {
 	it.effect("abiEncode → abiDecode preserves values for multiple types", () =>
 		Effect.gen(function* () {
 			const sig = "(address,uint256,bool)"
-			const args = [
-				"0x0000000000000000000000000000000000001234",
-				"999999999999999999",
-				"false",
-			]
+			const args = ["0x0000000000000000000000000000000000001234", "999999999999999999", "false"]
 			const encoded = yield* abiEncodeHandler(sig, args, false)
 			const decoded = yield* abiDecodeHandler(sig, encoded)
 			expect(decoded[0]).toBe("0x0000000000000000000000000000000000001234")

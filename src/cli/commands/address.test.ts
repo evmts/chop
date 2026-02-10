@@ -1,8 +1,8 @@
-import { execSync } from "node:child_process"
 import { describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { expect } from "vitest"
 import { Keccak256 } from "voltaire-effect"
+import { runCli } from "../test-helpers.js"
 import {
 	ComputeAddressError,
 	InvalidAddressError,
@@ -314,34 +314,6 @@ describe("address command exports", () => {
 // ---------------------------------------------------------------------------
 // E2E CLI tests
 // ---------------------------------------------------------------------------
-
-function runCli(args: string): {
-	stdout: string
-	stderr: string
-	exitCode: number
-} {
-	try {
-		const stdout = execSync(`bun run bin/chop.ts ${args}`, {
-			cwd: process.cwd(),
-			encoding: "utf-8",
-			timeout: 15_000,
-			env: { ...process.env, NO_COLOR: "1" },
-			stdio: ["pipe", "pipe", "pipe"],
-		})
-		return { stdout, stderr: "", exitCode: 0 }
-	} catch (error) {
-		const e = error as {
-			stdout?: string
-			stderr?: string
-			status?: number
-		}
-		return {
-			stdout: (e.stdout ?? "").toString(),
-			stderr: (e.stderr ?? "").toString(),
-			exitCode: e.status ?? 1,
-		}
-	}
-}
 
 describe("chop to-check-sum-address (E2E)", () => {
 	it("checksums Vitalik's address", () => {
