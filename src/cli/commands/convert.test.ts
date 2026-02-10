@@ -8,17 +8,29 @@ import {
 	InvalidHexError,
 	InvalidNumberError,
 	convertCommands,
+	fromRlpCommand,
 	fromRlpHandler,
+	fromUtf8Command,
 	fromUtf8Handler,
+	fromWeiCommand,
 	fromWeiHandler,
+	shlCommand,
 	shlHandler,
+	shrCommand,
 	shrHandler,
+	toBaseCommand,
 	toBaseHandler,
+	toBytes32Command,
 	toBytes32Handler,
+	toDecCommand,
 	toDecHandler,
+	toHexCommand,
 	toHexHandler,
+	toRlpCommand,
 	toRlpHandler,
+	toUtf8Command,
 	toUtf8Handler,
+	toWeiCommand,
 	toWeiHandler,
 } from "./convert.js"
 
@@ -1454,6 +1466,217 @@ describe("shlHandler / shrHandler — boundary conditions", () => {
 			if (Either.isLeft(result)) {
 				expect(result.left._tag).toBe("InvalidNumberError")
 			}
+		}),
+	)
+})
+
+// ============================================================================
+// In-process Command Handler Tests (coverage for Command.make blocks)
+// ============================================================================
+
+describe("fromWeiCommand.handler — in-process", () => {
+	it.effect("handles valid conversion with plain output", () =>
+		fromWeiCommand.handler({ amount: "1000000000000000000", unit: "ether", json: false }),
+	)
+
+	it.effect("handles valid conversion with JSON output", () =>
+		fromWeiCommand.handler({ amount: "1000000000000000000", unit: "ether", json: true }),
+	)
+
+	it.effect("handles error path on invalid amount", () =>
+		Effect.gen(function* () {
+			const error = yield* fromWeiCommand.handler({ amount: "not-a-number", unit: "ether", json: false }).pipe(
+				Effect.flip,
+			)
+			expect(error.message).toContain("Invalid number")
+		}),
+	)
+})
+
+describe("toWeiCommand.handler — in-process", () => {
+	it.effect("handles valid conversion with plain output", () =>
+		toWeiCommand.handler({ amount: "1.5", unit: "ether", json: false }),
+	)
+
+	it.effect("handles valid conversion with JSON output", () =>
+		toWeiCommand.handler({ amount: "1.5", unit: "ether", json: true }),
+	)
+
+	it.effect("handles error path on invalid amount", () =>
+		Effect.gen(function* () {
+			const error = yield* toWeiCommand.handler({ amount: "abc", unit: "ether", json: false }).pipe(Effect.flip)
+			expect(error.message).toContain("Invalid number")
+		}),
+	)
+})
+
+describe("toHexCommand.handler — in-process", () => {
+	it.effect("handles valid conversion with plain output", () => toHexCommand.handler({ decimal: "255", json: false }))
+
+	it.effect("handles valid conversion with JSON output", () => toHexCommand.handler({ decimal: "255", json: true }))
+
+	it.effect("handles error path on invalid input", () =>
+		Effect.gen(function* () {
+			const error = yield* toHexCommand.handler({ decimal: "not-a-number", json: false }).pipe(Effect.flip)
+			expect(error.message).toContain("Invalid number")
+		}),
+	)
+})
+
+describe("toDecCommand.handler — in-process", () => {
+	it.effect("handles valid conversion with plain output", () => toDecCommand.handler({ hex: "0xff", json: false }))
+
+	it.effect("handles valid conversion with JSON output", () => toDecCommand.handler({ hex: "0xff", json: true }))
+
+	it.effect("handles error path on missing 0x prefix", () =>
+		Effect.gen(function* () {
+			const error = yield* toDecCommand.handler({ hex: "ff", json: false }).pipe(Effect.flip)
+			expect(error.message).toContain("Must start with 0x")
+		}),
+	)
+})
+
+describe("toBaseCommand.handler — in-process", () => {
+	it.effect("handles valid conversion with plain output", () =>
+		toBaseCommand.handler({ value: "255", baseIn: 10, baseOut: 2, json: false }),
+	)
+
+	it.effect("handles valid conversion with JSON output", () =>
+		toBaseCommand.handler({ value: "255", baseIn: 10, baseOut: 16, json: true }),
+	)
+
+	it.effect("handles error path on invalid base", () =>
+		Effect.gen(function* () {
+			const error = yield* toBaseCommand.handler({ value: "255", baseIn: 10, baseOut: 37, json: false }).pipe(
+				Effect.flip,
+			)
+			expect(error.message).toContain("Invalid base-out")
+		}),
+	)
+})
+
+describe("fromUtf8Command.handler — in-process", () => {
+	it.effect("handles valid string with plain output", () => fromUtf8Command.handler({ str: "hello", json: false }))
+
+	it.effect("handles valid string with JSON output", () => fromUtf8Command.handler({ str: "hello", json: true }))
+})
+
+describe("toUtf8Command.handler — in-process", () => {
+	it.effect("handles valid hex with plain output", () =>
+		toUtf8Command.handler({ hex: "0x68656c6c6f", json: false }),
+	)
+
+	it.effect("handles valid hex with JSON output", () => toUtf8Command.handler({ hex: "0x68656c6c6f", json: true }))
+
+	it.effect("handles error path on invalid hex", () =>
+		Effect.gen(function* () {
+			const error = yield* toUtf8Command.handler({ hex: "not-hex", json: false }).pipe(Effect.flip)
+			expect(error.message).toContain("Must start with 0x")
+		}),
+	)
+})
+
+describe("toBytes32Command.handler — in-process", () => {
+	it.effect("handles valid hex with plain output", () =>
+		toBytes32Command.handler({ value: "0xdeadbeef", json: false }),
+	)
+
+	it.effect("handles valid hex with JSON output", () => toBytes32Command.handler({ value: "0xdeadbeef", json: true }))
+
+	it.effect("handles error path on too-large value", () =>
+		Effect.gen(function* () {
+			const error = yield* toBytes32Command
+				.handler({ value: "0x" + "ff".repeat(33), json: false })
+				.pipe(Effect.flip)
+			expect(error.message).toContain("too large")
+		}),
+	)
+})
+
+describe("fromRlpCommand.handler — in-process", () => {
+	it.effect("handles valid hex with plain output", () =>
+		fromRlpCommand.handler({ hex: "0x83646f67", json: false }),
+	)
+
+	it.effect("handles valid hex with JSON output", () => fromRlpCommand.handler({ hex: "0x83646f67", json: true }))
+
+	it.effect("handles error path on invalid hex", () =>
+		Effect.gen(function* () {
+			const error = yield* fromRlpCommand.handler({ hex: "not-hex", json: false }).pipe(Effect.flip)
+			expect(error.message).toContain("Must start with 0x")
+		}),
+	)
+})
+
+describe("toRlpCommand.handler — in-process", () => {
+	it.effect("handles valid values with plain output", () =>
+		toRlpCommand.handler({ values: ["0x68656c6c6f"], json: false }),
+	)
+
+	it.effect("handles valid values with JSON output", () =>
+		toRlpCommand.handler({ values: ["0x68656c6c6f"], json: true }),
+	)
+
+	it.effect("handles error path on empty values", () =>
+		Effect.gen(function* () {
+			const error = yield* toRlpCommand.handler({ values: [], json: false }).pipe(Effect.flip)
+			expect(error.message).toContain("At least one hex value")
+		}),
+	)
+})
+
+describe("shlCommand.handler — in-process", () => {
+	it.effect("handles valid shift with plain output", () =>
+		shlCommand.handler({ value: "1", bits: "8", json: false }),
+	)
+
+	it.effect("handles valid shift with JSON output", () =>
+		shlCommand.handler({ value: "1", bits: "8", json: true }),
+	)
+
+	it.effect("handles error path on invalid value", () =>
+		Effect.gen(function* () {
+			const error = yield* shlCommand.handler({ value: "abc", bits: "8", json: false }).pipe(Effect.flip)
+			expect(error.message).toContain("Invalid value")
+		}),
+	)
+})
+
+describe("shrCommand.handler — in-process", () => {
+	it.effect("handles valid shift with plain output", () =>
+		shrCommand.handler({ value: "256", bits: "8", json: false }),
+	)
+
+	it.effect("handles valid shift with JSON output", () =>
+		shrCommand.handler({ value: "256", bits: "8", json: true }),
+	)
+
+	it.effect("handles error path on invalid value", () =>
+		Effect.gen(function* () {
+			const error = yield* shrCommand.handler({ value: "abc", bits: "8", json: false }).pipe(Effect.flip)
+			expect(error.message).toContain("Invalid value")
+		}),
+	)
+})
+
+// ============================================================================
+// Additional error path tests for toRlpHandler
+// ============================================================================
+
+describe("toRlpHandler — invalid hex data error path", () => {
+	it.effect("fails on odd-length hex value", () =>
+		Effect.gen(function* () {
+			const error = yield* toRlpHandler(["0xabc"]).pipe(Effect.flip)
+			expect(error._tag).toBe("InvalidHexError")
+			expect(error.message).toContain("Invalid hex data")
+		}),
+	)
+
+	it.effect("fails on hex with invalid characters", () =>
+		Effect.gen(function* () {
+			const error = yield* toRlpHandler(["0xgggg"]).pipe(Effect.flip)
+			expect(error._tag).toBe("InvalidHexError")
+			expect(error.message).toContain("Invalid hex data")
 		}),
 	)
 })

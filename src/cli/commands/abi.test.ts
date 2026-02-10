@@ -9,6 +9,7 @@ import {
 	ArgumentCountError,
 	HexDecodeError,
 	InvalidSignatureError,
+	abiCommands,
 	abiDecodeCommand,
 	abiDecodeHandler,
 	abiEncodeCommand,
@@ -2225,4 +2226,137 @@ describe("calldataHandler — edge cases", () => {
 	)
 
 	// Note: tuple types like foo((uint256,address)) are not supported by voltaire-effect encoder
+})
+
+// ============================================================================
+// In-process Command Handler Tests (coverage for Command.make blocks)
+// ============================================================================
+
+describe("abiEncodeCommand.handler — in-process", () => {
+	it.effect("handles encode with plain output", () =>
+		abiEncodeCommand.handler({ sig: "(uint256)", args: ["42"], packed: false, json: false }),
+	)
+
+	it.effect("handles encode with JSON output", () =>
+		abiEncodeCommand.handler({ sig: "(uint256)", args: ["42"], packed: false, json: true }),
+	)
+
+	it.effect("handles encode with packed mode", () =>
+		abiEncodeCommand.handler({ sig: "(uint16,bool)", args: ["1", "true"], packed: true, json: false }),
+	)
+
+	it.effect("handles error path on invalid signature", () =>
+		Effect.gen(function* () {
+			const error = yield* abiEncodeCommand
+				.handler({ sig: "bad", args: ["1"], packed: false, json: false })
+				.pipe(Effect.flip)
+			expect(error.message).toContain("Invalid signature")
+		}),
+	)
+})
+
+describe("calldataCommand.handler — in-process", () => {
+	it.effect("handles calldata with plain output", () =>
+		calldataCommand.handler({
+			sig: "transfer(address,uint256)",
+			args: ["0x0000000000000000000000000000000000001234", "1000000000000000000"],
+			json: false,
+		}),
+	)
+
+	it.effect("handles calldata with JSON output", () =>
+		calldataCommand.handler({
+			sig: "transfer(address,uint256)",
+			args: ["0x0000000000000000000000000000000000001234", "1000000000000000000"],
+			json: true,
+		}),
+	)
+
+	it.effect("handles error path on missing function name", () =>
+		Effect.gen(function* () {
+			const error = yield* calldataCommand.handler({ sig: "(uint256)", args: ["42"], json: false }).pipe(Effect.flip)
+			expect(error.message).toContain("function name")
+		}),
+	)
+})
+
+describe("abiDecodeCommand.handler — in-process", () => {
+	it.effect("handles decode with plain output (non-JSON path with for loop)", () =>
+		abiDecodeCommand.handler({
+			sig: "(uint256)",
+			data: "0x000000000000000000000000000000000000000000000000000000000000002a",
+			json: false,
+		}),
+	)
+
+	it.effect("handles decode with JSON output", () =>
+		abiDecodeCommand.handler({
+			sig: "(uint256)",
+			data: "0x000000000000000000000000000000000000000000000000000000000000002a",
+			json: true,
+		}),
+	)
+
+	it.effect("handles decode of multiple values with plain output", () =>
+		abiDecodeCommand.handler({
+			sig: "transfer(address,uint256)",
+			data: "0x00000000000000000000000000000000000000000000000000000000000012340000000000000000000000000000000000000000000000000de0b6b3a7640000",
+			json: false,
+		}),
+	)
+
+	it.effect("handles error path on invalid hex", () =>
+		Effect.gen(function* () {
+			const error = yield* abiDecodeCommand
+				.handler({ sig: "(uint256)", data: "not-hex", json: false })
+				.pipe(Effect.flip)
+			expect(error.message).toContain("Invalid hex")
+		}),
+	)
+})
+
+describe("calldataDecodeCommand.handler — in-process", () => {
+	it.effect("handles decode with plain output (non-JSON path with for loop)", () =>
+		calldataDecodeCommand.handler({
+			sig: "transfer(address,uint256)",
+			data: "0xa9059cbb00000000000000000000000000000000000000000000000000000000000012340000000000000000000000000000000000000000000000000de0b6b3a7640000",
+			json: false,
+		}),
+	)
+
+	it.effect("handles decode with JSON output", () =>
+		calldataDecodeCommand.handler({
+			sig: "transfer(address,uint256)",
+			data: "0xa9059cbb00000000000000000000000000000000000000000000000000000000000012340000000000000000000000000000000000000000000000000de0b6b3a7640000",
+			json: true,
+		}),
+	)
+
+	it.effect("handles error path on invalid hex", () =>
+		Effect.gen(function* () {
+			const error = yield* calldataDecodeCommand
+				.handler({ sig: "transfer(address,uint256)", data: "not-hex", json: false })
+				.pipe(Effect.flip)
+			expect(error.message).toContain("Invalid hex")
+		}),
+	)
+
+	it.effect("handles error path on missing function name", () =>
+		Effect.gen(function* () {
+			const error = yield* calldataDecodeCommand
+				.handler({
+					sig: "(uint256)",
+					data: "0xa9059cbb0000000000000000000000000000000000000000000000000000000000000001",
+					json: false,
+				})
+				.pipe(Effect.flip)
+			expect(error.message).toContain("function name")
+		}),
+	)
+})
+
+describe("abi command exports — count", () => {
+	it("exports 4 abi commands", () => {
+		expect(abiCommands.length).toBe(4)
+	})
 })
