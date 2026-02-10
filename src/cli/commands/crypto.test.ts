@@ -1,0 +1,414 @@
+import { execSync } from "node:child_process"
+import { describe, it } from "@effect/vitest"
+import { Effect } from "effect"
+import { expect } from "vitest"
+import { Keccak256 } from "voltaire-effect"
+import {
+	CryptoError,
+	cryptoCommands,
+	hashMessageCommand,
+	hashMessageHandler,
+	keccakCommand,
+	keccakHandler,
+	sigCommand,
+	sigEventCommand,
+	sigEventHandler,
+	sigHandler,
+} from "./crypto.js"
+
+// ============================================================================
+// Error Types
+// ============================================================================
+
+describe("CryptoError", () => {
+	it("has correct tag and fields", () => {
+		const error = new CryptoError({ message: "test error" })
+		expect(error._tag).toBe("CryptoError")
+		expect(error.message).toBe("test error")
+	})
+
+	it("preserves cause", () => {
+		const cause = new Error("original")
+		const error = new CryptoError({ message: "wrapped", cause })
+		expect(error.cause).toBe(cause)
+	})
+
+	it("without cause has undefined cause", () => {
+		const error = new CryptoError({ message: "no cause" })
+		expect(error.cause).toBeUndefined()
+	})
+
+	it.effect("can be caught by tag in Effect pipeline", () =>
+		Effect.gen(function* () {
+			const result = yield* Effect.fail(new CryptoError({ message: "boom" })).pipe(
+				Effect.catchTag("CryptoError", (e) => Effect.succeed(`caught: ${e.message}`)),
+			)
+			expect(result).toBe("caught: boom")
+		}),
+	)
+
+	it("structural equality for same fields", () => {
+		const a = new CryptoError({ message: "same" })
+		const b = new CryptoError({ message: "same" })
+		expect(a).toEqual(b)
+	})
+
+	it("different messages have different message properties", () => {
+		const a = new CryptoError({ message: "one" })
+		const b = new CryptoError({ message: "two" })
+		expect(a.message).not.toBe(b.message)
+		expect(a._tag).toBe(b._tag)
+	})
+})
+
+// ============================================================================
+// keccakHandler
+// ============================================================================
+
+describe("keccakHandler", () => {
+	it.effect("hashes 'transfer(address,uint256)' correctly", () =>
+		Effect.gen(function* () {
+			const result = yield* keccakHandler("transfer(address,uint256)")
+			expect(result).toBe("0xa9059cbb2ab09eb219583f4a59a5d0623ade346d962bcd4e46b11da047c9049b")
+		}),
+	)
+
+	it.effect("hashes empty string", () =>
+		Effect.gen(function* () {
+			const result = yield* keccakHandler("")
+			// keccak256("") = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470
+			expect(result).toBe("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470")
+		}),
+	)
+
+	it.effect("hashes hex data with 0x prefix", () =>
+		Effect.gen(function* () {
+			const result = yield* keccakHandler("0xdeadbeef")
+			// keccak256 of the 4 bytes [0xde, 0xad, 0xbe, 0xef]
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66) // 0x + 64 hex chars
+		}),
+	)
+
+	it.effect("hashes 'hello' string", () =>
+		Effect.gen(function* () {
+			const result = yield* keccakHandler("hello")
+			// keccak256("hello") is a well-known hash
+			expect(result).toBe("0x1c8aff950685c2ed4bc3174f3472287b56d9517b9c948127319a09a7a36deac8")
+		}),
+	)
+
+	it.effect("returns full 32 bytes (64 hex chars + 0x)", () =>
+		Effect.gen(function* () {
+			const result = yield* keccakHandler("anything")
+			expect(result.startsWith("0x")).toBe(true)
+			expect(result.length).toBe(66) // 0x + 64 hex chars
+		}),
+	)
+
+	it.effect("hex input vs string input produce different results", () =>
+		Effect.gen(function* () {
+			// "0xab" as hex = hash of byte [0xab]
+			// "0xab" as string would be hash of the string "0xab"
+			const hexResult = yield* keccakHandler("0xab")
+			const stringResult = yield* keccakHandler("ab")
+			expect(hexResult).not.toBe(stringResult)
+		}),
+	)
+})
+
+// ============================================================================
+// sigHandler
+// ============================================================================
+
+describe("sigHandler", () => {
+	it.effect("computes transfer(address,uint256) selector → 0xa9059cbb", () =>
+		Effect.gen(function* () {
+			const result = yield* sigHandler("transfer(address,uint256)")
+			expect(result).toBe("0xa9059cbb")
+		}),
+	)
+
+	it.effect("computes balanceOf(address) selector → 0x70a08231", () =>
+		Effect.gen(function* () {
+			const result = yield* sigHandler("balanceOf(address)")
+			expect(result).toBe("0x70a08231")
+		}),
+	)
+
+	it.effect("computes approve(address,uint256) selector → 0x095ea7b3", () =>
+		Effect.gen(function* () {
+			const result = yield* sigHandler("approve(address,uint256)")
+			expect(result).toBe("0x095ea7b3")
+		}),
+	)
+
+	it.effect("computes totalSupply() selector → 0x18160ddd", () =>
+		Effect.gen(function* () {
+			const result = yield* sigHandler("totalSupply()")
+			expect(result).toBe("0x18160ddd")
+		}),
+	)
+
+	it.effect("returns exactly 4 bytes (10 chars with 0x prefix)", () =>
+		Effect.gen(function* () {
+			const result = yield* sigHandler("anyFunction(uint256)")
+			expect(result.startsWith("0x")).toBe(true)
+			expect(result.length).toBe(10) // 0x + 8 hex chars
+		}),
+	)
+
+	it.effect("computes name() selector → 0x06fdde03", () =>
+		Effect.gen(function* () {
+			const result = yield* sigHandler("name()")
+			expect(result).toBe("0x06fdde03")
+		}),
+	)
+})
+
+// ============================================================================
+// sigEventHandler
+// ============================================================================
+
+describe("sigEventHandler", () => {
+	it.effect("computes Transfer(address,address,uint256) topic", () =>
+		Effect.gen(function* () {
+			const result = yield* sigEventHandler("Transfer(address,address,uint256)")
+			expect(result).toBe("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
+		}),
+	)
+
+	it.effect("computes Approval(address,address,uint256) topic", () =>
+		Effect.gen(function* () {
+			const result = yield* sigEventHandler("Approval(address,address,uint256)")
+			expect(result).toBe("0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925")
+		}),
+	)
+
+	it.effect("returns full 32 bytes (64 hex chars + 0x)", () =>
+		Effect.gen(function* () {
+			const result = yield* sigEventHandler("SomeEvent(uint256)")
+			expect(result.startsWith("0x")).toBe(true)
+			expect(result.length).toBe(66) // 0x + 64 hex chars
+		}),
+	)
+
+	it.effect("event topic matches full keccak of the signature string", () =>
+		Effect.gen(function* () {
+			const topic = yield* sigEventHandler("Transfer(address,address,uint256)")
+			const fullHash = yield* keccakHandler("Transfer(address,address,uint256)")
+			expect(topic).toBe(fullHash)
+		}),
+	)
+})
+
+// ============================================================================
+// hashMessageHandler
+// ============================================================================
+
+describe("hashMessageHandler", () => {
+	it.effect("hashes 'hello world' with EIP-191 prefix", () =>
+		Effect.gen(function* () {
+			const result = yield* hashMessageHandler("hello world")
+			expect(result).toBe("0xd9eba16ed0ecae432b71fe008c98cc872bb4cc214d3220a36f365326cf807d68")
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+
+	it.effect("returns full 32 bytes (64 hex chars + 0x)", () =>
+		Effect.gen(function* () {
+			const result = yield* hashMessageHandler("test")
+			expect(result.startsWith("0x")).toBe(true)
+			expect(result.length).toBe(66) // 0x + 64 hex chars
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+
+	it.effect("hashes empty string", () =>
+		Effect.gen(function* () {
+			const result = yield* hashMessageHandler("")
+			expect(result.startsWith("0x")).toBe(true)
+			expect(result.length).toBe(66)
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+
+	it.effect("different messages produce different hashes", () =>
+		Effect.gen(function* () {
+			const hash1 = yield* hashMessageHandler("message1")
+			const hash2 = yield* hashMessageHandler("message2")
+			expect(hash1).not.toBe(hash2)
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+})
+
+// ============================================================================
+// Command exports
+// ============================================================================
+
+describe("crypto command exports", () => {
+	it("exports 4 commands", () => {
+		expect(cryptoCommands.length).toBe(4)
+	})
+
+	it("exports keccakCommand", () => {
+		expect(keccakCommand).toBeDefined()
+	})
+
+	it("exports sigCommand", () => {
+		expect(sigCommand).toBeDefined()
+	})
+
+	it("exports sigEventCommand", () => {
+		expect(sigEventCommand).toBeDefined()
+	})
+
+	it("exports hashMessageCommand", () => {
+		expect(hashMessageCommand).toBeDefined()
+	})
+})
+
+// ============================================================================
+// E2E CLI tests
+// ============================================================================
+
+function runCli(args: string): {
+	stdout: string
+	stderr: string
+	exitCode: number
+} {
+	try {
+		const stdout = execSync(`bun run bin/chop.ts ${args}`, {
+			cwd: process.cwd(),
+			encoding: "utf-8",
+			timeout: 15_000,
+			env: { ...process.env, NO_COLOR: "1" },
+			stdio: ["pipe", "pipe", "pipe"],
+		})
+		return { stdout, stderr: "", exitCode: 0 }
+	} catch (error) {
+		const e = error as {
+			stdout?: string
+			stderr?: string
+			status?: number
+		}
+		return {
+			stdout: (e.stdout ?? "").toString(),
+			stderr: (e.stderr ?? "").toString(),
+			exitCode: e.status ?? 1,
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// chop keccak (E2E)
+// ---------------------------------------------------------------------------
+
+describe("chop keccak (E2E)", () => {
+	it("hashes 'transfer(address,uint256)' correctly", () => {
+		const result = runCli("keccak 'transfer(address,uint256)'")
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout.trim()).toBe("0xa9059cbb2ab09eb219583f4a59a5d0623ade346d962bcd4e46b11da047c9049b")
+	})
+
+	it("produces JSON output with --json flag", () => {
+		const result = runCli("keccak --json 'transfer(address,uint256)'")
+		expect(result.exitCode).toBe(0)
+		const parsed = JSON.parse(result.stdout.trim())
+		expect(parsed.result).toBe("0xa9059cbb2ab09eb219583f4a59a5d0623ade346d962bcd4e46b11da047c9049b")
+	})
+
+	it("hashes hex input with 0x prefix", () => {
+		const result = runCli("keccak 0xdeadbeef")
+		expect(result.exitCode).toBe(0)
+		const output = result.stdout.trim()
+		expect(output.startsWith("0x")).toBe(true)
+		expect(output.length).toBe(66)
+	})
+
+	it("hashes plain string input", () => {
+		const result = runCli("keccak hello")
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout.trim()).toBe("0x1c8aff950685c2ed4bc3174f3472287b56d9517b9c948127319a09a7a36deac8")
+	})
+})
+
+// ---------------------------------------------------------------------------
+// chop sig (E2E)
+// ---------------------------------------------------------------------------
+
+describe("chop sig (E2E)", () => {
+	it("computes transfer selector", () => {
+		const result = runCli("sig 'transfer(address,uint256)'")
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout.trim()).toBe("0xa9059cbb")
+	})
+
+	it("computes balanceOf selector", () => {
+		const result = runCli("sig 'balanceOf(address)'")
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout.trim()).toBe("0x70a08231")
+	})
+
+	it("produces JSON output with --json flag", () => {
+		const result = runCli("sig --json 'transfer(address,uint256)'")
+		expect(result.exitCode).toBe(0)
+		const parsed = JSON.parse(result.stdout.trim())
+		expect(parsed.result).toBe("0xa9059cbb")
+	})
+
+	it("computes totalSupply selector", () => {
+		const result = runCli("sig 'totalSupply()'")
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout.trim()).toBe("0x18160ddd")
+	})
+})
+
+// ---------------------------------------------------------------------------
+// chop sig-event (E2E)
+// ---------------------------------------------------------------------------
+
+describe("chop sig-event (E2E)", () => {
+	it("computes Transfer event topic", () => {
+		const result = runCli("sig-event 'Transfer(address,address,uint256)'")
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout.trim()).toBe("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
+	})
+
+	it("computes Approval event topic", () => {
+		const result = runCli("sig-event 'Approval(address,address,uint256)'")
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout.trim()).toBe("0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925")
+	})
+
+	it("produces JSON output with --json flag", () => {
+		const result = runCli("sig-event --json 'Transfer(address,address,uint256)'")
+		expect(result.exitCode).toBe(0)
+		const parsed = JSON.parse(result.stdout.trim())
+		expect(parsed.result).toBe("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
+	})
+})
+
+// ---------------------------------------------------------------------------
+// chop hash-message (E2E)
+// ---------------------------------------------------------------------------
+
+describe("chop hash-message (E2E)", () => {
+	it("hashes 'hello world' with EIP-191", () => {
+		const result = runCli("hash-message 'hello world'")
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout.trim()).toBe("0xd9eba16ed0ecae432b71fe008c98cc872bb4cc214d3220a36f365326cf807d68")
+	})
+
+	it("produces JSON output with --json flag", () => {
+		const result = runCli("hash-message --json 'hello world'")
+		expect(result.exitCode).toBe(0)
+		const parsed = JSON.parse(result.stdout.trim())
+		expect(parsed.result).toBe("0xd9eba16ed0ecae432b71fe008c98cc872bb4cc214d3220a36f365326cf807d68")
+	})
+
+	it("hashes single word message", () => {
+		const result = runCli("hash-message test")
+		expect(result.exitCode).toBe(0)
+		const output = result.stdout.trim()
+		expect(output.startsWith("0x")).toBe(true)
+		expect(output.length).toBe(66)
+	})
+})
