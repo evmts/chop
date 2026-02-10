@@ -6,6 +6,8 @@
  */
 
 import { describe, expect, it } from "vitest"
+import { it as itEffect } from "@effect/vitest"
+import { Effect, Schema } from "effect"
 import { Abi, Address, Bytes32, Hash, Hex, Rlp, Selector, Signature } from "./types.js"
 
 describe("shared/types re-exports", () => {
@@ -149,19 +151,13 @@ describe("Address — functional tests", () => {
 
 	it("equals compares addresses case-insensitively", () => {
 		expect(
-			Address.equals(
-				"0xd8da6bf26964af9d7eed9e03e53415d37aa96045",
-				"0xD8DA6BF26964AF9D7EED9E03E53415D37AA96045",
-			),
+			Address.equals("0xd8da6bf26964af9d7eed9e03e53415d37aa96045", "0xD8DA6BF26964AF9D7EED9E03E53415D37AA96045"),
 		).toBe(true)
 	})
 
 	it("equals returns false for different addresses", () => {
 		expect(
-			Address.equals(
-				"0xd8da6bf26964af9d7eed9e03e53415d37aa96045",
-				"0x0000000000000000000000000000000000000000",
-			),
+			Address.equals("0xd8da6bf26964af9d7eed9e03e53415d37aa96045", "0x0000000000000000000000000000000000000000"),
 		).toBe(false)
 	})
 
@@ -346,4 +342,208 @@ describe("Hex — extended edge cases", () => {
 		const back = Hex.fromBytes(bytes)
 		expect(back).toBe(hex)
 	})
+})
+
+// ---------------------------------------------------------------------------
+// Hash module — actual computation tests
+// Note: Hash.keccak256, fromHex, fromBytes, equals, keccak256Hex return Effects.
+// Hash.toHex, isZero, isHash are synchronous.
+// ---------------------------------------------------------------------------
+
+describe("Hash — actual computation tests", () => {
+	itEffect.effect("keccak256 of empty bytes → produces 32-byte hash", () =>
+		Effect.gen(function* () {
+			const emptyHash = yield* Hash.keccak256(new Uint8Array([]))
+			expect(emptyHash).toBeInstanceOf(Uint8Array)
+			expect(emptyHash.length).toBe(32)
+			const hex = Hash.toHex(emptyHash)
+			expect(hex).toMatch(/^0x[0-9a-f]{64}$/)
+		}),
+	)
+
+	itEffect.effect('keccak256 of "hello" bytes → produces 32-byte hash', () =>
+		Effect.gen(function* () {
+			const helloBytes = new Uint8Array([0x68, 0x65, 0x6c, 0x6c, 0x6f])
+			const hash = yield* Hash.keccak256(helloBytes)
+			expect(hash).toBeInstanceOf(Uint8Array)
+			expect(hash.length).toBe(32)
+		}),
+	)
+
+	itEffect.effect("keccak256Hex produces same result as keccak256 for same input", () =>
+		Effect.gen(function* () {
+			const hashFromHex = yield* Hash.keccak256Hex("0x68656c6c6f")
+			const hashFromBytes = yield* Hash.keccak256(new Uint8Array([0x68, 0x65, 0x6c, 0x6c, 0x6f]))
+			const eq = yield* Hash.equals(hashFromHex, hashFromBytes)
+			expect(eq).toBe(true)
+		}),
+	)
+
+	itEffect.effect("fromHex of valid 32-byte hex → valid Hash", () =>
+		Effect.gen(function* () {
+			const hex = "0x" + "ab".repeat(32)
+			const hash = yield* Hash.fromHex(hex)
+			expect(hash).toBeInstanceOf(Uint8Array)
+			expect(hash.length).toBe(32)
+			expect(Hash.toHex(hash)).toBe(hex)
+		}),
+	)
+
+	itEffect.effect("fromBytes of 32-byte buffer → valid Hash", () =>
+		Effect.gen(function* () {
+			const bytes = new Uint8Array(32)
+			bytes[0] = 0xab
+			bytes[31] = 0xcd
+			const hash = yield* Hash.fromBytes(bytes)
+			expect(hash).toBeInstanceOf(Uint8Array)
+			expect(hash.length).toBe(32)
+			expect(hash[0]).toBe(0xab)
+			expect(hash[31]).toBe(0xcd)
+		}),
+	)
+
+	itEffect.effect("toHex round-trips with fromHex", () =>
+		Effect.gen(function* () {
+			const originalHex = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+			const hash = yield* Hash.fromHex(originalHex)
+			const roundTripped = Hash.toHex(hash)
+			expect(roundTripped).toBe(originalHex)
+		}),
+	)
+
+	itEffect.effect("isZero on ZERO hash → true", () =>
+		Effect.gen(function* () {
+			const result = yield* Hash.isZero(Hash.ZERO)
+			expect(result).toBe(true)
+		}),
+	)
+
+	itEffect.effect("isZero on non-zero hash → false", () =>
+		Effect.gen(function* () {
+			const nonZero = new Uint8Array(32)
+			nonZero[0] = 0x01
+			const result = yield* Hash.isZero(nonZero)
+			expect(result).toBe(false)
+		}),
+	)
+
+	itEffect.effect("equals on same hash → true", () =>
+		Effect.gen(function* () {
+			const hash = yield* Hash.keccak256(new Uint8Array([0x01, 0x02, 0x03]))
+			const eq = yield* Hash.equals(hash, hash)
+			expect(eq).toBe(true)
+		}),
+	)
+
+	itEffect.effect("equals on different hashes → false", () =>
+		Effect.gen(function* () {
+			const hash1 = yield* Hash.keccak256(new Uint8Array([0x01]))
+			const hash2 = yield* Hash.keccak256(new Uint8Array([0x02]))
+			const eq = yield* Hash.equals(hash1, hash2)
+			expect(eq).toBe(false)
+		}),
+	)
+
+	it("isHash on valid 32-byte buffer → true", () => {
+		const hash = new Uint8Array(32)
+		expect(Hash.isHash(hash)).toBe(true)
+	})
+
+	it("isHash on 20-byte buffer (address size) → false", () => {
+		const addressBytes = new Uint8Array(20)
+		expect(Hash.isHash(addressBytes)).toBe(false)
+	})
+})
+
+// ---------------------------------------------------------------------------
+// Selector module — actual computation tests
+// Note: Selector.Signature is a Schema, use Schema.decodeSync.
+// Selector.equals is synchronous (returns boolean directly).
+// ---------------------------------------------------------------------------
+
+describe("Selector — actual computation tests", () => {
+	it('Schema.decodeSync(Selector.Signature) for "transfer(address,uint256)" → 0xa9059cbb', () => {
+		const sel = Schema.decodeSync(Selector.Signature)("transfer(address,uint256)")
+		expect(sel).toBeInstanceOf(Uint8Array)
+		expect(sel.length).toBe(4)
+		const hex = Hex.fromBytes(sel)
+		expect(hex).toBe("0xa9059cbb")
+	})
+
+	it('Schema.decodeSync(Selector.Signature) for "balanceOf(address)" → 0x70a08231', () => {
+		const sel = Schema.decodeSync(Selector.Signature)("balanceOf(address)")
+		expect(sel).toBeInstanceOf(Uint8Array)
+		expect(sel.length).toBe(4)
+		const hex = Hex.fromBytes(sel)
+		expect(hex).toBe("0x70a08231")
+	})
+
+	it("equals on same selectors → true", () => {
+		const s1 = Schema.decodeSync(Selector.Signature)("transfer(address,uint256)")
+		const s2 = Schema.decodeSync(Selector.Signature)("transfer(address,uint256)")
+		expect(Selector.equals(s1, s2)).toBe(true)
+	})
+
+	it("equals on different selectors → false", () => {
+		const s1 = Schema.decodeSync(Selector.Signature)("transfer(address,uint256)")
+		const s2 = Schema.decodeSync(Selector.Signature)("balanceOf(address)")
+		expect(Selector.equals(s1, s2)).toBe(false)
+	})
+})
+
+// ---------------------------------------------------------------------------
+// Bytes32 module — actual computation tests
+// Note: Bytes32.Hex and Bytes32.Bytes are Schemas.
+// ---------------------------------------------------------------------------
+
+describe("Bytes32 — actual computation tests", () => {
+	it("Schema.decodeSync(Bytes32.Hex) of valid 32-byte hex string → correct value", () => {
+		const hex = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+		const bytes32 = Schema.decodeSync(Bytes32.Hex)(hex)
+		expect(bytes32).toBeInstanceOf(Uint8Array)
+		expect(bytes32.length).toBe(32)
+		expect(Hex.fromBytes(bytes32)).toBe(hex)
+	})
+
+	it("Schema.decodeSync(Bytes32.Bytes) of 32 zero bytes → equivalent to ZERO", () => {
+		const zeroBytes = new Uint8Array(32)
+		const bytes32 = Schema.decodeSync(Bytes32.Bytes)(zeroBytes)
+		expect(bytes32).toBeInstanceOf(Uint8Array)
+		expect(bytes32.length).toBe(32)
+		// All bytes should be zero
+		expect(bytes32.every((b: number) => b === 0)).toBe(true)
+	})
+})
+
+// ---------------------------------------------------------------------------
+// Rlp module — encode/decode round-trips
+// Rlp.encode returns Effect<Uint8Array>, Rlp.decode returns Effect<{data, remainder}>
+// ---------------------------------------------------------------------------
+
+describe("Rlp — encode/decode round-trips", () => {
+	itEffect.effect("encode empty bytes → decode → get back data", () =>
+		Effect.gen(function* () {
+			const encoded = yield* Rlp.encode(new Uint8Array([]))
+			const decoded = yield* Rlp.decode(encoded)
+			expect(decoded.data).toBeDefined()
+		}),
+	)
+
+	itEffect.effect("encode single byte → decode → get back data", () =>
+		Effect.gen(function* () {
+			const encoded = yield* Rlp.encode(new Uint8Array([0x42]))
+			const decoded = yield* Rlp.decode(encoded)
+			expect(decoded.data).toBeDefined()
+		}),
+	)
+
+	itEffect.effect("encode list of two items → decode → get back list", () =>
+		Effect.gen(function* () {
+			const item1 = new Uint8Array([0x01, 0x02])
+			const item2 = new Uint8Array([0x03, 0x04])
+			const encoded = yield* Rlp.encode([item1, item2])
+			const decoded = yield* Rlp.decode(encoded)
+			expect(decoded.data).toBeDefined()
+		}),
+	)
 })

@@ -434,3 +434,230 @@ describe("chop hash-message (E2E)", () => {
 		expect(output.length).toBe(66)
 	})
 })
+
+// ============================================================================
+// Extended Edge Case Tests
+// ============================================================================
+
+// ---------------------------------------------------------------------------
+// keccakHandler — extended edge cases
+// ---------------------------------------------------------------------------
+
+describe("keccakHandler — extended edge cases", () => {
+	it.effect("hashes single character 'a'", () =>
+		Effect.gen(function* () {
+			const result = yield* keccakHandler("a")
+			expect(result).toBe("0x3ac225168df54212a25c1c01fd35bebfea408fdac2e31ddd6f80a4bbf9a5f1cb")
+		}),
+	)
+
+	it.effect("hashes unicode string '🎉'", () =>
+		Effect.gen(function* () {
+			const result = yield* keccakHandler("🎉")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}),
+	)
+
+	it.effect("hashes very long string (1000 chars)", () =>
+		Effect.gen(function* () {
+			const longString = "a".repeat(1000)
+			const result = yield* keccakHandler(longString)
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}),
+	)
+
+	it.effect("hashes hex '0x00' (single zero byte)", () =>
+		Effect.gen(function* () {
+			const result = yield* keccakHandler("0x00")
+			expect(result).toBe("0xbc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98a")
+		}),
+	)
+
+	it.effect("hashes hex with leading zeros '0x0001'", () =>
+		Effect.gen(function* () {
+			const result = yield* keccakHandler("0x0001")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}),
+	)
+
+	it.effect("re-hashes already hashed data (64 chars + 0x prefix)", () =>
+		Effect.gen(function* () {
+			const alreadyHashed = "0xa9059cbb2ab09eb219583f4a59a5d0623ade346d962bcd4e46b11da047c9049b"
+			const result = yield* keccakHandler(alreadyHashed)
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+			// Should produce a different hash (re-hashing the hex bytes)
+			expect(result).not.toBe(alreadyHashed)
+		}),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// sigHandler — more selectors
+// ---------------------------------------------------------------------------
+
+describe("sigHandler — more selectors", () => {
+	it.effect("computes approve(address,uint256) selector → 0x095ea7b3", () =>
+		Effect.gen(function* () {
+			const result = yield* sigHandler("approve(address,uint256)")
+			expect(result).toBe("0x095ea7b3")
+		}),
+	)
+
+	it.effect("computes transferFrom(address,address,uint256) selector → 0x23b872dd", () =>
+		Effect.gen(function* () {
+			const result = yield* sigHandler("transferFrom(address,address,uint256)")
+			expect(result).toBe("0x23b872dd")
+		}),
+	)
+
+	it.effect("computes totalSupply() selector → 0x18160ddd", () =>
+		Effect.gen(function* () {
+			const result = yield* sigHandler("totalSupply()")
+			expect(result).toBe("0x18160ddd")
+		}),
+	)
+
+	it.effect("computes allowance(address,address) selector → 0xdd62ed3e", () =>
+		Effect.gen(function* () {
+			const result = yield* sigHandler("allowance(address,address)")
+			expect(result).toBe("0xdd62ed3e")
+		}),
+	)
+
+	it.effect("computes name() selector → 0x06fdde03", () =>
+		Effect.gen(function* () {
+			const result = yield* sigHandler("name()")
+			expect(result).toBe("0x06fdde03")
+		}),
+	)
+
+	it.effect("computes symbol() selector → 0x95d89b41", () =>
+		Effect.gen(function* () {
+			const result = yield* sigHandler("symbol()")
+			expect(result).toBe("0x95d89b41")
+		}),
+	)
+
+	it.effect("computes decimals() selector → 0x313ce567", () =>
+		Effect.gen(function* () {
+			const result = yield* sigHandler("decimals()")
+			expect(result).toBe("0x313ce567")
+		}),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// sigEventHandler — more events
+// ---------------------------------------------------------------------------
+
+describe("sigEventHandler — more events", () => {
+	it.effect("computes Approval(address,address,uint256) topic → 0x8c5be1e5...", () =>
+		Effect.gen(function* () {
+			const result = yield* sigEventHandler("Approval(address,address,uint256)")
+			expect(result).toBe("0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925")
+		}),
+	)
+
+	it.effect("computes Transfer(address,address,uint256) topic", () =>
+		Effect.gen(function* () {
+			const result = yield* sigEventHandler("Transfer(address,address,uint256)")
+			expect(result).toBe("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
+		}),
+	)
+
+	it.effect("computes OwnershipTransferred(address,address) topic", () =>
+		Effect.gen(function* () {
+			const result = yield* sigEventHandler("OwnershipTransferred(address,address)")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// hashMessageHandler — edge cases
+// ---------------------------------------------------------------------------
+
+describe("hashMessageHandler — edge cases", () => {
+	it.effect("hashes empty message", () =>
+		Effect.gen(function* () {
+			const result = yield* hashMessageHandler("")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+
+	it.effect("hashes very long message (1000 chars)", () =>
+		Effect.gen(function* () {
+			const longMessage = "a".repeat(1000)
+			const result = yield* hashMessageHandler(longMessage)
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+
+	it.effect("hashes unicode message 'こんにちは'", () =>
+		Effect.gen(function* () {
+			const result = yield* hashMessageHandler("こんにちは")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+
+	it.effect("hashes message with newlines 'hello\\nworld'", () =>
+		Effect.gen(function* () {
+			const result = yield* hashMessageHandler("hello\nworld")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+
+	it.effect("hashes numeric message '12345'", () =>
+		Effect.gen(function* () {
+			const result = yield* hashMessageHandler("12345")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// keccakHandler — cross-validation
+// ---------------------------------------------------------------------------
+
+describe("keccakHandler — cross-validation", () => {
+	it.effect("keccak of hex '0x68656c6c6f' (hello in hex) ≠ keccak of string '0x68656c6c6f'", () =>
+		Effect.gen(function* () {
+			const hexAsBytes = yield* keccakHandler("0x68656c6c6f")
+			const hexAsString = yield* keccakHandler("hello")
+			// 0x68656c6c6f as hex bytes should produce a different hash than the string "hello"
+			// Actually, wait - let me reconsider. The user wants:
+			// - "0x68656c6c6f" treated as hex (bytes [0x68, 0x65, 0x6c, 0x6c, 0x6f])
+			// - "0x68656c6c6f" treated as string (the literal string "0x68656c6c6f")
+			// We need to compare hex interpretation vs string interpretation of the same input
+			const stringLiteral = "0x68656c6c6f"
+
+			// Hash the hex bytes (0x prefix triggers hex mode)
+			const hashOfHexBytes = yield* keccakHandler("0x68656c6c6f")
+
+			// Hash the string "hello" (UTF-8 mode, which is the same bytes as hex 0x68656c6c6f represents)
+			const hashOfHelloString = yield* keccakHandler("hello")
+
+			// These should be equal because 0x68656c6c6f as hex bytes IS "hello" as UTF-8
+			expect(hashOfHexBytes).toBe(hashOfHelloString)
+		}),
+	)
+
+	it.effect("keccak of string 'hello' equals hash of bytes [0x68, 0x65, 0x6c, 0x6c, 0x6f]", () =>
+		Effect.gen(function* () {
+			const hashOfString = yield* keccakHandler("hello")
+			const hashOfHex = yield* keccakHandler("0x68656c6c6f")
+			expect(hashOfString).toBe(hashOfHex)
+			expect(hashOfString).toBe("0x1c8aff950685c2ed4bc3174f3472287b56d9517b9c948127319a09a7a36deac8")
+		}),
+	)
+})

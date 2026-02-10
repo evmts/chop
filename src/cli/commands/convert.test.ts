@@ -989,3 +989,471 @@ describe("chop shr (E2E)", () => {
 		expect(parsed).toEqual({ result: "0x1" })
 	})
 })
+
+// ============================================================================
+// fromWeiHandler — all units
+// ============================================================================
+
+describe("fromWeiHandler — all units", () => {
+	it.effect("converts kwei", () =>
+		Effect.gen(function* () {
+			const result = yield* fromWeiHandler("1000", "kwei")
+			expect(result).toBe("1.000")
+		}),
+	)
+
+	it.effect("converts mwei", () =>
+		Effect.gen(function* () {
+			const result = yield* fromWeiHandler("1000000", "mwei")
+			expect(result).toBe("1.000000")
+		}),
+	)
+
+	it.effect("converts szabo", () =>
+		Effect.gen(function* () {
+			const result = yield* fromWeiHandler("1000000000000", "szabo")
+			expect(result).toBe("1.000000000000")
+		}),
+	)
+
+	it.effect("converts finney", () =>
+		Effect.gen(function* () {
+			const result = yield* fromWeiHandler("1000000000000000", "finney")
+			expect(result).toBe("1.000000000000000")
+		}),
+	)
+
+	it.effect("converts wei unit", () =>
+		Effect.gen(function* () {
+			const result = yield* fromWeiHandler("42", "wei")
+			expect(result).toBe("42")
+		}),
+	)
+
+	it.effect("is case insensitive", () =>
+		Effect.gen(function* () {
+			const result = yield* fromWeiHandler("1000000000", "GWEI")
+			expect(result).toBe("1.000000000")
+		}),
+	)
+})
+
+// ============================================================================
+// toWeiHandler — all units
+// ============================================================================
+
+describe("toWeiHandler — all units", () => {
+	it.effect("converts kwei", () =>
+		Effect.gen(function* () {
+			const result = yield* toWeiHandler("1", "kwei")
+			expect(result).toBe("1000")
+		}),
+	)
+
+	it.effect("converts mwei", () =>
+		Effect.gen(function* () {
+			const result = yield* toWeiHandler("1", "mwei")
+			expect(result).toBe("1000000")
+		}),
+	)
+
+	it.effect("converts gwei with decimal", () =>
+		Effect.gen(function* () {
+			const result = yield* toWeiHandler("1.5", "gwei")
+			expect(result).toBe("1500000000")
+		}),
+	)
+
+	it.effect("converts szabo", () =>
+		Effect.gen(function* () {
+			const result = yield* toWeiHandler("1", "szabo")
+			expect(result).toBe("1000000000000")
+		}),
+	)
+
+	it.effect("converts finney", () =>
+		Effect.gen(function* () {
+			const result = yield* toWeiHandler("1", "finney")
+			expect(result).toBe("1000000000000000")
+		}),
+	)
+
+	it.effect("converts wei unit", () =>
+		Effect.gen(function* () {
+			const result = yield* toWeiHandler("42", "wei")
+			expect(result).toBe("42")
+		}),
+	)
+
+	it.effect("fails on too many decimals", () =>
+		Effect.gen(function* () {
+			const result = yield* toWeiHandler("1.1234567890123456789", "ether").pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("ConversionError")
+			}
+		}),
+	)
+
+	it.effect("handles negative values", () =>
+		Effect.gen(function* () {
+			const result = yield* toWeiHandler("-1.5", "ether")
+			expect(result).toBe("-1500000000000000000")
+		}),
+	)
+
+	it.effect("fails on empty string", () =>
+		Effect.gen(function* () {
+			const result = yield* toWeiHandler("", "ether").pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("InvalidNumberError")
+			}
+		}),
+	)
+
+	it.effect("fails on multiple dots", () =>
+		Effect.gen(function* () {
+			const result = yield* toWeiHandler("1.2.3", "ether").pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("InvalidNumberError")
+			}
+		}),
+	)
+
+	it.effect("fails on non-numeric", () =>
+		Effect.gen(function* () {
+			const result = yield* toWeiHandler("abc", "ether").pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("InvalidNumberError")
+			}
+		}),
+	)
+})
+
+// ============================================================================
+// toHexHandler — boundary conditions
+// ============================================================================
+
+describe("toHexHandler — boundary conditions", () => {
+	it.effect("converts max safe integer", () =>
+		Effect.gen(function* () {
+			const result = yield* toHexHandler("9007199254740991")
+			expect(result).toBe("0x1fffffffffffff")
+		}),
+	)
+
+	it.effect("converts larger than safe integer (uint256 max)", () =>
+		Effect.gen(function* () {
+			const result = yield* toHexHandler("115792089237316195423570985008687907853269984665640564039457584007913129639935")
+			expect(result).toBe("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+		}),
+	)
+
+	it.effect("converts negative zero", () =>
+		Effect.gen(function* () {
+			const result = yield* toHexHandler("0")
+			expect(result).toBe("0x0")
+		}),
+	)
+
+	it.effect("converts negative number", () =>
+		Effect.gen(function* () {
+			const result = yield* toHexHandler("-255")
+			expect(result).toBe("-0xff")
+		}),
+	)
+})
+
+// ============================================================================
+// toDecHandler — edge cases
+// ============================================================================
+
+describe("toDecHandler — edge cases", () => {
+	it.effect("handles empty after 0x", () =>
+		Effect.gen(function* () {
+			const result = yield* toDecHandler("0x")
+			expect(result).toBe("0")
+		}),
+	)
+
+	it.effect("converts very large (uint256 max)", () =>
+		Effect.gen(function* () {
+			const result = yield* toDecHandler("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+			expect(result).toBe("115792089237316195423570985008687907853269984665640564039457584007913129639935")
+		}),
+	)
+
+	it.effect("fails on invalid chars", () =>
+		Effect.gen(function* () {
+			const result = yield* toDecHandler("0xzzzz").pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("InvalidHexError")
+			}
+		}),
+	)
+
+	it.effect("handles uppercase", () =>
+		Effect.gen(function* () {
+			const result = yield* toDecHandler("0xFF")
+			expect(result).toBe("255")
+		}),
+	)
+})
+
+// ============================================================================
+// toBaseHandler — edge cases
+// ============================================================================
+
+describe("toBaseHandler — edge cases", () => {
+	it.effect("converts base 2 to 16", () =>
+		Effect.gen(function* () {
+			const result = yield* toBaseHandler("11111111", 2, 16)
+			expect(result).toBe("ff")
+		}),
+	)
+
+	it.effect("converts base 16 to 2", () =>
+		Effect.gen(function* () {
+			const result = yield* toBaseHandler("ff", 16, 2)
+			expect(result).toBe("11111111")
+		}),
+	)
+
+	it.effect("converts base 36", () =>
+		Effect.gen(function* () {
+			const result = yield* toBaseHandler("zz", 36, 10)
+			expect(result).toBe("1295")
+		}),
+	)
+
+	it.effect("fails on base 1 (invalid)", () =>
+		Effect.gen(function* () {
+			const result = yield* toBaseHandler("1", 1, 10).pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("InvalidBaseError")
+			}
+		}),
+	)
+
+	it.effect("fails on base 37 (invalid)", () =>
+		Effect.gen(function* () {
+			const result = yield* toBaseHandler("1", 10, 37).pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("InvalidBaseError")
+			}
+		}),
+	)
+
+	it.effect("handles hex prefix with base 16", () =>
+		Effect.gen(function* () {
+			const result = yield* toBaseHandler("0xff", 16, 10)
+			expect(result).toBe("255")
+		}),
+	)
+})
+
+// ============================================================================
+// fromUtf8Handler — edge cases
+// ============================================================================
+
+describe("fromUtf8Handler — edge cases", () => {
+	it.effect("converts empty string", () =>
+		Effect.gen(function* () {
+			const result = yield* fromUtf8Handler("")
+			expect(result).toBe("0x")
+		}),
+	)
+
+	it.effect("converts unicode emoji", () =>
+		Effect.gen(function* () {
+			const result = yield* fromUtf8Handler("🎉")
+			expect(result).toBe("0xf09f8e89")
+		}),
+	)
+
+	it.effect("converts multi-byte (Japanese)", () =>
+		Effect.gen(function* () {
+			const result = yield* fromUtf8Handler("日本語")
+			expect(result).toBe("0xe697a5e69cace8aa9e")
+		}),
+	)
+
+	it.effect("converts special chars with newline", () =>
+		Effect.gen(function* () {
+			const result = yield* fromUtf8Handler("hello\nworld")
+			expect(result).toBe("0x68656c6c6f0a776f726c64")
+		}),
+	)
+})
+
+// ============================================================================
+// toUtf8Handler — edge cases
+// ============================================================================
+
+describe("toUtf8Handler — edge cases", () => {
+	it.effect("converts empty hex", () =>
+		Effect.gen(function* () {
+			const result = yield* toUtf8Handler("0x")
+			expect(result).toBe("")
+		}),
+	)
+
+	it.effect("converts valid ascii", () =>
+		Effect.gen(function* () {
+			const result = yield* toUtf8Handler("0x48656c6c6f")
+			expect(result).toBe("Hello")
+		}),
+	)
+
+	it.effect("fails on odd length", () =>
+		Effect.gen(function* () {
+			const result = yield* toUtf8Handler("0xabc").pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("InvalidHexError")
+			}
+		}),
+	)
+
+	it.effect("fails on invalid chars", () =>
+		Effect.gen(function* () {
+			const result = yield* toUtf8Handler("0xZZZZ").pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("InvalidHexError")
+			}
+		}),
+	)
+
+	it.effect("fails on no prefix", () =>
+		Effect.gen(function* () {
+			const result = yield* toUtf8Handler("deadbeef").pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("InvalidHexError")
+			}
+		}),
+	)
+})
+
+// ============================================================================
+// toBytes32Handler — edge cases
+// ============================================================================
+
+describe("toBytes32Handler — edge cases", () => {
+	it.effect("converts numeric 0", () =>
+		Effect.gen(function* () {
+			const result = yield* toBytes32Handler("0")
+			expect(result).toBe("0x0000000000000000000000000000000000000000000000000000000000000000")
+		}),
+	)
+
+	it.effect("converts max uint256", () =>
+		Effect.gen(function* () {
+			const result = yield* toBytes32Handler("115792089237316195423570985008687907853269984665640564039457584007913129639935")
+			expect(result).toBe("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+		}),
+	)
+
+	it.effect("fails on hex too large (33 bytes)", () =>
+		Effect.gen(function* () {
+			const tooLarge = `0x${"ff".repeat(33)}`
+			const result = yield* toBytes32Handler(tooLarge).pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("ConversionError")
+			}
+		}),
+	)
+
+	it.effect("fails on UTF-8 too large (>32 chars)", () =>
+		Effect.gen(function* () {
+			const result = yield* toBytes32Handler("this string is way too long for bytes32 blah").pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("ConversionError")
+			}
+		}),
+	)
+
+	it.effect("converts empty hex", () =>
+		Effect.gen(function* () {
+			const result = yield* toBytes32Handler("0x")
+			expect(result).toBe("0x0000000000000000000000000000000000000000000000000000000000000000")
+		}),
+	)
+})
+
+// ============================================================================
+// shlHandler / shrHandler — boundary conditions
+// ============================================================================
+
+describe("shlHandler / shrHandler — boundary conditions", () => {
+	it.effect("shift by 0 is identity", () =>
+		Effect.gen(function* () {
+			const result = yield* shlHandler("1", "0")
+			expect(result).toBe("0x1")
+		}),
+	)
+
+	it.effect("shift 1 left by 255", () =>
+		Effect.gen(function* () {
+			const result = yield* shlHandler("1", "255")
+			expect(result).toBe("0x8000000000000000000000000000000000000000000000000000000000000000")
+		}),
+	)
+
+	it.effect("shift hex input", () =>
+		Effect.gen(function* () {
+			const result = yield* shlHandler("0xff", "8")
+			expect(result).toBe("0xff00")
+		}),
+	)
+
+	it.effect("shift by large amount (256)", () =>
+		Effect.gen(function* () {
+			const result = yield* shlHandler("1", "256")
+			expect(result).toBe("0x10000000000000000000000000000000000000000000000000000000000000000")
+		}),
+	)
+
+	it.effect("shift negative value", () =>
+		Effect.gen(function* () {
+			const result = yield* shlHandler("-1", "8")
+			expect(result).toBe("-0x100")
+		}),
+	)
+
+	it.effect("shrHandler shifts correctly", () =>
+		Effect.gen(function* () {
+			const result = yield* shrHandler("0x10000", "8")
+			expect(result).toBe("0x100")
+		}),
+	)
+
+	it.effect("fails on negative shift amount (shl)", () =>
+		Effect.gen(function* () {
+			const result = yield* shlHandler("1", "-1").pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("InvalidNumberError")
+			}
+		}),
+	)
+
+	it.effect("fails on negative shift amount (shr)", () =>
+		Effect.gen(function* () {
+			const result = yield* shrHandler("256", "-1").pipe(Effect.either)
+			expect(Either.isLeft(result)).toBe(true)
+			if (Either.isLeft(result)) {
+				expect(result.left._tag).toBe("InvalidNumberError")
+			}
+		}),
+	)
+})

@@ -402,3 +402,255 @@ describe("chop create2 (E2E)", () => {
 		expect(result.exitCode).not.toBe(0)
 	})
 })
+
+// ---------------------------------------------------------------------------
+// Boundary Conditions — toCheckSumAddressHandler
+// ---------------------------------------------------------------------------
+
+describe("toCheckSumAddressHandler — boundary conditions", () => {
+	it.effect("zero address → 0x0000000000000000000000000000000000000000", () =>
+		toCheckSumAddressHandler("0x0000000000000000000000000000000000000000").pipe(
+			Effect.provide(Keccak256.KeccakLive),
+			Effect.map((result) => {
+				expect(result).toBe("0x0000000000000000000000000000000000000000")
+			}),
+		),
+	)
+
+	it.effect("max address (all ff) → proper checksummed form", () =>
+		toCheckSumAddressHandler("0xffffffffffffffffffffffffffffffffffffffff").pipe(
+			Effect.provide(Keccak256.KeccakLive),
+			Effect.map((result) => {
+				expect(result.toLowerCase()).toBe("0xffffffffffffffffffffffffffffffffffffffff")
+				expect(result.startsWith("0x")).toBe(true)
+				expect(result.length).toBe(42)
+			}),
+		),
+	)
+
+	it.effect("address with only numbers (no letters) → passes through", () =>
+		toCheckSumAddressHandler("0x1111111111111111111111111111111111111111").pipe(
+			Effect.provide(Keccak256.KeccakLive),
+			Effect.map((result) => {
+				expect(result).toBe("0x1111111111111111111111111111111111111111")
+			}),
+		),
+	)
+
+	it.effect("too short address → InvalidAddressError", () =>
+		toCheckSumAddressHandler("0x1234").pipe(
+			Effect.provide(Keccak256.KeccakLive),
+			Effect.flip,
+			Effect.map((e) => {
+				expect(e._tag).toBe("InvalidAddressError")
+			}),
+		),
+	)
+
+	it.effect("too long address → InvalidAddressError", () =>
+		toCheckSumAddressHandler("0x" + "aa".repeat(21)).pipe(
+			Effect.provide(Keccak256.KeccakLive),
+			Effect.flip,
+			Effect.map((e) => {
+				expect(e._tag).toBe("InvalidAddressError")
+			}),
+		),
+	)
+
+	it.effect("missing 0x prefix → fails", () =>
+		toCheckSumAddressHandler("d8da6bf26964af9d7eed9e03e53415d37aa96045").pipe(
+			Effect.provide(Keccak256.KeccakLive),
+			Effect.flip,
+			Effect.map((e) => {
+				expect(e._tag).toBe("InvalidAddressError")
+			}),
+		),
+	)
+
+	it.effect("non-hex characters → fails", () =>
+		toCheckSumAddressHandler("0xgggggggggggggggggggggggggggggggggggggggg").pipe(
+			Effect.provide(Keccak256.KeccakLive),
+			Effect.flip,
+			Effect.map((e) => {
+				expect(e._tag).toBe("InvalidAddressError")
+			}),
+		),
+	)
+
+	it.effect("empty string → InvalidAddressError", () =>
+		toCheckSumAddressHandler("").pipe(
+			Effect.provide(Keccak256.KeccakLive),
+			Effect.flip,
+			Effect.map((e) => {
+				expect(e._tag).toBe("InvalidAddressError")
+			}),
+		),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// Boundary Conditions — computeAddressHandler
+// ---------------------------------------------------------------------------
+
+describe("computeAddressHandler — boundary conditions", () => {
+	it.effect("nonce 0 → known address (using known deployer)", () =>
+		computeAddressHandler("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", "0").pipe(
+			Effect.provide(Keccak256.KeccakLive),
+			Effect.map((result) => {
+				expect(result.toLowerCase()).toBe("0x5fbdb2315678afecb367f032d93f642f64180aa3")
+			}),
+		),
+	)
+
+	it.effect("high nonce (1000000) → succeeds without error", () =>
+		computeAddressHandler("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", "1000000").pipe(
+			Effect.provide(Keccak256.KeccakLive),
+			Effect.map((result) => {
+				expect(result).toMatch(/^0x[0-9a-fA-F]{40}$/)
+			}),
+		),
+	)
+
+	it.effect("negative nonce → ComputeAddressError", () =>
+		computeAddressHandler("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", "-1").pipe(
+			Effect.provide(Keccak256.KeccakLive),
+			Effect.flip,
+			Effect.map((e) => {
+				expect(e._tag).toBe("ComputeAddressError")
+			}),
+		),
+	)
+
+	it.effect("non-numeric nonce → ComputeAddressError", () =>
+		computeAddressHandler("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", "abc").pipe(
+			Effect.provide(Keccak256.KeccakLive),
+			Effect.flip,
+			Effect.map((e) => {
+				expect(e._tag).toBe("ComputeAddressError")
+			}),
+		),
+	)
+
+	it.effect("decimal nonce → ComputeAddressError (e.g. \"1.5\")", () =>
+		computeAddressHandler("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", "1.5").pipe(
+			Effect.provide(Keccak256.KeccakLive),
+			Effect.flip,
+			Effect.map((e) => {
+				expect(e._tag).toBe("ComputeAddressError")
+			}),
+		),
+	)
+
+	it.effect("empty nonce string → succeeds (BigInt('') === 0n)", () =>
+		computeAddressHandler("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", "").pipe(
+			Effect.provide(Keccak256.KeccakLive),
+			Effect.map((result) => {
+				expect(result.startsWith("0x")).toBe(true)
+				expect(result.length).toBe(42)
+			}),
+		),
+	)
+
+	it.effect("invalid deployer → InvalidAddressError", () =>
+		computeAddressHandler("0xbad", "0").pipe(
+			Effect.provide(Keccak256.KeccakLive),
+			Effect.flip,
+			Effect.map((e) => {
+				expect(e._tag).toBe("InvalidAddressError")
+			}),
+		),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// Boundary Conditions — create2Handler
+// ---------------------------------------------------------------------------
+
+describe("create2Handler — boundary conditions", () => {
+	it.effect("zero salt (0x + 64 zeros) → valid result", () =>
+		create2Handler(
+			"0x0000000000000000000000000000000000000000",
+			"0x0000000000000000000000000000000000000000000000000000000000000000",
+			"0x00",
+		).pipe(
+			Effect.provide(Keccak256.KeccakLive),
+			Effect.map((result) => {
+				expect(result).toBe("0x4D1A2e2bB4F88F0250f26Ffff098B0b30B26BF38")
+			}),
+		),
+	)
+
+	it.effect("max salt (0x + 64 f's) → valid result", () =>
+		create2Handler(
+			"0x0000000000000000000000000000000000000000",
+			"0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+			"0x00",
+		).pipe(
+			Effect.provide(Keccak256.KeccakLive),
+			Effect.map((result) => {
+				expect(result).toMatch(/^0x[0-9a-fA-F]{40}$/)
+			}),
+		),
+	)
+
+	it.effect("empty init code (0x) → valid result (empty code)", () =>
+		create2Handler(
+			"0x0000000000000000000000000000000000000000",
+			"0x0000000000000000000000000000000000000000000000000000000000000000",
+			"0x",
+		).pipe(
+			Effect.provide(Keccak256.KeccakLive),
+			Effect.map((result) => {
+				expect(result).toMatch(/^0x[0-9a-fA-F]{40}$/)
+			}),
+		),
+	)
+
+	it.effect("salt too short (not 32 bytes) → InvalidHexError", () =>
+		create2Handler("0x0000000000000000000000000000000000000000", "0x01", "0x00").pipe(
+			Effect.provide(Keccak256.KeccakLive),
+			Effect.flip,
+			Effect.map((e) => {
+				expect(e._tag).toBe("InvalidHexError")
+			}),
+		),
+	)
+
+	it.effect("salt not hex → InvalidHexError", () =>
+		create2Handler("0x0000000000000000000000000000000000000000", "not-a-salt", "0x00").pipe(
+			Effect.provide(Keccak256.KeccakLive),
+			Effect.flip,
+			Effect.map((e) => {
+				expect(e._tag).toBe("InvalidHexError")
+			}),
+		),
+	)
+
+	it.effect("init code not hex → InvalidHexError", () =>
+		create2Handler(
+			"0x0000000000000000000000000000000000000000",
+			"0x0000000000000000000000000000000000000000000000000000000000000000",
+			"not-hex",
+		).pipe(
+			Effect.provide(Keccak256.KeccakLive),
+			Effect.flip,
+			Effect.map((e) => {
+				expect(e._tag).toBe("InvalidHexError")
+			}),
+		),
+	)
+
+	it.effect("invalid deployer → fails", () =>
+		create2Handler(
+			"0xbad",
+			"0x0000000000000000000000000000000000000000000000000000000000000000",
+			"0x00",
+		).pipe(
+			Effect.provide(Keccak256.KeccakLive),
+			Effect.flip,
+			Effect.map((e) => {
+				expect(e._tag).toBe("InvalidAddressError")
+			}),
+		),
+	)
+})
