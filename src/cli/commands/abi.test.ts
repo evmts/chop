@@ -2360,3 +2360,484 @@ describe("abi command exports — count", () => {
 		expect(abiCommands.length).toBe(4)
 	})
 })
+
+// ===========================================================================
+// ADDITIONAL COVERAGE TESTS
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// safeEncodeParameters error path (lines 328-331)
+// ---------------------------------------------------------------------------
+
+describe("safeEncodeParameters error path — encoding failures", () => {
+	it.effect("fails when uint8 value overflows (256 > max uint8)", () =>
+		Effect.gen(function* () {
+			// BigInt("256") passes coercion, but uint8 max is 255 so encoding should throw
+			const error = yield* abiEncodeHandler("(uint8)", ["256"], false).pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+			expect(error.message).toContain("encoding failed")
+		}),
+	)
+
+	it.effect("fails when uint8 value is negative (-1 as uint8)", () =>
+		Effect.gen(function* () {
+			// BigInt("-1") passes coercion for uint8, but encoding unsigned should fail
+			const error = yield* abiEncodeHandler("(uint8)", ["-1"], false).pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+		}),
+	)
+
+	it.effect("fails when uint256 value exceeds 2^256", () =>
+		Effect.gen(function* () {
+			const overflowValue = (2n ** 256n).toString()
+			const error = yield* abiEncodeHandler("(uint256)", [overflowValue], false).pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+		}),
+	)
+
+	it.effect("fails when int8 value overflows (128 > max int8)", () =>
+		Effect.gen(function* () {
+			const error = yield* abiEncodeHandler("(int8)", ["128"], false).pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+		}),
+	)
+
+	it.effect("fails when int8 value underflows (-129 < min int8)", () =>
+		Effect.gen(function* () {
+			const error = yield* abiEncodeHandler("(int8)", ["-129"], false).pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+		}),
+	)
+
+	it.effect("error message wraps the underlying encoding error", () =>
+		Effect.gen(function* () {
+			const error = yield* abiEncodeHandler("(uint8)", ["999"], false).pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+			expect(error.message).toContain("ABI encoding failed")
+		}),
+	)
+
+	it.effect("error has cause property from the underlying error", () =>
+		Effect.gen(function* () {
+			const error = yield* abiEncodeHandler("(uint8)", ["999"], false).pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+			expect(error.cause).toBeDefined()
+		}),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// coerceArgValue — additional edge cases
+// ---------------------------------------------------------------------------
+
+describe("coerceArgValue — additional edge cases", () => {
+	it.effect("array type address[] with valid JSON array", () =>
+		Effect.gen(function* () {
+			const result = yield* coerceArgValue(
+				"address[]",
+				'["0x0000000000000000000000000000000000001234","0x0000000000000000000000000000000000005678"]',
+			)
+			expect(Array.isArray(result)).toBe(true)
+			const arr = result as unknown[]
+			expect(arr.length).toBe(2)
+			expect(arr[0]).toBeInstanceOf(Uint8Array)
+			expect(arr[1]).toBeInstanceOf(Uint8Array)
+		}),
+	)
+
+	it.effect("array type non-array JSON string '\"123\"' for uint256[] fails", () =>
+		Effect.gen(function* () {
+			const error = yield* coerceArgValue("uint256[]", '"123"').pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+			expect(error.message).toContain("expected JSON array")
+		}),
+	)
+
+	it.effect("array type non-array JSON object for uint256[] fails", () =>
+		Effect.gen(function* () {
+			const error = yield* coerceArgValue("uint256[]", '{"a":1}').pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+			expect(error.message).toContain("expected JSON array")
+		}),
+	)
+
+	it.effect("bool type 'false' → false", () =>
+		Effect.gen(function* () {
+			const result = yield* coerceArgValue("bool", "false")
+			expect(result).toBe(false)
+		}),
+	)
+
+	it.effect("bool type '0' → false", () =>
+		Effect.gen(function* () {
+			const result = yield* coerceArgValue("bool", "0")
+			expect(result).toBe(false)
+		}),
+	)
+
+	it.effect("bool type 'true' → true", () =>
+		Effect.gen(function* () {
+			const result = yield* coerceArgValue("bool", "true")
+			expect(result).toBe(true)
+		}),
+	)
+
+	it.effect("bool type '1' → true", () =>
+		Effect.gen(function* () {
+			const result = yield* coerceArgValue("bool", "1")
+			expect(result).toBe(true)
+		}),
+	)
+
+	it.effect("tuple type passes through as string", () =>
+		Effect.gen(function* () {
+			const result = yield* coerceArgValue("(uint256,address)", "someValue")
+			expect(result).toBe("someValue")
+		}),
+	)
+
+	it.effect("bytes with invalid hex (no 0x prefix) fails", () =>
+		Effect.gen(function* () {
+			const error = yield* coerceArgValue("bytes", "gggg").pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+			expect(error.message).toContain("Invalid bytes")
+		}),
+	)
+
+	it.effect("bytes32 with invalid hex fails", () =>
+		Effect.gen(function* () {
+			const error = yield* coerceArgValue("bytes32", "gggg").pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+			expect(error.message).toContain("Invalid bytes")
+		}),
+	)
+
+	it.effect("non-numeric string for uint256 fails", () =>
+		Effect.gen(function* () {
+			const error = yield* coerceArgValue("uint256", "not-a-number").pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+			expect(error.message).toContain("Invalid integer")
+		}),
+	)
+
+	it.effect("bool[] array with valid JSON", () =>
+		Effect.gen(function* () {
+			const result = yield* coerceArgValue("bool[]", "[true,false,true]")
+			expect(result).toEqual([true, false, true])
+		}),
+	)
+
+	it.effect("string[] passes through elements", () =>
+		Effect.gen(function* () {
+			const result = yield* coerceArgValue("string[]", '["hello","world"]')
+			expect(result).toEqual(["hello", "world"])
+		}),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// parseSignature — additional edge cases
+// ---------------------------------------------------------------------------
+
+describe("parseSignature — additional edge cases", () => {
+	it.effect("parses foo((uint256,address),bytes) with tuple + regular type", () =>
+		Effect.gen(function* () {
+			const result = yield* parseSignature("foo((uint256,address),bytes)")
+			expect(result.name).toBe("foo")
+			expect(result.inputs.length).toBe(2)
+			expect(result.inputs[0]?.type).toBe("(uint256,address)")
+			expect(result.inputs[1]?.type).toBe("bytes")
+		}),
+	)
+
+	it.effect("parses multiple outputs balanceOf(address)(uint256,string)", () =>
+		Effect.gen(function* () {
+			const result = yield* parseSignature("balanceOf(address)(uint256,string)")
+			expect(result.name).toBe("balanceOf")
+			expect(result.inputs).toEqual([{ type: "address" }])
+			expect(result.outputs).toEqual([{ type: "uint256" }, { type: "string" }])
+		}),
+	)
+
+	it.effect("parses anonymous signature (address,uint256) with no name", () =>
+		Effect.gen(function* () {
+			const result = yield* parseSignature("(address,uint256)")
+			expect(result.name).toBe("")
+			expect(result.inputs).toEqual([{ type: "address" }, { type: "uint256" }])
+		}),
+	)
+
+	it.effect("fails on trailing garbage after valid signature", () =>
+		Effect.gen(function* () {
+			const error = yield* parseSignature("foo(uint256)extra").pipe(Effect.flip)
+			expect(error._tag).toBe("InvalidSignatureError")
+		}),
+	)
+
+	it.effect("parses name with numbers transfer2(address,uint256)", () =>
+		Effect.gen(function* () {
+			const result = yield* parseSignature("transfer2(address,uint256)")
+			expect(result.name).toBe("transfer2")
+			expect(result.inputs).toEqual([{ type: "address" }, { type: "uint256" }])
+		}),
+	)
+
+	it.effect("fails on name starting with number 2transfer(address)", () =>
+		Effect.gen(function* () {
+			const error = yield* parseSignature("2transfer(address)").pipe(Effect.flip)
+			expect(error._tag).toBe("InvalidSignatureError")
+		}),
+	)
+
+	it.effect("fails on name with special chars transfer!(address)", () =>
+		Effect.gen(function* () {
+			const error = yield* parseSignature("transfer!(address)").pipe(Effect.flip)
+			expect(error._tag).toBe("InvalidSignatureError")
+		}),
+	)
+
+	it.effect("parses deeply nested tuples f((uint256,(address,bool)),bytes)", () =>
+		Effect.gen(function* () {
+			const result = yield* parseSignature("f((uint256,(address,bool)),bytes)")
+			expect(result.name).toBe("f")
+			expect(result.inputs.length).toBe(2)
+			expect(result.inputs[0]?.type).toBe("(uint256,(address,bool))")
+			expect(result.inputs[1]?.type).toBe("bytes")
+		}),
+	)
+
+	it.effect("fails on name with @ symbol func@1(uint256)", () =>
+		Effect.gen(function* () {
+			const error = yield* parseSignature("func@1(uint256)").pipe(Effect.flip)
+			expect(error._tag).toBe("InvalidSignatureError")
+		}),
+	)
+
+	it.effect("fails on name with space 'func tion(uint256)'", () =>
+		Effect.gen(function* () {
+			const error = yield* parseSignature("func tion(uint256)").pipe(Effect.flip)
+			expect(error._tag).toBe("InvalidSignatureError")
+		}),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// formatValue — additional edge cases
+// ---------------------------------------------------------------------------
+
+describe("formatValue — additional edge cases", () => {
+	it("formats nested arrays with mixed types", () => {
+		const result = formatValue([1n, [new Uint8Array([0xab]), "hello"]])
+		expect(result).toBe("[1, [0xab, hello]]")
+	})
+
+	it("formats bigint values as decimal strings", () => {
+		expect(formatValue(12345678901234567890n)).toBe("12345678901234567890")
+	})
+
+	it("formats Uint8Array as hex string", () => {
+		expect(formatValue(new Uint8Array([0xde, 0xad, 0xbe, 0xef]))).toBe("0xdeadbeef")
+	})
+
+	it("formats mixed array of BigInt and Uint8Array", () => {
+		const result = formatValue([42n, new Uint8Array([0xff])])
+		expect(result).toBe("[42, 0xff]")
+	})
+
+	it("formats boolean true as 'true'", () => {
+		expect(formatValue(true)).toBe("true")
+	})
+
+	it("formats boolean false as 'false'", () => {
+		expect(formatValue(false)).toBe("false")
+	})
+
+	it("formats string values as-is", () => {
+		expect(formatValue("hello world")).toBe("hello world")
+	})
+
+	it("formats deeply nested arrays", () => {
+		const result = formatValue([[1n, 2n], [3n, [4n, 5n]]])
+		expect(result).toBe("[[1, 2], [3, [4, 5]]]")
+	})
+
+	it("formats array with single Uint8Array element", () => {
+		expect(formatValue([new Uint8Array([0x01, 0x02])])).toBe("[0x0102]")
+	})
+})
+
+// ---------------------------------------------------------------------------
+// calldataDecodeHandler — additional edge cases
+// ---------------------------------------------------------------------------
+
+describe("calldataDecodeHandler — mismatched selector and short data", () => {
+	it.effect("fails on mismatched selector (approve sig with transfer calldata)", () =>
+		Effect.gen(function* () {
+			const error = yield* calldataDecodeHandler(
+				"approve(address,uint256)",
+				// transfer's selector 0xa9059cbb, not approve's 0x095ea7b3
+				"0xa9059cbb00000000000000000000000000000000000000000000000000000000000012340000000000000000000000000000000000000000000000000de0b6b3a7640000",
+			).pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+		}),
+	)
+
+	it.effect("fails on very short data (less than 4 bytes)", () =>
+		Effect.gen(function* () {
+			const error = yield* calldataDecodeHandler("transfer(address,uint256)", "0xaa").pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+		}),
+	)
+
+	it.effect("fails on empty calldata (just 0x)", () =>
+		Effect.gen(function* () {
+			const error = yield* calldataDecodeHandler("transfer(address,uint256)", "0x").pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+		}),
+	)
+
+	it.effect("fails on exactly 4 bytes (selector only, no args for a 2-arg function)", () =>
+		Effect.gen(function* () {
+			const error = yield* calldataDecodeHandler("transfer(address,uint256)", "0xa9059cbb").pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+		}),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// abiEncodeHandler — boundary conditions
+// ---------------------------------------------------------------------------
+
+describe("abiEncodeHandler — additional boundary conditions", () => {
+	it.effect("encodes zero args with zero-param signature", () =>
+		Effect.gen(function* () {
+			const result = yield* abiEncodeHandler("()", [], false)
+			expect(result).toBe("0x")
+		}),
+	)
+
+	it.effect("encodes uint256 max value (2^256 - 1)", () =>
+		Effect.gen(function* () {
+			const maxU256 = (2n ** 256n - 1n).toString()
+			const result = yield* abiEncodeHandler("(uint256)", [maxU256], false)
+			expect(result).toBe("0x" + "ff".repeat(32))
+		}),
+	)
+
+	it.effect("encodes zero address", () =>
+		Effect.gen(function* () {
+			const result = yield* abiEncodeHandler("(address)", ["0x0000000000000000000000000000000000000000"], false)
+			expect(result).toBe("0x" + "00".repeat(32))
+		}),
+	)
+
+	it.effect("encodes empty bytes", () =>
+		Effect.gen(function* () {
+			const result = yield* abiEncodeHandler("(bytes)", ["0x"], false)
+			expect(result.startsWith("0x")).toBe(true)
+			// Dynamic type: offset (32 bytes) + length (32 bytes) = at least 128 hex chars
+			expect(result.length).toBeGreaterThan(2)
+		}),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// E2E JSON output tests
+// ---------------------------------------------------------------------------
+
+describe("chop abi-encode --json (E2E)", () => {
+	it("produces valid JSON output with result key", () => {
+		const result = runCli("abi-encode --json '(uint256)' 42")
+		expect(result.exitCode).toBe(0)
+		const parsed = JSON.parse(result.stdout.trim())
+		expect(parsed).toHaveProperty("result")
+		expect(typeof parsed.result).toBe("string")
+		expect(parsed.result.startsWith("0x")).toBe(true)
+	})
+
+	it("produces valid JSON output for multiple params", () => {
+		const result = runCli(
+			"abi-encode --json '(address,uint256)' 0x0000000000000000000000000000000000001234 42",
+		)
+		expect(result.exitCode).toBe(0)
+		const parsed = JSON.parse(result.stdout.trim())
+		expect(parsed.result.startsWith("0x")).toBe(true)
+	})
+
+	it("produces valid JSON output for zero params", () => {
+		const result = runCli("abi-encode --json '()'")
+		expect(result.exitCode).toBe(0)
+		const parsed = JSON.parse(result.stdout.trim())
+		expect(parsed.result).toBe("0x")
+	})
+})
+
+describe("chop calldata --json (E2E)", () => {
+	it("produces valid JSON output with result key", () => {
+		const result = runCli(
+			"calldata --json 'transfer(address,uint256)' 0x0000000000000000000000000000000000001234 1000000000000000000",
+		)
+		expect(result.exitCode).toBe(0)
+		const parsed = JSON.parse(result.stdout.trim())
+		expect(parsed).toHaveProperty("result")
+		expect(parsed.result.startsWith("0xa9059cbb")).toBe(true)
+	})
+
+	it("produces valid JSON output for no-arg function", () => {
+		const result = runCli("calldata --json 'totalSupply()'")
+		expect(result.exitCode).toBe(0)
+		const parsed = JSON.parse(result.stdout.trim())
+		expect(parsed.result.startsWith("0x")).toBe(true)
+		expect(parsed.result.length).toBe(10) // 0x + 8 hex chars
+	})
+})
+
+describe("chop abi-decode --json (E2E)", () => {
+	it("produces valid JSON with result array", () => {
+		const result = runCli(
+			"abi-decode --json '(uint256)' 0x000000000000000000000000000000000000000000000000000000000000002a",
+		)
+		expect(result.exitCode).toBe(0)
+		const parsed = JSON.parse(result.stdout.trim())
+		expect(parsed).toHaveProperty("result")
+		expect(Array.isArray(parsed.result)).toBe(true)
+		expect(parsed.result[0]).toBe("42")
+	})
+
+	it("produces valid JSON with multiple decoded values", () => {
+		const result = runCli(
+			"abi-decode --json '(address,uint256)' 0x00000000000000000000000000000000000000000000000000000000000012340000000000000000000000000000000000000000000000000de0b6b3a7640000",
+		)
+		expect(result.exitCode).toBe(0)
+		const parsed = JSON.parse(result.stdout.trim())
+		expect(parsed.result.length).toBe(2)
+	})
+})
+
+describe("chop calldata-decode --json (E2E)", () => {
+	it("produces valid JSON with name and args", () => {
+		const result = runCli(
+			"calldata-decode --json 'transfer(address,uint256)' 0xa9059cbb00000000000000000000000000000000000000000000000000000000000012340000000000000000000000000000000000000000000000000de0b6b3a7640000",
+		)
+		expect(result.exitCode).toBe(0)
+		const parsed = JSON.parse(result.stdout.trim())
+		expect(parsed).toHaveProperty("name")
+		expect(parsed).toHaveProperty("args")
+		expect(parsed.name).toBe("transfer")
+		expect(Array.isArray(parsed.args)).toBe(true)
+		expect(parsed.args.length).toBe(2)
+	})
+
+	it("produces valid JSON for no-arg function decode", () => {
+		// First encode totalSupply calldata, then decode it
+		const encResult = runCli("calldata 'totalSupply()'")
+		expect(encResult.exitCode).toBe(0)
+		const calldata = encResult.stdout.trim()
+
+		const result = runCli(`calldata-decode --json 'totalSupply()' ${calldata}`)
+		expect(result.exitCode).toBe(0)
+		const parsed = JSON.parse(result.stdout.trim())
+		expect(parsed.name).toBe("totalSupply")
+		expect(parsed.args).toEqual([])
+	})
+})

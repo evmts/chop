@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
 import { Effect } from "effect"
-import { expect } from "vitest"
-import { Keccak256 } from "voltaire-effect"
+import { expect, vi } from "vitest"
+import { Address, Keccak256 } from "voltaire-effect"
 import { runCli } from "../test-helpers.js"
 import {
 	ComputeAddressError,
@@ -14,6 +14,29 @@ import {
 	toCheckSumAddressCommand,
 	toCheckSumAddressHandler,
 } from "./address.js"
+
+// Wrap calculateCreateAddress and calculateCreate2Address with vi.fn so we can
+// mock them per-test while keeping the real implementation as the default.
+const originalCalculateCreateAddress = Address.calculateCreateAddress
+const originalCalculateCreate2Address = Address.calculateCreate2Address
+
+vi.mock("voltaire-effect", async (importOriginal) => {
+	const orig = await importOriginal<typeof import("voltaire-effect")>()
+	return {
+		...orig,
+		Address: {
+			...orig.Address,
+			calculateCreateAddress: vi.fn(
+				(...args: Parameters<typeof orig.Address.calculateCreateAddress>) =>
+					orig.Address.calculateCreateAddress(...args),
+			),
+			calculateCreate2Address: vi.fn(
+				(...args: Parameters<typeof orig.Address.calculateCreate2Address>) =>
+					orig.Address.calculateCreate2Address(...args),
+			),
+		},
+	}
+})
 
 // ---------------------------------------------------------------------------
 // Error Types
@@ -770,4 +793,84 @@ describe("address command exports — count", () => {
 	it("exports 3 address commands", () => {
 		expect(addressCommands.length).toBe(3)
 	})
+})
+
+// ---------------------------------------------------------------------------
+// calculateCreateAddress error path (lines 113-119)
+// ---------------------------------------------------------------------------
+
+describe("computeAddressHandler — calculateCreateAddress failure path", () => {
+	it.effect("wraps Error thrown by calculateCreateAddress into ComputeAddressError", () =>
+		Effect.gen(function* () {
+			// Mock calculateCreateAddress to fail with an Error
+			vi.mocked(Address.calculateCreateAddress).mockImplementationOnce(() =>
+				Effect.fail(new Error("internal RLP failure")),
+			)
+
+			const error = yield* computeAddressHandler("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", "0").pipe(
+				Effect.flip,
+			)
+			expect(error._tag).toBe("ComputeAddressError")
+			expect(error.message).toContain("Failed to compute CREATE address")
+			expect(error.message).toContain("internal RLP failure")
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+
+	it.effect("wraps non-Error value thrown by calculateCreateAddress into ComputeAddressError", () =>
+		Effect.gen(function* () {
+			// Mock with non-Error failure (exercises the String(e) branch)
+			vi.mocked(Address.calculateCreateAddress).mockImplementationOnce(() =>
+				Effect.fail("string error value" as unknown as Error),
+			)
+
+			const error = yield* computeAddressHandler("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", "0").pipe(
+				Effect.flip,
+			)
+			expect(error._tag).toBe("ComputeAddressError")
+			expect(error.message).toContain("Failed to compute CREATE address")
+			expect(error.message).toContain("string error value")
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// calculateCreate2Address error path (lines 134-140)
+// ---------------------------------------------------------------------------
+
+describe("create2Handler — calculateCreate2Address failure path", () => {
+	it.effect("wraps Error thrown by calculateCreate2Address into ComputeAddressError", () =>
+		Effect.gen(function* () {
+			// Mock calculateCreate2Address to fail with an Error
+			vi.mocked(Address.calculateCreate2Address).mockImplementationOnce(() =>
+				Effect.fail(new Error("internal keccak failure")),
+			)
+
+			const error = yield* create2Handler(
+				"0x0000000000000000000000000000000000000000",
+				"0x0000000000000000000000000000000000000000000000000000000000000000",
+				"0x00",
+			).pipe(Effect.flip)
+			expect(error._tag).toBe("ComputeAddressError")
+			expect(error.message).toContain("Failed to compute CREATE2 address")
+			expect(error.message).toContain("internal keccak failure")
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+
+	it.effect("wraps non-Error value thrown by calculateCreate2Address into ComputeAddressError", () =>
+		Effect.gen(function* () {
+			// Mock with non-Error failure (exercises the String(e) branch)
+			vi.mocked(Address.calculateCreate2Address).mockImplementationOnce(() =>
+				Effect.fail(42 as unknown as Error),
+			)
+
+			const error = yield* create2Handler(
+				"0x0000000000000000000000000000000000000000",
+				"0x0000000000000000000000000000000000000000000000000000000000000000",
+				"0x00",
+			).pipe(Effect.flip)
+			expect(error._tag).toBe("ComputeAddressError")
+			expect(error.message).toContain("Failed to compute CREATE2 address")
+			expect(error.message).toContain("42")
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
 })

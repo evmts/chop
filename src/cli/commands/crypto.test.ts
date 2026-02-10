@@ -713,3 +713,389 @@ describe("hashMessageCommand.handler — in-process", () => {
 
 	it.effect("handles unicode message", () => hashMessageCommand.handler({ message: "🎉", json: true }))
 })
+
+// ============================================================================
+// Additional coverage: error path tests & edge cases
+// ============================================================================
+
+import { hashString, selector, topic } from "@tevm/voltaire/Keccak256"
+import { Layer } from "effect"
+import { vi } from "vitest"
+
+// vi.mock is hoisted by vitest to the top of the file automatically.
+// By wrapping with vi.fn(originalImpl), existing tests use the real implementation
+// by default. We can then use mockImplementationOnce in specific tests to force errors.
+vi.mock("@tevm/voltaire/Keccak256", async (importOriginal) => {
+	const mod = await importOriginal<typeof import("@tevm/voltaire/Keccak256")>()
+	return {
+		...mod,
+		hashString: vi.fn((...args: Parameters<typeof mod.hashString>) => mod.hashString(...args)),
+		selector: vi.fn((...args: Parameters<typeof mod.selector>) => mod.selector(...args)),
+		topic: vi.fn((...args: Parameters<typeof mod.topic>) => mod.topic(...args)),
+	}
+})
+
+// ---------------------------------------------------------------------------
+// sigHandler — error path coverage (lines 62-65)
+// ---------------------------------------------------------------------------
+
+describe("sigHandler — error path coverage", () => {
+	it.effect("wraps thrown Error in CryptoError when selector throws", () => {
+		vi.mocked(selector).mockImplementationOnce(() => {
+			throw new Error("mock selector failure")
+		})
+		return Effect.gen(function* () {
+			const error = yield* sigHandler("test").pipe(Effect.flip)
+			expect(error._tag).toBe("CryptoError")
+			expect(error.message).toContain("Selector computation failed")
+			expect(error.message).toContain("mock selector failure")
+			expect(error.cause).toBeInstanceOf(Error)
+		})
+	})
+
+	it.effect("wraps thrown non-Error value in CryptoError using String(e)", () => {
+		vi.mocked(selector).mockImplementationOnce(() => {
+			throw "string error value"
+		})
+		return Effect.gen(function* () {
+			const error = yield* sigHandler("test").pipe(Effect.flip)
+			expect(error._tag).toBe("CryptoError")
+			expect(error.message).toContain("Selector computation failed")
+			expect(error.message).toContain("string error value")
+		})
+	})
+})
+
+// ---------------------------------------------------------------------------
+// sigEventHandler — error path coverage (lines 77-80)
+// ---------------------------------------------------------------------------
+
+describe("sigEventHandler — error path coverage", () => {
+	it.effect("wraps thrown Error in CryptoError when topic throws", () => {
+		vi.mocked(topic).mockImplementationOnce(() => {
+			throw new Error("mock topic failure")
+		})
+		return Effect.gen(function* () {
+			const error = yield* sigEventHandler("test").pipe(Effect.flip)
+			expect(error._tag).toBe("CryptoError")
+			expect(error.message).toContain("Event topic computation failed")
+			expect(error.message).toContain("mock topic failure")
+			expect(error.cause).toBeInstanceOf(Error)
+		})
+	})
+
+	it.effect("wraps thrown non-Error value in CryptoError using String(e)", () => {
+		vi.mocked(topic).mockImplementationOnce(() => {
+			throw 42
+		})
+		return Effect.gen(function* () {
+			const error = yield* sigEventHandler("test").pipe(Effect.flip)
+			expect(error._tag).toBe("CryptoError")
+			expect(error.message).toContain("Event topic computation failed")
+			expect(error.message).toContain("42")
+		})
+	})
+})
+
+// ---------------------------------------------------------------------------
+// hashMessageHandler — defect path coverage (lines 94-99)
+// ---------------------------------------------------------------------------
+
+describe("hashMessageHandler — defect path coverage", () => {
+	const FailingKeccakLayer = Layer.succeed(Keccak256.KeccakService, {
+		hash: (_data: Uint8Array) => Effect.die(new Error("intentional hash defect")),
+	})
+
+	it.effect("catches Error defect from KeccakService and wraps as CryptoError", () =>
+		Effect.gen(function* () {
+			const error = yield* hashMessageHandler("test").pipe(Effect.flip)
+			expect(error._tag).toBe("CryptoError")
+			expect(error.message).toContain("EIP-191 hash failed")
+			expect(error.message).toContain("intentional hash defect")
+			expect(error.cause).toBeInstanceOf(Error)
+		}).pipe(Effect.provide(FailingKeccakLayer)),
+	)
+
+	const NonErrorDefectLayer = Layer.succeed(Keccak256.KeccakService, {
+		hash: (_data: Uint8Array) => Effect.die("string defect value"),
+	})
+
+	it.effect("catches non-Error defect and wraps using String()", () =>
+		Effect.gen(function* () {
+			const error = yield* hashMessageHandler("test").pipe(Effect.flip)
+			expect(error._tag).toBe("CryptoError")
+			expect(error.message).toContain("EIP-191 hash failed")
+			expect(error.message).toContain("string defect value")
+		}).pipe(Effect.provide(NonErrorDefectLayer)),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// keccakHandler — non-Error throw branch coverage
+// ---------------------------------------------------------------------------
+
+describe("keccakHandler — non-Error throw branch", () => {
+	it.effect("wraps thrown non-Error value using String(e)", () => {
+		vi.mocked(hashString).mockImplementationOnce(() => {
+			throw "non-error thrown value"
+		})
+		return Effect.gen(function* () {
+			const error = yield* keccakHandler("some string").pipe(Effect.flip)
+			expect(error._tag).toBe("CryptoError")
+			expect(error.message).toContain("Keccak256 hash failed")
+			expect(error.message).toContain("non-error thrown value")
+		})
+	})
+})
+
+// ---------------------------------------------------------------------------
+// sigHandler — edge case inputs
+// ---------------------------------------------------------------------------
+
+describe("sigHandler — edge case inputs", () => {
+	it.effect("handles empty string input", () =>
+		Effect.gen(function* () {
+			const result = yield* sigHandler("")
+			expect(result).toMatch(/^0x[0-9a-f]{8}$/)
+			expect(result.length).toBe(10)
+		}),
+	)
+
+	it.effect("handles very long function signature (1000 chars)", () =>
+		Effect.gen(function* () {
+			const longSig = `${"a".repeat(995)}()`
+			const result = yield* sigHandler(longSig)
+			expect(result).toMatch(/^0x[0-9a-f]{8}$/)
+			expect(result.length).toBe(10)
+		}),
+	)
+
+	it.effect("handles unicode in signature", () =>
+		Effect.gen(function* () {
+			const result = yield* sigHandler("transfer(uint256)")
+			expect(result).toMatch(/^0x[0-9a-f]{8}$/)
+			// Also verify a unicode-containing signature produces valid output
+			const unicodeResult = yield* sigHandler("\u3053\u3093\u306b\u3061\u306f()")
+			expect(unicodeResult).toMatch(/^0x[0-9a-f]{8}$/)
+		}),
+	)
+
+	it.effect("different signatures produce different selectors", () =>
+		Effect.gen(function* () {
+			const sel1 = yield* sigHandler("foo()")
+			const sel2 = yield* sigHandler("bar()")
+			expect(sel1).not.toBe(sel2)
+		}),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// sigEventHandler — edge case inputs
+// ---------------------------------------------------------------------------
+
+describe("sigEventHandler — edge case inputs", () => {
+	it.effect("handles empty string input", () =>
+		Effect.gen(function* () {
+			const result = yield* sigEventHandler("")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}),
+	)
+
+	it.effect("handles very long event signature (1000 chars)", () =>
+		Effect.gen(function* () {
+			const longSig = `Event${"a".repeat(992)}()`
+			const result = yield* sigEventHandler(longSig)
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}),
+	)
+
+	it.effect("handles unicode in event signature", () =>
+		Effect.gen(function* () {
+			const result = yield* sigEventHandler("\u30a4\u30d9\u30f3\u30c8(uint256)")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+		}),
+	)
+
+	it.effect("different event signatures produce different topics", () =>
+		Effect.gen(function* () {
+			const topic1 = yield* sigEventHandler("Foo()")
+			const topic2 = yield* sigEventHandler("Bar()")
+			expect(topic1).not.toBe(topic2)
+		}),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// hashMessageHandler — additional edge cases with KeccakLive
+// ---------------------------------------------------------------------------
+
+describe("hashMessageHandler — additional KeccakLive edge cases", () => {
+	it.effect("handles single character message", () =>
+		Effect.gen(function* () {
+			const result = yield* hashMessageHandler("a")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+
+	it.effect("handles emoji message", () =>
+		Effect.gen(function* () {
+			const result = yield* hashMessageHandler("\ud83d\udd25\ud83c\udf89\ud83d\udc8e")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+
+	it.effect("handles message with only whitespace", () =>
+		Effect.gen(function* () {
+			const result = yield* hashMessageHandler("   ")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+
+	it.effect("handles very long message (10000 chars)", () =>
+		Effect.gen(function* () {
+			const result = yield* hashMessageHandler("x".repeat(10000))
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+
+	it.effect("handles message with special characters and newlines", () =>
+		Effect.gen(function* () {
+			const result = yield* hashMessageHandler("line1\nline2\ttab\r\nwindows")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+
+	it.effect("produces deterministic results for same input", () =>
+		Effect.gen(function* () {
+			const hash1 = yield* hashMessageHandler("deterministic")
+			const hash2 = yield* hashMessageHandler("deterministic")
+			expect(hash1).toBe(hash2)
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+
+	it.effect("handles hex-like message string (0xdeadbeef treated as message)", () =>
+		Effect.gen(function* () {
+			const result = yield* hashMessageHandler("0xdeadbeef")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+
+	it.effect("handles CJK characters", () =>
+		Effect.gen(function* () {
+			const result = yield* hashMessageHandler("\u4f60\u597d\u4e16\u754c")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}).pipe(Effect.provide(Keccak256.KeccakLive)),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// keccakHandler — more hex with leading zeros
+// ---------------------------------------------------------------------------
+
+describe("keccakHandler — more hex with leading zeros", () => {
+	it.effect("handles 0x0000 (two zero bytes)", () =>
+		Effect.gen(function* () {
+			const result = yield* keccakHandler("0x0000")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}),
+	)
+
+	it.effect("handles 0x0000000000000001 (leading zeros with trailing 1)", () =>
+		Effect.gen(function* () {
+			const result = yield* keccakHandler("0x0000000000000001")
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}),
+	)
+
+	it.effect("0x0000 and 0x00 produce different hashes (different byte lengths)", () =>
+		Effect.gen(function* () {
+			const hash1 = yield* keccakHandler("0x0000")
+			const hash2 = yield* keccakHandler("0x00")
+			expect(hash1).not.toBe(hash2)
+		}),
+	)
+
+	it.effect("handles 32 zero bytes (0x + 64 zeros)", () =>
+		Effect.gen(function* () {
+			const result = yield* keccakHandler("0x" + "00".repeat(32))
+			expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			expect(result.length).toBe(66)
+		}),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// E2E edge cases
+// ---------------------------------------------------------------------------
+
+describe("chop keccak (E2E) — additional edge cases", () => {
+	it("handles hex with leading zeros", () => {
+		const result = runCli("keccak 0x0001")
+		expect(result.exitCode).toBe(0)
+		const output = result.stdout.trim()
+		expect(output).toMatch(/^0x[0-9a-f]{64}$/)
+		expect(output.length).toBe(66)
+	})
+
+	it("handles very long string input (500 chars)", () => {
+		const longInput = "a".repeat(500)
+		const result = runCli(`keccak ${longInput}`)
+		expect(result.exitCode).toBe(0)
+		const output = result.stdout.trim()
+		expect(output).toMatch(/^0x[0-9a-f]{64}$/)
+	})
+})
+
+describe("chop sig (E2E) — additional edge cases", () => {
+	it("handles no-arg function signature", () => {
+		const result = runCli("sig 'totalSupply()'")
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout.trim()).toBe("0x18160ddd")
+	})
+
+	it("handles complex multi-arg signature", () => {
+		const result = runCli("sig 'transferFrom(address,address,uint256)'")
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout.trim()).toBe("0x23b872dd")
+	})
+})
+
+describe("chop sig-event (E2E) — additional edge cases", () => {
+	it("handles single-arg event", () => {
+		const result = runCli("sig-event 'SomeEvent(uint256)'")
+		expect(result.exitCode).toBe(0)
+		const output = result.stdout.trim()
+		expect(output).toMatch(/^0x[0-9a-f]{64}$/)
+		expect(output.length).toBe(66)
+	})
+})
+
+describe("chop hash-message (E2E) — additional edge cases", () => {
+	it("handles numeric string message", () => {
+		const result = runCli("hash-message 12345")
+		expect(result.exitCode).toBe(0)
+		const output = result.stdout.trim()
+		expect(output).toMatch(/^0x[0-9a-f]{64}$/)
+		expect(output.length).toBe(66)
+	})
+
+	it("JSON output matches plain output for same input", () => {
+		const plain = runCli("hash-message test")
+		const json = runCli("hash-message --json test")
+		expect(plain.exitCode).toBe(0)
+		expect(json.exitCode).toBe(0)
+		const parsed = JSON.parse(json.stdout.trim())
+		expect(parsed.result).toBe(plain.stdout.trim())
+	})
+})
