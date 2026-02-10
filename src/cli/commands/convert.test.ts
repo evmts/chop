@@ -2714,3 +2714,38 @@ describe("shlHandler / shrHandler — very large shift and hex input", () => {
 		}),
 	)
 })
+
+// ============================================================================
+// formatRlpDecoded — BrandedRlp list branch coverage (convert.ts lines 443-445)
+// ============================================================================
+
+describe("fromRlpHandler — BrandedRlp list type decoding", () => {
+	it.effect("decodes RLP list (0xc20102) — exercises BrandedRlp type:list path", () =>
+		Effect.gen(function* () {
+			// 0xc20102 is RLP for [0x01, 0x02]
+			const result = yield* fromRlpHandler("0xc20102")
+			// The decoded data has BrandedRlp type: "list"
+			// formatRlpDecoded should handle this case
+			expect(typeof result).toBe("string")
+			expect(result.length).toBeGreaterThan(0)
+		}),
+	)
+
+	it.effect("decodes single empty byte (0x80 is RLP for empty bytes)", () =>
+		Effect.gen(function* () {
+			const result = yield* fromRlpHandler("0x80")
+			expect(typeof result).toBe("string")
+		}),
+	)
+
+	it.effect("decodes RLP-encoded list of 3 items", () =>
+		Effect.gen(function* () {
+			// Encode 3 items then decode
+			const encoded = yield* toRlpHandler(["0xaa", "0xbb", "0xcc"])
+			const decoded = yield* fromRlpHandler(encoded)
+			expect(typeof decoded).toBe("string")
+			expect(decoded.length).toBeGreaterThan(0)
+		}),
+	)
+})
+

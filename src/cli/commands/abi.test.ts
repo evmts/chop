@@ -3114,3 +3114,60 @@ describe("safeDecodeParameters — error path with truncated/invalid data", () =
 		}),
 	)
 })
+
+// ============================================================================
+// coerceArgValue — bytes error wrapping (abi.ts line 247)
+// ============================================================================
+
+describe("coerceArgValue — bytes error wrapping", () => {
+	it.effect("wraps Hex.toBytes error for completely invalid (non-hex) input", () =>
+		Effect.gen(function* () {
+			const error = yield* coerceArgValue("bytes32", "not-hex-data").pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+			expect(error.message).toContain("Invalid bytes value")
+		}),
+	)
+
+	it.effect("wraps Hex.toBytes error for malformed hex with invalid characters", () =>
+		Effect.gen(function* () {
+			const error = yield* coerceArgValue("bytes32", "0xZZZZ").pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+			expect(error.message).toContain("Invalid bytes value")
+		}),
+	)
+})
+
+// ============================================================================
+// safeEncodeParameters — error wrapping (abi.ts line 329)
+// ============================================================================
+
+describe("safeEncodeParameters — error wrapping", () => {
+	it.effect("wraps encoding failure for invalid type into AbiError", () =>
+		Effect.gen(function* () {
+			const error = yield* abiEncodeHandler("(invalidType999)", ["someValue"], false).pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+		}),
+	)
+})
+
+// ============================================================================
+// mapExternalError — non-Error branch (abi.ts line 358)
+// ============================================================================
+
+describe("mapExternalError — non-Error branch via Abi.encodePacked", () => {
+	it.effect("produces AbiError when Abi.encodePacked fails (exercises mapExternalError)", () =>
+		Effect.gen(function* () {
+			// Use packed encoding with a type that will cause encodePacked to fail
+			const error = yield* abiEncodeHandler("(uint256)", ["notANumber"], true).pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+		}),
+	)
+
+	it.effect("produces AbiError when Abi.encodeFunction fails (exercises mapExternalError)", () =>
+		Effect.gen(function* () {
+			// Use calldata handler with something that will cause encodeFunction to fail
+			const error = yield* calldataHandler("someFunc(invalidType999)", ["value"]).pipe(Effect.flip)
+			expect(error._tag).toBe("AbiError")
+		}),
+	)
+})
