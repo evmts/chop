@@ -36,11 +36,11 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - `bun run bin/chop.ts nonexistent` exits 1, prints error
 
 ### T1.3 ABI Encoding Commands
-- [ ] `chop abi-encode <sig> [args...]`
-- [ ] `chop abi-encode --packed <sig> [args...]`
-- [ ] `chop calldata <sig> [args...]`
-- [ ] `chop abi-decode <sig> <data>`
-- [ ] `chop calldata-decode <sig> <data>`
+- [x] `chop abi-encode <sig> [args...]`
+- [x] `chop abi-encode --packed <sig> [args...]`
+- [x] `chop calldata <sig> [args...]`
+- [x] `chop abi-decode <sig> <data>`
+- [x] `chop calldata-decode <sig> <data>`
 
 **Validation** (tests per command):
 - `chop abi-encode "transfer(address,uint256)" 0x1234...abcd 1000000000000000000` → correct hex
