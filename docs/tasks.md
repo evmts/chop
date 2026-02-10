@@ -96,9 +96,9 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - `chop sig-event "Transfer(address,address,uint256)"` → `0xddf252ad...`
 
 ### T1.7 Bytecode Analysis Commands
-- [ ] `chop disassemble <bytecode>`
-- [ ] `chop 4byte <selector>`
-- [ ] `chop 4byte-event <topic>`
+- [x] `chop disassemble <bytecode>`
+- [x] `chop 4byte <selector>`
+- [x] `chop 4byte-event <topic>`
 
 **Validation**:
 - `chop disassemble 0x6080604052` → opcode listing with PC offsets

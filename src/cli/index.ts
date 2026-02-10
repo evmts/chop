@@ -9,6 +9,7 @@ import { Command, Options } from "@effect/cli"
 import { Console } from "effect"
 import { abiCommands } from "./commands/abi.js"
 import { addressCommands } from "./commands/address.js"
+import { bytecodeCommands } from "./commands/bytecode.js"
 import { convertCommands } from "./commands/convert.js"
 import { cryptoCommands } from "./commands/crypto.js"
 import { jsonOption } from "./shared.js"
@@ -41,7 +42,13 @@ export const root = Command.make(
 	({ json: _json, rpcUrl: _rpcUrl }) => Console.log("TUI not yet implemented"),
 ).pipe(
 	Command.withDescription("Ethereum Swiss Army knife"),
-	Command.withSubcommands([...abiCommands, ...addressCommands, ...convertCommands, ...cryptoCommands]),
+	Command.withSubcommands([
+		...abiCommands,
+		...addressCommands,
+		...bytecodeCommands,
+		...convertCommands,
+		...cryptoCommands,
+	]),
 )
 
 // ---------------------------------------------------------------------------
