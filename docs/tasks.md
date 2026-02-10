@@ -63,18 +63,18 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - Invalid address → exit 1
 
 ### T1.5 Data Conversion Commands
-- [ ] `chop from-wei <amount> [unit]`
-- [ ] `chop to-wei <amount> [unit]`
-- [ ] `chop to-hex <decimal>`
-- [ ] `chop to-dec <hex>`
-- [ ] `chop to-base <value> --base-in <n> --base-out <n>`
-- [ ] `chop from-utf8 <string>`
-- [ ] `chop to-utf8 <hex>`
-- [ ] `chop to-bytes32 <value>`
-- [ ] `chop from-rlp <hex>`
-- [ ] `chop to-rlp <values>`
-- [ ] `chop shl <value> <bits>`
-- [ ] `chop shr <value> <bits>`
+- [x] `chop from-wei <amount> [unit]`
+- [x] `chop to-wei <amount> [unit]`
+- [x] `chop to-hex <decimal>`
+- [x] `chop to-dec <hex>`
+- [x] `chop to-base <value> --base-in <n> --base-out <n>`
+- [x] `chop from-utf8 <string>`
+- [x] `chop to-utf8 <hex>`
+- [x] `chop to-bytes32 <value>`
+- [x] `chop from-rlp <hex>`
+- [x] `chop to-rlp <values>`
+- [x] `chop shl <value> <bits>`
+- [x] `chop shr <value> <bits>`
 
 **Validation**:
 - `chop from-wei 1000000000000000000` → `1.000000000000000000`
