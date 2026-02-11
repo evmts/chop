@@ -119,11 +119,11 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 ## Phase 2: EVM + State (Local Devnet Core)
 
 ### T2.1 WASM EVM Integration
-- [ ] `src/evm/wasm.ts` loads guillotine-mini WASM
-- [ ] `EvmWasmService` with `acquireRelease` lifecycle
-- [ ] Execute simple bytecode (PUSH1 + STOP)
-- [ ] Execute with storage reads (async protocol)
-- [ ] Execute with balance reads (async protocol)
+- [x] `src/evm/wasm.ts` loads guillotine-mini WASM
+- [x] `EvmWasmService` with `acquireRelease` lifecycle
+- [x] Execute simple bytecode (PUSH1 + STOP)
+- [x] Execute with storage reads (async protocol)
+- [x] Execute with balance reads (async protocol)
 
 **Validation**:
 - Unit test: PUSH1 0x42 PUSH1 0x00 MSTORE PUSH1 0x20 PUSH1 0x00 RETURN → returns 0x42 padded
