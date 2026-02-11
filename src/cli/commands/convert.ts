@@ -125,8 +125,18 @@ export const fromWeiHandler = (
 			)
 		}
 
+		const trimmed = amount.trim()
+		if (trimmed === "") {
+			return yield* Effect.fail(
+				new InvalidNumberError({
+					message: `Invalid number: "${amount}". Expected an integer value.`,
+					value: amount,
+				}),
+			)
+		}
+
 		const wei = yield* Effect.try({
-			try: () => BigInt(amount),
+			try: () => BigInt(trimmed),
 			catch: () =>
 				new InvalidNumberError({
 					message: `Invalid number: "${amount}". Expected an integer value.`,
@@ -237,8 +247,26 @@ export const toWeiHandler = (
  */
 export const toHexHandler = (decimal: string): Effect.Effect<string, InvalidNumberError> =>
 	Effect.gen(function* () {
+		const trimmed = decimal.trim()
+		if (trimmed === "") {
+			return yield* Effect.fail(
+				new InvalidNumberError({
+					message: `Invalid number: "${decimal}". Expected a decimal integer.`,
+					value: decimal,
+				}),
+			)
+		}
+
+		// Handle negative hex: BigInt("-0xff") throws SyntaxError,
+		// so we detect the negative prefix and parse abs value separately.
+		const negative = trimmed.startsWith("-")
+		const abs = negative ? trimmed.slice(1) : trimmed
+
 		const n = yield* Effect.try({
-			try: () => BigInt(decimal),
+			try: () => {
+				const val = BigInt(abs)
+				return negative ? -val : val
+			},
 			catch: () =>
 				new InvalidNumberError({
 					message: `Invalid number: "${decimal}". Expected a decimal integer.`,
@@ -436,12 +464,12 @@ const formatRlpDecoded = (data: unknown): unknown => {
 	}
 	// BrandedRlp — check for type property
 	if (data !== null && typeof data === "object" && "type" in data) {
-		const rlp = data as { type: string; value: unknown; items?: unknown[] }
+		const rlp = data as { type: string; value: unknown }
 		if (rlp.type === "bytes" && rlp.value instanceof Uint8Array) {
 			return Hex.fromBytes(rlp.value) as string
 		}
-		if (rlp.type === "list" && Array.isArray(rlp.items)) {
-			return rlp.items.map(formatRlpDecoded)
+		if (rlp.type === "list" && Array.isArray(rlp.value)) {
+			return rlp.value.map(formatRlpDecoded)
 		}
 	}
 	return String(data)
