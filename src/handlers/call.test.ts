@@ -149,4 +149,20 @@ describe("callHandler", () => {
 			expect(result.success).toBe(true)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
+
+	it.effect("wraps WasmExecutionError as HandlerError", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+
+			// 0xFE (INVALID) is an unsupported opcode in the mini EVM — triggers WasmExecutionError
+			const data = bytesToHex(new Uint8Array([0xfe]))
+
+			const error = yield* callHandler(node)({ data }).pipe(
+				Effect.flip, // flip success/error so we can inspect the error
+			)
+			expect(error._tag).toBe("HandlerError")
+			expect(error.message).toContain("0xfe")
+			expect(error.cause).toBeDefined()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
 })
