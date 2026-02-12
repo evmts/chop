@@ -238,11 +238,11 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 ## Phase 3: Full Devnet (Anvil Compatibility)
 
 ### T3.1 Transaction Processing
-- [ ] `sendTransactionHandler` with nonce, gas, balance validation
-- [ ] Transaction pool (pending, queued)
-- [ ] Intrinsic gas calculation
-- [ ] EIP-1559 fee calculation
-- [ ] Transaction receipt generation
+- [x] `sendTransactionHandler` with nonce, gas, balance validation
+- [x] Transaction pool (pending, queued)
+- [x] Intrinsic gas calculation
+- [x] EIP-1559 fee calculation
+- [x] Transaction receipt generation
 
 **Validation**:
 - RPC test: `eth_sendTransaction` → returns tx hash
