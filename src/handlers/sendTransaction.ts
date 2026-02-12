@@ -3,7 +3,6 @@ import { hexToBytes } from "../evm/conversions.js"
 import { ConversionError } from "../evm/errors.js"
 import { calculateIntrinsicGas } from "../evm/intrinsic-gas.js"
 import type { TevmNodeShape } from "../node/index.js"
-import type { TransactionReceipt } from "../node/tx-pool.js"
 import {
 	InsufficientBalanceError,
 	IntrinsicGasTooLowError,
@@ -113,8 +112,8 @@ const safeHexToBytes = (hex: string): Effect.Effect<Uint8Array, ConversionError>
  * 7. Validate balance >= value + gas * maxFeePerGas (worst-case reservation)
  * 8. Update sender (nonce = txNonce + 1, balance -= actualCost)
  * 9. Transfer value to recipient
- * 10. Auto-mine block
- * 11. Store tx + receipt in txPool
+ * 10. Store tx in pool as pending
+ * 11. If auto-mine mode: mine(1) → creates block, marks mined, creates receipt
  * 12. Return deterministic tx hash
  */
 export const sendTransactionHandler =
@@ -234,21 +233,8 @@ export const sendTransactionHandler =
 				})
 			}
 
-			// 12. Auto-mine block
-			const newBlockNumber = latestBlock.number + 1n
-			const newBlockHash = `0x${newBlockNumber.toString(16).padStart(64, "0")}`
-			const newBlock = {
-				hash: newBlockHash,
-				parentHash: latestBlock.hash,
-				number: newBlockNumber,
-				timestamp: BigInt(Math.floor(Date.now() / 1000)),
-				gasLimit: latestBlock.gasLimit,
-				gasUsed,
-				baseFeePerGas: baseFee,
-			}
-			yield* node.blockchain.putBlock(newBlock)
-
-			// 13. Store transaction in pool
+			// 12. Store transaction in pool as PENDING (no block info yet).
+			//     Include receipt-relevant fields so mine() can create proper receipts.
 			yield* node.txPool.addTransaction({
 				hash: txHash,
 				from: params.from.toLowerCase(),
@@ -258,34 +244,17 @@ export const sendTransactionHandler =
 				gasPrice: effectiveGasPrice,
 				nonce: txNonce,
 				data: params.data ?? "0x",
-				blockHash: newBlockHash,
-				blockNumber: newBlockNumber,
-				transactionIndex: 0,
+				gasUsed,
+				effectiveGasPrice,
+				status: 1,
+				type: params.maxFeePerGas !== undefined ? 2 : 0,
 			})
 
-			// Mark as mined immediately (auto-mine mode)
-			// We just added the tx above, so TransactionNotFoundError is impossible here — die if it happens.
-			yield* node.txPool
-				.markMined(txHash, newBlockHash, newBlockNumber, 0)
-				.pipe(Effect.catchTag("TransactionNotFoundError", (e) => Effect.die(e)))
-
-			// 14. Store receipt
-			const receipt: TransactionReceipt = {
-				transactionHash: txHash,
-				transactionIndex: 0,
-				blockHash: newBlockHash,
-				blockNumber: newBlockNumber,
-				from: params.from.toLowerCase(),
-				to: params.to?.toLowerCase() ?? null,
-				cumulativeGasUsed: gasUsed,
-				gasUsed,
-				contractAddress: null,
-				logs: [],
-				status: 1,
-				effectiveGasPrice,
-				type: params.maxFeePerGas !== undefined ? 2 : 0,
+			// 13. Auto-mine if in auto mode — mine(1) creates block, marks tx mined, creates receipt.
+			const mode = yield* node.mining.getMode()
+			if (mode === "auto") {
+				yield* node.mining.mine(1)
 			}
-			yield* node.txPool.addReceipt(receipt)
 
 			return { hash: txHash } satisfies SendTransactionResult
 		})
