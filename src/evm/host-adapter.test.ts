@@ -49,7 +49,7 @@ describe("HostAdapterService — hostCallbacks", () => {
 			)
 
 			// Invoke callback with byte address/slot
-			const result = yield* adapter.hostCallbacks.onStorageRead?.(addr1Bytes, slot1Bytes)
+			const result = yield* adapter.hostCallbacks.onStorageRead!(addr1Bytes, slot1Bytes)
 
 			// Should return 42n as 32-byte big-endian
 			expect(bytesToBigint(result)).toBe(42n)
@@ -61,7 +61,7 @@ describe("HostAdapterService — hostCallbacks", () => {
 		Effect.gen(function* () {
 			const adapter = yield* HostAdapterService
 
-			const result = yield* adapter.hostCallbacks.onStorageRead?.(addr1Bytes, slot1Bytes)
+			const result = yield* adapter.hostCallbacks.onStorageRead!(addr1Bytes, slot1Bytes)
 
 			// Non-existent storage → 0n as 32 zero bytes
 			expect(bytesToBigint(result)).toBe(0n)
@@ -76,7 +76,7 @@ describe("HostAdapterService — hostCallbacks", () => {
 
 			yield* ws.setAccount("0x0000000000000000000000000000000000000001", makeAccount({ balance: 5000n }))
 
-			const result = yield* adapter.hostCallbacks.onBalanceRead?.(addr1Bytes)
+			const result = yield* adapter.hostCallbacks.onBalanceRead!(addr1Bytes)
 
 			expect(bytesToBigint(result)).toBe(5000n)
 			expect(result.length).toBe(32)
@@ -87,7 +87,7 @@ describe("HostAdapterService — hostCallbacks", () => {
 		Effect.gen(function* () {
 			const adapter = yield* HostAdapterService
 
-			const result = yield* adapter.hostCallbacks.onBalanceRead?.(addr1Bytes)
+			const result = yield* adapter.hostCallbacks.onBalanceRead!(addr1Bytes)
 
 			expect(bytesToBigint(result)).toBe(0n)
 			expect(result.every((b) => b === 0)).toBe(true)
@@ -221,14 +221,14 @@ describe("HostAdapterService — deploy contract flow", () => {
 			expect(yield* adapter.getStorage(addr1Bytes, slot2Bytes)).toBe(0xffn)
 
 			// Verify via hostCallbacks (WASM-level)
-			const storageResult1 = yield* adapter.hostCallbacks.onStorageRead?.(addr1Bytes, slot1Bytes)
+			const storageResult1 = yield* adapter.hostCallbacks.onStorageRead!(addr1Bytes, slot1Bytes)
 			expect(bytesToBigint(storageResult1)).toBe(0x42n)
 
-			const storageResult2 = yield* adapter.hostCallbacks.onStorageRead?.(addr1Bytes, slot2Bytes)
+			const storageResult2 = yield* adapter.hostCallbacks.onStorageRead!(addr1Bytes, slot2Bytes)
 			expect(bytesToBigint(storageResult2)).toBe(0xffn)
 
 			// Verify balance callback
-			const balanceResult = yield* adapter.hostCallbacks.onBalanceRead?.(addr1Bytes)
+			const balanceResult = yield* adapter.hostCallbacks.onBalanceRead!(addr1Bytes)
 			expect(bytesToBigint(balanceResult)).toBe(0n)
 		}).pipe(Effect.provide(HostAdapterTest)),
 	)
@@ -377,14 +377,14 @@ describe("HostAdapterService — snapshot/restore", () => {
 			yield* adapter.setStorage(addr1Bytes, slot1Bytes, 20n)
 
 			// Verify via callback (simulating WASM reading during inner call)
-			const duringInner = yield* adapter.hostCallbacks.onStorageRead?.(addr1Bytes, slot1Bytes)
+			const duringInner = yield* adapter.hostCallbacks.onStorageRead!(addr1Bytes, slot1Bytes)
 			expect(bytesToBigint(duringInner)).toBe(20n)
 
 			// Restore (inner call reverted)
 			yield* adapter.restore(snap)
 
 			// Verify original via callback
-			const afterRestore = yield* adapter.hostCallbacks.onStorageRead?.(addr1Bytes, slot1Bytes)
+			const afterRestore = yield* adapter.hostCallbacks.onStorageRead!(addr1Bytes, slot1Bytes)
 			expect(bytesToBigint(afterRestore)).toBe(10n)
 		}).pipe(Effect.provide(HostAdapterTest)),
 	)

@@ -5,6 +5,8 @@
  * No Effect dependencies — all functions are pure and synchronous.
  */
 
+import { ConversionError } from "./errors.js"
+
 // ---------------------------------------------------------------------------
 // Bytes ↔ Hex
 // ---------------------------------------------------------------------------
@@ -15,11 +17,11 @@ export const bytesToHex = (bytes: Uint8Array): string =>
 		.map((b) => b.toString(16).padStart(2, "0"))
 		.join("")}`
 
-/** Convert 0x-prefixed hex string to Uint8Array. */
+/** Convert 0x-prefixed hex string to Uint8Array. Throws ConversionError on malformed input. */
 export const hexToBytes = (hex: string): Uint8Array => {
 	const clean = hex.startsWith("0x") ? hex.slice(2) : hex
 	if (clean.length % 2 !== 0) {
-		throw new Error(`hexToBytes: odd-length hex string: ${hex}`)
+		throw new ConversionError({ message: `hexToBytes: odd-length hex string: ${hex}` })
 	}
 	const bytes = new Uint8Array(clean.length / 2)
 	for (let i = 0; i < bytes.length; i++) {

@@ -1,6 +1,26 @@
 import { Data } from "effect"
 
 /**
+ * Error converting between EVM byte representations and string/bigint.
+ * Raised when hex strings are malformed or conversion inputs are invalid.
+ *
+ * @example
+ * ```ts
+ * import { ConversionError } from "#evm/errors"
+ * import { Effect } from "effect"
+ *
+ * const program = Effect.fail(new ConversionError({ message: "odd-length hex" }))
+ *
+ * program.pipe(
+ *   Effect.catchTag("ConversionError", (e) => Effect.log(e.message))
+ * )
+ * ```
+ */
+export class ConversionError extends Data.TaggedError("ConversionError")<{
+	readonly message: string
+}> {}
+
+/**
  * Error loading or initializing the WASM EVM module.
  * Raised when the .wasm file can't be read, compiled, or instantiated.
  *

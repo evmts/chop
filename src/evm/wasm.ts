@@ -1,4 +1,5 @@
 import { Context, Effect, Layer, type Scope } from "effect"
+import { bigintToBytes32, bytesToBigint } from "./conversions.js"
 import { WasmExecutionError, WasmLoadError } from "./errors.js"
 
 // ---------------------------------------------------------------------------
@@ -380,17 +381,6 @@ const makeEvmWasmLive = (wasmPath: string, hardfork: string): Effect.Effect<EvmW
 // Mini EVM interpreter — pure TypeScript test double
 // ---------------------------------------------------------------------------
 
-/** Convert a bigint to a 32-byte big-endian Uint8Array. */
-const bigintToBytes32 = (n: bigint): Uint8Array => {
-	const bytes = new Uint8Array(32)
-	let val = n < 0n ? 0n : n
-	for (let i = 31; i >= 0; i--) {
-		bytes[i] = Number(val & 0xffn)
-		val >>= 8n
-	}
-	return bytes
-}
-
 /** Convert a bigint to a 20-byte big-endian address. */
 const bigintToAddress = (n: bigint): Uint8Array => {
 	const bytes = new Uint8Array(20)
@@ -400,16 +390,6 @@ const bigintToAddress = (n: bigint): Uint8Array => {
 		val >>= 8n
 	}
 	return bytes
-}
-
-/** Convert big-endian bytes to bigint. */
-const bytesToBigint = (bytes: Uint8Array): bigint => {
-	let result = 0n
-	for (let i = 0; i < bytes.length; i++) {
-		const byte = bytes[i] ?? 0
-		result = (result << 8n) | BigInt(byte)
-	}
-	return result
 }
 
 /**
