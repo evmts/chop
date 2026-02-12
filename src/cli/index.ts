@@ -12,6 +12,7 @@ import { addressCommands } from "./commands/address.js"
 import { bytecodeCommands } from "./commands/bytecode.js"
 import { convertCommands } from "./commands/convert.js"
 import { cryptoCommands } from "./commands/crypto.js"
+import { nodeCommands } from "./commands/node.js"
 import { rpcCommands } from "./commands/rpc.js"
 import { jsonOption, rpcUrlOption } from "./shared.js"
 import { VERSION } from "./version.js"
@@ -46,6 +47,7 @@ export const root = Command.make(
 		...convertCommands,
 		...cryptoCommands,
 		...rpcCommands,
+		...nodeCommands,
 	]),
 )
 
