@@ -614,3 +614,281 @@ describe("RPC Server — edge cases", () => {
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 })
+
+// ---------------------------------------------------------------------------
+// T3.1 Transaction Processing — RPC integration tests
+// ---------------------------------------------------------------------------
+
+describe("RPC Server — Transaction Processing (T3.1)", () => {
+	// -----------------------------------------------------------------------
+	// Acceptance: eth_sendTransaction returns tx hash
+	// -----------------------------------------------------------------------
+
+	it.effect("eth_sendTransaction returns tx hash", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+			const sender = node.accounts[0]!
+
+			const res = (yield* rpcCall(server.port, {
+				jsonrpc: "2.0",
+				method: "eth_sendTransaction",
+				params: [
+					{
+						from: sender.address,
+						to: `0x${"22".repeat(20)}`,
+						value: "0xde0b6b3a7640000", // 1 ETH in hex
+					},
+				],
+				id: 1,
+			})) as RpcResult
+
+			expect(res.error).toBeUndefined()
+			expect(res.result).toBeDefined()
+			expect(typeof res.result).toBe("string")
+			expect((res.result as string).startsWith("0x")).toBe(true)
+			expect((res.result as string).length).toBe(66) // 0x + 64 hex chars
+
+			yield* server.close()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	// -----------------------------------------------------------------------
+	// Acceptance: eth_getTransactionReceipt has status, gasUsed, logs
+	// -----------------------------------------------------------------------
+
+	it.effect("eth_getTransactionReceipt has status, gasUsed, logs", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+			const sender = node.accounts[0]!
+
+			// Send a transaction
+			const sendRes = (yield* rpcCall(server.port, {
+				jsonrpc: "2.0",
+				method: "eth_sendTransaction",
+				params: [
+					{
+						from: sender.address,
+						to: `0x${"22".repeat(20)}`,
+						value: "0xde0b6b3a7640000",
+					},
+				],
+				id: 1,
+			})) as RpcResult
+
+			const txHash = sendRes.result as string
+
+			// Get receipt
+			const receiptRes = (yield* rpcCall(server.port, {
+				jsonrpc: "2.0",
+				method: "eth_getTransactionReceipt",
+				params: [txHash],
+				id: 2,
+			})) as RpcResult
+
+			expect(receiptRes.error).toBeUndefined()
+			const receipt = receiptRes.result as Record<string, unknown>
+			expect(receipt).not.toBeNull()
+
+			// Must have status
+			expect(receipt.status).toBe("0x1") // success
+
+			// Must have gasUsed (hex string > 0)
+			expect(typeof receipt.gasUsed).toBe("string")
+			expect(BigInt(receipt.gasUsed as string)).toBeGreaterThan(0n)
+
+			// Must have logs (array, empty for simple transfer)
+			expect(Array.isArray(receipt.logs)).toBe(true)
+
+			// Must have blockNumber
+			expect(typeof receipt.blockNumber).toBe("string")
+			expect(BigInt(receipt.blockNumber as string)).toBeGreaterThan(0n)
+
+			// Must have from and to
+			expect(receipt.from).toBeDefined()
+			expect(receipt.to).toBeDefined()
+
+			yield* server.close()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	// -----------------------------------------------------------------------
+	// Acceptance: insufficient balance returns error
+	// -----------------------------------------------------------------------
+
+	it.effect("insufficient balance returns -32603 error", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+
+			// Use an address with no balance
+			const poorAddr = `0x${"99".repeat(20)}`
+			yield* node.hostAdapter.setAccount(hexToBytes(poorAddr), {
+				nonce: 0n,
+				balance: 0n,
+				codeHash: new Uint8Array(32),
+				code: new Uint8Array(0),
+			})
+
+			const res = (yield* rpcCall(server.port, {
+				jsonrpc: "2.0",
+				method: "eth_sendTransaction",
+				params: [
+					{
+						from: poorAddr,
+						to: `0x${"22".repeat(20)}`,
+						value: "0xde0b6b3a7640000", // 1 ETH — can't afford
+					},
+				],
+				id: 1,
+			})) as RpcResult
+
+			expect(res.error).toBeDefined()
+			expect(res.error?.code).toBe(-32603)
+			expect(res.error?.message).toContain("insufficient balance")
+
+			yield* server.close()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	// -----------------------------------------------------------------------
+	// Acceptance: nonce too low returns error
+	// -----------------------------------------------------------------------
+
+	it.effect("nonce too low returns -32603 error", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+			const sender = node.accounts[0]!
+
+			// Send first tx to increment nonce
+			yield* rpcCall(server.port, {
+				jsonrpc: "2.0",
+				method: "eth_sendTransaction",
+				params: [
+					{
+						from: sender.address,
+						to: `0x${"22".repeat(20)}`,
+						value: "0x0",
+					},
+				],
+				id: 1,
+			})
+
+			// Send with explicit nonce 0 (now too low)
+			const res = (yield* rpcCall(server.port, {
+				jsonrpc: "2.0",
+				method: "eth_sendTransaction",
+				params: [
+					{
+						from: sender.address,
+						to: `0x${"22".repeat(20)}`,
+						value: "0x0",
+						nonce: "0x0",
+					},
+				],
+				id: 2,
+			})) as RpcResult
+
+			expect(res.error).toBeDefined()
+			expect(res.error?.code).toBe(-32603)
+			expect(res.error?.message).toContain("nonce too low")
+
+			yield* server.close()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	// -----------------------------------------------------------------------
+	// eth_getTransactionReceipt for unknown hash returns null
+	// -----------------------------------------------------------------------
+
+	it.effect("eth_getTransactionReceipt for unknown hash returns null", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+
+			const res = (yield* rpcCall(server.port, {
+				jsonrpc: "2.0",
+				method: "eth_getTransactionReceipt",
+				params: [`0x${"dead".repeat(16)}`],
+				id: 1,
+			})) as RpcResult
+
+			expect(res.error).toBeUndefined()
+			expect(res.result).toBeNull()
+
+			yield* server.close()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	// -----------------------------------------------------------------------
+	// eth_sendTransaction zero-value transfer works
+	// -----------------------------------------------------------------------
+
+	it.effect("eth_sendTransaction zero-value transfer succeeds", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+			const sender = node.accounts[0]!
+
+			const res = (yield* rpcCall(server.port, {
+				jsonrpc: "2.0",
+				method: "eth_sendTransaction",
+				params: [
+					{
+						from: sender.address,
+						to: `0x${"22".repeat(20)}`,
+						value: "0x0",
+					},
+				],
+				id: 1,
+			})) as RpcResult
+
+			expect(res.error).toBeUndefined()
+			expect(res.result).toBeDefined()
+
+			yield* server.close()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	// -----------------------------------------------------------------------
+	// eth_sendTransaction increments nonce on chain
+	// -----------------------------------------------------------------------
+
+	it.effect("eth_sendTransaction increments nonce on chain", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+			const sender = node.accounts[0]!
+
+			// Get nonce before
+			const nonceBefore = (yield* rpcCall(server.port, {
+				jsonrpc: "2.0",
+				method: "eth_getTransactionCount",
+				params: [sender.address, "latest"],
+				id: 1,
+			})) as RpcResult
+
+			// Send tx
+			yield* rpcCall(server.port, {
+				jsonrpc: "2.0",
+				method: "eth_sendTransaction",
+				params: [{ from: sender.address, to: `0x${"22".repeat(20)}`, value: "0x0" }],
+				id: 2,
+			})
+
+			// Get nonce after
+			const nonceAfter = (yield* rpcCall(server.port, {
+				jsonrpc: "2.0",
+				method: "eth_getTransactionCount",
+				params: [sender.address, "latest"],
+				id: 3,
+			})) as RpcResult
+
+			expect(BigInt(nonceAfter.result as string)).toBe(BigInt(nonceBefore.result as string) + 1n)
+
+			yield* server.close()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+})
