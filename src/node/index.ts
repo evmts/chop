@@ -14,6 +14,8 @@ import type { EvmWasmShape } from "../evm/wasm.js"
 import { JournalLive } from "../state/journal.js"
 import { WorldStateLive } from "../state/world-state.js"
 import { type TestAccount, fundAccounts, getTestAccounts } from "./accounts.js"
+import { MiningService, MiningServiceLive } from "./mining.js"
+import type { MiningServiceApi } from "./mining.js"
 import { TxPoolLive, TxPoolService } from "./tx-pool.js"
 import type { TxPoolApi } from "./tx-pool.js"
 
@@ -33,6 +35,8 @@ export interface TevmNodeShape {
 	readonly releaseSpec: ReleaseSpecShape
 	/** Transaction pool (pending transactions and receipts). */
 	readonly txPool: TxPoolApi
+	/** Mining service (auto/manual/interval modes, block building). */
+	readonly mining: MiningServiceApi
 	/** Chain ID (default: 31337 for local devnet). */
 	readonly chainId: bigint
 	/** Pre-funded test accounts (deterministic Hardhat/Anvil defaults). */
@@ -67,7 +71,7 @@ const TevmNodeLive = (
 ): Layer.Layer<
 	TevmNodeService,
 	never,
-	EvmWasmService | HostAdapterService | BlockchainService | ReleaseSpecService | TxPoolService
+	EvmWasmService | HostAdapterService | BlockchainService | ReleaseSpecService | TxPoolService | MiningService
 > =>
 	Layer.effect(
 		TevmNodeService,
@@ -77,6 +81,7 @@ const TevmNodeLive = (
 			const blockchain = yield* BlockchainService
 			const releaseSpec = yield* ReleaseSpecService
 			const txPool = yield* TxPoolService
+			const mining = yield* MiningService
 			const chainId = options.chainId ?? 31337n
 
 			// Initialize genesis block
@@ -98,7 +103,7 @@ const TevmNodeLive = (
 			const accounts = getTestAccounts(options.accounts ?? 10)
 			yield* fundAccounts(hostAdapter, accounts)
 
-			return { evm, hostAdapter, blockchain, releaseSpec, txPool, chainId, accounts } satisfies TevmNodeShape
+			return { evm, hostAdapter, blockchain, releaseSpec, txPool, mining, chainId, accounts } satisfies TevmNodeShape
 		}),
 	)
 
@@ -106,13 +111,18 @@ const TevmNodeLive = (
 // Shared sub-service layers (without EVM — EVM varies between Local/LocalTest)
 // ---------------------------------------------------------------------------
 
-const sharedSubLayers = (options: NodeOptions = {}) =>
-	Layer.mergeAll(
+const sharedSubLayers = (options: NodeOptions = {}) => {
+	const base = Layer.mergeAll(
 		HostAdapterLive.pipe(Layer.provide(WorldStateLive), Layer.provide(JournalLive())),
 		BlockchainLive.pipe(Layer.provide(BlockStoreLive())),
 		ReleaseSpecLive(options.hardfork ?? "prague"),
 		TxPoolLive(),
 	)
+	// MiningServiceLive needs BlockchainService + TxPoolService from base.
+	// Layer.provide feeds base's output into MiningServiceLive's requirements.
+	// Layer.mergeAll merges both outputs; Effect memoizes the shared `base` reference.
+	return Layer.mergeAll(base, MiningServiceLive.pipe(Layer.provide(base)))
+}
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -142,3 +152,5 @@ export const TevmNode = {
 // ---------------------------------------------------------------------------
 
 export { NodeInitError } from "./errors.js"
+export { MiningService, MiningServiceLive } from "./mining.js"
+export type { MiningMode, MiningServiceApi } from "./mining.js"
