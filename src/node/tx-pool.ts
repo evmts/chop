@@ -32,6 +32,14 @@ export interface PoolTransaction {
 	readonly blockNumber?: bigint
 	/** Transaction index within the block. */
 	readonly transactionIndex?: number
+	/** Actual gas consumed by the tx (set during sendTransaction for mine() to use). */
+	readonly gasUsed?: bigint
+	/** Effective gas price after EIP-1559 calculation (for receipt creation during mining). */
+	readonly effectiveGasPrice?: bigint
+	/** Execution status: 1 for success, 0 for failure (for receipt creation during mining). */
+	readonly status?: number
+	/** Transaction type: 0 = legacy, 2 = EIP-1559 (for receipt creation during mining). */
+	readonly type?: number
 }
 
 /** Transaction receipt — generated after mining. */
@@ -93,6 +101,8 @@ export interface TxPoolApi {
 	readonly getReceipt: (hash: string) => Effect.Effect<TransactionReceipt, TransactionNotFoundError>
 	/** Get all pending (unmined) transaction hashes. */
 	readonly getPendingHashes: () => Effect.Effect<readonly string[]>
+	/** Get all pending (unmined) transactions (full objects). */
+	readonly getPendingTransactions: () => Effect.Effect<readonly PoolTransaction[]>
 	/** Mark a transaction as mined (update with block info). */
 	readonly markMined: (
 		hash: string,
@@ -150,6 +160,13 @@ export const TxPoolLive = (): Layer.Layer<TxPoolService> =>
 				),
 
 			getPendingHashes: () => Effect.sync(() => Array.from(pending)),
+
+			getPendingTransactions: () =>
+				Effect.sync(() =>
+					Array.from(pending)
+						.map((hash) => transactions.get(hash))
+						.filter((tx): tx is PoolTransaction => tx !== undefined),
+				),
 
 			markMined: (hash, blockHash, blockNumber, transactionIndex) =>
 				Effect.sync(() => transactions.get(hash)).pipe(

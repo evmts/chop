@@ -14,6 +14,8 @@ export interface Block {
 	readonly gasLimit: bigint
 	readonly gasUsed: bigint
 	readonly baseFeePerGas: bigint
+	/** Transaction hashes included in this block. Optional for backward compat with genesis blocks. */
+	readonly transactionHashes?: readonly string[]
 }
 
 /** Shape of the BlockStore service API. */
