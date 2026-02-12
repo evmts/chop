@@ -131,9 +131,9 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - Unit test: WASM cleanup called on scope close
 
 ### T2.2 State Services
-- [ ] `JournalService` with append, snapshot, restore, commit
-- [ ] `WorldStateService` with account + storage CRUD
-- [ ] Snapshot/restore semantics for nested calls
+- [x] `JournalService` with append, snapshot, restore, commit
+- [x] `WorldStateService` with account + storage CRUD
+- [x] Snapshot/restore semantics for nested calls
 
 **Validation**:
 - Unit test: set account → get account → matches
