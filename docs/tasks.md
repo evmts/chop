@@ -175,13 +175,13 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - Integration test: create node → deploy contract → call contract → correct return
 
 ### T2.6 Core Handlers
-- [ ] `callHandler` (eth_call)
-- [ ] `getBalanceHandler`
-- [ ] `getCodeHandler`
-- [ ] `getStorageAtHandler`
-- [ ] `getTransactionCountHandler` (nonce)
-- [ ] `blockNumberHandler`
-- [ ] `chainIdHandler`
+- [x] `callHandler` (eth_call)
+- [x] `getBalanceHandler`
+- [x] `getCodeHandler`
+- [x] `getStorageAtHandler`
+- [x] `getTransactionCountHandler` (nonce)
+- [x] `blockNumberHandler`
+- [x] `chainIdHandler`
 
 **Validation**:
 - Unit test per handler with mocked node
