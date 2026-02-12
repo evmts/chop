@@ -9,6 +9,8 @@ import {
 	getCodeHandler,
 	getStorageAtHandler,
 	getTransactionCountHandler,
+	getTransactionReceiptHandler,
+	sendTransactionHandler,
 } from "../handlers/index.js"
 import type { TevmNodeShape } from "../node/index.js"
 import { InternalError } from "./errors.js"
@@ -28,7 +30,7 @@ export const bigintToHex32 = (n: bigint): string => `0x${n.toString(16).padStart
 // ---------------------------------------------------------------------------
 
 /** A JSON-RPC procedure: takes params array, returns a JSON-serializable result. */
-export type ProcedureResult = string | readonly string[]
+export type ProcedureResult = string | readonly string[] | Record<string, unknown> | null
 export type Procedure = (params: readonly unknown[]) => Effect.Effect<ProcedureResult, InternalError>
 
 // ---------------------------------------------------------------------------
@@ -130,3 +132,65 @@ export const ethAccounts =
 	(node: TevmNodeShape): Procedure =>
 	(_params) =>
 		getAccountsHandler(node)()
+
+/** eth_sendTransaction → transaction hash. */
+export const ethSendTransaction =
+	(node: TevmNodeShape): Procedure =>
+	(params) =>
+		wrapErrors(
+			Effect.gen(function* () {
+				const txObj = (params[0] ?? {}) as Record<string, unknown>
+				const result = yield* sendTransactionHandler(node)({
+					from: txObj.from as string,
+					...(typeof txObj.to === "string" ? { to: txObj.to } : {}),
+					...(txObj.value !== undefined ? { value: BigInt(txObj.value as string) } : {}),
+					...(txObj.gas !== undefined ? { gas: BigInt(txObj.gas as string) } : {}),
+					...(txObj.gasPrice !== undefined ? { gasPrice: BigInt(txObj.gasPrice as string) } : {}),
+					...(txObj.maxFeePerGas !== undefined ? { maxFeePerGas: BigInt(txObj.maxFeePerGas as string) } : {}),
+					...(txObj.maxPriorityFeePerGas !== undefined
+						? { maxPriorityFeePerGas: BigInt(txObj.maxPriorityFeePerGas as string) }
+						: {}),
+					...(txObj.nonce !== undefined ? { nonce: BigInt(txObj.nonce as string) } : {}),
+					...(typeof txObj.data === "string" ? { data: txObj.data } : {}),
+				})
+				return result.hash
+			}),
+		)
+
+/** eth_getTransactionReceipt → receipt object or null. */
+export const ethGetTransactionReceipt =
+	(node: TevmNodeShape): Procedure =>
+	(params) =>
+		wrapErrors(
+			Effect.gen(function* () {
+				const hash = params[0] as string
+				const receipt = yield* getTransactionReceiptHandler(node)({ hash })
+				if (receipt === null) return null
+				// Serialize receipt to JSON-RPC format (bigints → hex strings)
+				return {
+					transactionHash: receipt.transactionHash,
+					transactionIndex: bigintToHex(BigInt(receipt.transactionIndex)),
+					blockHash: receipt.blockHash,
+					blockNumber: bigintToHex(receipt.blockNumber),
+					from: receipt.from,
+					to: receipt.to,
+					cumulativeGasUsed: bigintToHex(receipt.cumulativeGasUsed),
+					gasUsed: bigintToHex(receipt.gasUsed),
+					contractAddress: receipt.contractAddress,
+					logs: receipt.logs.map((log, i) => ({
+						address: log.address,
+						topics: log.topics,
+						data: log.data,
+						blockNumber: bigintToHex(log.blockNumber),
+						transactionHash: log.transactionHash,
+						transactionIndex: bigintToHex(BigInt(log.transactionIndex)),
+						blockHash: log.blockHash,
+						logIndex: bigintToHex(BigInt(log.logIndex)),
+						removed: log.removed,
+					})),
+					status: bigintToHex(BigInt(receipt.status)),
+					effectiveGasPrice: bigintToHex(receipt.effectiveGasPrice),
+					type: bigintToHex(BigInt(receipt.type)),
+				} satisfies Record<string, unknown>
+			}),
+		)

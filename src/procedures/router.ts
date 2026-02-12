@@ -12,6 +12,8 @@ import {
 	ethGetCode,
 	ethGetStorageAt,
 	ethGetTransactionCount,
+	ethGetTransactionReceipt,
+	ethSendTransaction,
 } from "./eth.js"
 
 // ---------------------------------------------------------------------------
@@ -28,6 +30,8 @@ const methods: Record<string, (node: TevmNodeShape) => Procedure> = {
 	eth_getCode: ethGetCode,
 	eth_getStorageAt: ethGetStorageAt,
 	eth_getTransactionCount: ethGetTransactionCount,
+	eth_sendTransaction: ethSendTransaction,
+	eth_getTransactionReceipt: ethGetTransactionReceipt,
 }
 
 // ---------------------------------------------------------------------------
