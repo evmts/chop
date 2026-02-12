@@ -165,9 +165,9 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - Integration test: nested calls with snapshot/restore
 
 ### T2.5 Node Layer Composition (Local Mode)
-- [ ] `TevmNode.Local()` layer composes all services
-- [ ] Single `Effect.provide` at composition root
-- [ ] All services accessible via TevmNodeService
+- [x] `TevmNode.Local()` layer composes all services
+- [x] Single `Effect.provide` at composition root
+- [x] All services accessible via TevmNodeService
 
 **Validation**:
 - Integration test: create node → execute simple call → get result
