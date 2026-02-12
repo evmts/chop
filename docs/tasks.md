@@ -228,10 +228,10 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - E2E test: `chop node --accounts 5` → `eth_accounts` returns 5 addresses
 
 ### T2.10 Phase 2 Gate
-- [ ] All T2.1-T2.9 tasks complete
-- [ ] `bun run test` all passing
-- [ ] `bun run test:coverage` ≥ 80% on `src/evm/`, `src/state/`, `src/blockchain/`, `src/node/`
-- [ ] RPC compatibility tests pass for implemented methods
+- [x] All T2.1-T2.9 tasks complete
+- [x] `bun run test` all passing
+- [x] `bun run test:coverage` ≥ 80% on `src/evm/`, `src/state/`, `src/blockchain/`, `src/node/`
+- [x] RPC compatibility tests pass for implemented methods
 
 ---
 

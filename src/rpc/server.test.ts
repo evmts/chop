@@ -264,6 +264,154 @@ describe("RPC Server", () => {
 })
 
 // ---------------------------------------------------------------------------
+// RPC compatibility tests — all 7 implemented methods via HTTP stack
+// ---------------------------------------------------------------------------
+
+describe("RPC Server — method compatibility", () => {
+	// -----------------------------------------------------------------------
+	// eth_getBalance — set account with balance, verify hex balance via HTTP
+	// -----------------------------------------------------------------------
+
+	it.effect("eth_getBalance returns hex balance for funded account", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+
+			const testAddr = `0x${"aa".repeat(20)}`
+			const testBalance = 12345678901234567890n // ~12.3 ETH
+
+			yield* node.hostAdapter.setAccount(hexToBytes(testAddr), {
+				nonce: 0n,
+				balance: testBalance,
+				codeHash: new Uint8Array(32),
+				code: new Uint8Array(0),
+			})
+
+			const res = (yield* rpcCall(server.port, {
+				jsonrpc: "2.0",
+				method: "eth_getBalance",
+				params: [testAddr, "latest"],
+				id: 1,
+			})) as RpcResult
+
+			expect(res.error).toBeUndefined()
+			expect(res.result).toBe(`0x${testBalance.toString(16)}`)
+			expect(res.id).toBe(1)
+
+			yield* server.close()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	// -----------------------------------------------------------------------
+	// eth_getCode — set account with code, verify hex code via HTTP
+	// -----------------------------------------------------------------------
+
+	it.effect("eth_getCode returns hex code for contract account", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+
+			const testAddr = `0x${"bb".repeat(20)}`
+			const contractCode = new Uint8Array([0x60, 0x80, 0x60, 0x40, 0x52]) // PUSH1 0x80, PUSH1 0x40, MSTORE
+
+			yield* node.hostAdapter.setAccount(hexToBytes(testAddr), {
+				nonce: 0n,
+				balance: 0n,
+				codeHash: new Uint8Array(32),
+				code: contractCode,
+			})
+
+			const res = (yield* rpcCall(server.port, {
+				jsonrpc: "2.0",
+				method: "eth_getCode",
+				params: [testAddr, "latest"],
+				id: 2,
+			})) as RpcResult
+
+			expect(res.error).toBeUndefined()
+			expect(res.result).toBe(bytesToHex(contractCode))
+			expect(res.id).toBe(2)
+
+			yield* server.close()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	// -----------------------------------------------------------------------
+	// eth_getStorageAt — set storage slot, verify hex value via HTTP
+	// -----------------------------------------------------------------------
+
+	it.effect("eth_getStorageAt returns hex value for set storage slot", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+
+			const testAddr = `0x${"cc".repeat(20)}`
+			const storageSlot = `0x${"00".repeat(31)}01` // slot 1
+			const storageValue = 42n
+
+			// First create the account (setStorage requires account to exist)
+			yield* node.hostAdapter.setAccount(hexToBytes(testAddr), {
+				nonce: 0n,
+				balance: 0n,
+				codeHash: new Uint8Array(32),
+				code: new Uint8Array(0),
+			})
+
+			// Set storage value
+			yield* node.hostAdapter.setStorage(hexToBytes(testAddr), hexToBytes(storageSlot), storageValue)
+
+			const res = (yield* rpcCall(server.port, {
+				jsonrpc: "2.0",
+				method: "eth_getStorageAt",
+				params: [testAddr, storageSlot, "latest"],
+				id: 3,
+			})) as RpcResult
+
+			expect(res.error).toBeUndefined()
+			// eth_getStorageAt returns 32-byte zero-padded hex
+			expect(res.result).toBe(`0x${"00".repeat(31)}2a`)
+			expect(res.id).toBe(3)
+
+			yield* server.close()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	// -----------------------------------------------------------------------
+	// eth_getTransactionCount — set account with nonce, verify hex nonce via HTTP
+	// -----------------------------------------------------------------------
+
+	it.effect("eth_getTransactionCount returns hex nonce for account", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+
+			const testAddr = `0x${"dd".repeat(20)}`
+			const testNonce = 7n
+
+			yield* node.hostAdapter.setAccount(hexToBytes(testAddr), {
+				nonce: testNonce,
+				balance: 0n,
+				codeHash: new Uint8Array(32),
+				code: new Uint8Array(0),
+			})
+
+			const res = (yield* rpcCall(server.port, {
+				jsonrpc: "2.0",
+				method: "eth_getTransactionCount",
+				params: [testAddr, "latest"],
+				id: 4,
+			})) as RpcResult
+
+			expect(res.error).toBeUndefined()
+			expect(res.result).toBe(`0x${testNonce.toString(16)}`)
+			expect(res.id).toBe(4)
+
+			yield* server.close()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+})
+
+// ---------------------------------------------------------------------------
 // Additional coverage: server edge cases
 // ---------------------------------------------------------------------------
 
