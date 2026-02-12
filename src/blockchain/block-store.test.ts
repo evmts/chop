@@ -1,7 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { expect } from "vitest"
-import { BlockNotFoundError } from "./errors.js"
 import { type Block, BlockStoreLive, BlockStoreService } from "./block-store.js"
 
 // ---------------------------------------------------------------------------
@@ -41,9 +40,9 @@ describe("BlockStoreService — put/get", () => {
 	it.effect("getBlock fails with BlockNotFoundError for missing hash", () =>
 		Effect.gen(function* () {
 			const store = yield* BlockStoreService
-			const result = yield* store.getBlock("0xnonexistent").pipe(
-				Effect.catchTag("BlockNotFoundError", (e) => Effect.succeed(e.identifier)),
-			)
+			const result = yield* store
+				.getBlock("0xnonexistent")
+				.pipe(Effect.catchTag("BlockNotFoundError", (e) => Effect.succeed(e.identifier)))
 			expect(result).toBe("0xnonexistent")
 		}).pipe(Effect.provide(TestLayer)),
 	)
@@ -113,9 +112,9 @@ describe("BlockStoreService — canonical index", () => {
 	it.effect("getCanonical fails with BlockNotFoundError for missing number", () =>
 		Effect.gen(function* () {
 			const store = yield* BlockStoreService
-			const result = yield* store.getCanonical(999n).pipe(
-				Effect.catchTag("BlockNotFoundError", (e) => Effect.succeed(e.identifier)),
-			)
+			const result = yield* store
+				.getCanonical(999n)
+				.pipe(Effect.catchTag("BlockNotFoundError", (e) => Effect.succeed(e.identifier)))
 			expect(result).toBe("999")
 		}).pipe(Effect.provide(TestLayer)),
 	)
@@ -136,9 +135,9 @@ describe("BlockStoreService — canonical index", () => {
 		Effect.gen(function* () {
 			const store = yield* BlockStoreService
 			yield* store.setCanonical(20n, "0xghost")
-			const result = yield* store.getBlockByNumber(20n).pipe(
-				Effect.catchTag("BlockNotFoundError", (e) => Effect.succeed(e.identifier)),
-			)
+			const result = yield* store
+				.getBlockByNumber(20n)
+				.pipe(Effect.catchTag("BlockNotFoundError", (e) => Effect.succeed(e.identifier)))
 			expect(result).toBe("0xghost")
 		}).pipe(Effect.provide(TestLayer)),
 	)

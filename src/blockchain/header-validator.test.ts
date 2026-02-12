@@ -2,7 +2,6 @@ import { describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { expect } from "vitest"
 import type { Block } from "./block-store.js"
-import { InvalidBlockError } from "./errors.js"
 import { BlockHeaderValidatorLive, BlockHeaderValidatorService } from "./header-validator.js"
 
 // ---------------------------------------------------------------------------
@@ -76,9 +75,9 @@ describe("BlockHeaderValidatorService — gas limit", () => {
 			const parent = makeParent({ gasLimit: 30_000_000n })
 			// Exceeds: parent + parent/1024
 			const child = makeBlock({ gasLimit: 30_029_297n })
-			const result = yield* validator.validateGasLimit(child, parent).pipe(
-				Effect.catchTag("InvalidBlockError", (e) => Effect.succeed(e.message)),
-			)
+			const result = yield* validator
+				.validateGasLimit(child, parent)
+				.pipe(Effect.catchTag("InvalidBlockError", (e) => Effect.succeed(e.message)))
 			expect(result).toContain("gas limit")
 		}).pipe(Effect.provide(TestLayer)),
 	)
@@ -89,9 +88,9 @@ describe("BlockHeaderValidatorService — gas limit", () => {
 			const parent = makeParent({ gasLimit: 30_000_000n })
 			// Below: parent - parent/1024
 			const child = makeBlock({ gasLimit: 29_970_703n })
-			const result = yield* validator.validateGasLimit(child, parent).pipe(
-				Effect.catchTag("InvalidBlockError", (e) => Effect.succeed(e.message)),
-			)
+			const result = yield* validator
+				.validateGasLimit(child, parent)
+				.pipe(Effect.catchTag("InvalidBlockError", (e) => Effect.succeed(e.message)))
 			expect(result).toContain("gas limit")
 		}).pipe(Effect.provide(TestLayer)),
 	)
@@ -101,9 +100,9 @@ describe("BlockHeaderValidatorService — gas limit", () => {
 			const validator = yield* BlockHeaderValidatorService
 			const parent = makeParent({ gasLimit: 5001n })
 			const child = makeBlock({ gasLimit: 4999n })
-			const result = yield* validator.validateGasLimit(child, parent).pipe(
-				Effect.catchTag("InvalidBlockError", (e) => Effect.succeed(e.message)),
-			)
+			const result = yield* validator
+				.validateGasLimit(child, parent)
+				.pipe(Effect.catchTag("InvalidBlockError", (e) => Effect.succeed(e.message)))
 			expect(result).toContain("gas limit")
 		}).pipe(Effect.provide(TestLayer)),
 	)
@@ -159,9 +158,9 @@ describe("BlockHeaderValidatorService — base fee", () => {
 			const parent = makeParent({ gasLimit: 30_000_000n, gasUsed: 15_000_000n, baseFeePerGas: 1_000_000_000n })
 			// Expected 1_000_000_000 but we provide 999_999_999
 			const child = makeBlock({ baseFeePerGas: 999_999_999n })
-			const result = yield* validator.validateBaseFee(child, parent).pipe(
-				Effect.catchTag("InvalidBlockError", (e) => Effect.succeed(e.message)),
-			)
+			const result = yield* validator
+				.validateBaseFee(child, parent)
+				.pipe(Effect.catchTag("InvalidBlockError", (e) => Effect.succeed(e.message)))
 			expect(result).toContain("base fee")
 		}).pipe(Effect.provide(TestLayer)),
 	)
@@ -187,9 +186,9 @@ describe("BlockHeaderValidatorService — timestamp", () => {
 			const validator = yield* BlockHeaderValidatorService
 			const parent = makeParent({ timestamp: 1_000_000n })
 			const child = makeBlock({ timestamp: 1_000_000n })
-			const result = yield* validator.validateTimestamp(child, parent).pipe(
-				Effect.catchTag("InvalidBlockError", (e) => Effect.succeed(e.message)),
-			)
+			const result = yield* validator
+				.validateTimestamp(child, parent)
+				.pipe(Effect.catchTag("InvalidBlockError", (e) => Effect.succeed(e.message)))
 			expect(result).toContain("timestamp")
 		}).pipe(Effect.provide(TestLayer)),
 	)
@@ -199,9 +198,9 @@ describe("BlockHeaderValidatorService — timestamp", () => {
 			const validator = yield* BlockHeaderValidatorService
 			const parent = makeParent({ timestamp: 1_000_000n })
 			const child = makeBlock({ timestamp: 999_999n })
-			const result = yield* validator.validateTimestamp(child, parent).pipe(
-				Effect.catchTag("InvalidBlockError", (e) => Effect.succeed(e.message)),
-			)
+			const result = yield* validator
+				.validateTimestamp(child, parent)
+				.pipe(Effect.catchTag("InvalidBlockError", (e) => Effect.succeed(e.message)))
 			expect(result).toContain("timestamp")
 		}).pipe(Effect.provide(TestLayer)),
 	)
@@ -227,9 +226,9 @@ describe("BlockHeaderValidatorService — validate (combined)", () => {
 			const validator = yield* BlockHeaderValidatorService
 			const parent = makeParent({ gasLimit: 30_000_000n })
 			const child = makeBlock({ gasLimit: 60_000_000n })
-			const result = yield* validator.validate(child, parent).pipe(
-				Effect.catchTag("InvalidBlockError", (e) => Effect.succeed(e.message)),
-			)
+			const result = yield* validator
+				.validate(child, parent)
+				.pipe(Effect.catchTag("InvalidBlockError", (e) => Effect.succeed(e.message)))
 			expect(result).toContain("gas limit")
 		}).pipe(Effect.provide(TestLayer)),
 	)
@@ -239,9 +238,9 @@ describe("BlockHeaderValidatorService — validate (combined)", () => {
 			const validator = yield* BlockHeaderValidatorService
 			const parent = makeParent()
 			const child = makeBlock({ baseFeePerGas: 999n })
-			const result = yield* validator.validate(child, parent).pipe(
-				Effect.catchTag("InvalidBlockError", (e) => Effect.succeed(e.message)),
-			)
+			const result = yield* validator
+				.validate(child, parent)
+				.pipe(Effect.catchTag("InvalidBlockError", (e) => Effect.succeed(e.message)))
 			expect(result).toContain("base fee")
 		}).pipe(Effect.provide(TestLayer)),
 	)
@@ -251,9 +250,9 @@ describe("BlockHeaderValidatorService — validate (combined)", () => {
 			const validator = yield* BlockHeaderValidatorService
 			const parent = makeParent({ timestamp: 1_000_000n })
 			const child = makeBlock({ timestamp: 999_000n })
-			const result = yield* validator.validate(child, parent).pipe(
-				Effect.catchTag("InvalidBlockError", (e) => Effect.succeed(e.message)),
-			)
+			const result = yield* validator
+				.validate(child, parent)
+				.pipe(Effect.catchTag("InvalidBlockError", (e) => Effect.succeed(e.message)))
 			expect(result).toContain("timestamp")
 		}).pipe(Effect.provide(TestLayer)),
 	)

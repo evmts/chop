@@ -37,69 +37,65 @@ export class BlockchainService extends Context.Tag("Blockchain")<BlockchainServi
 // ---------------------------------------------------------------------------
 
 /** Live layer for BlockchainService. Requires BlockStoreService and BlockHeaderValidatorService. */
-export const BlockchainLive: Layer.Layer<
-	BlockchainService,
-	never,
-	BlockStoreService | BlockHeaderValidatorService
-> = Layer.effect(
-	BlockchainService,
-	Effect.gen(function* () {
-		const store = yield* BlockStoreService
-		const _validator = yield* BlockHeaderValidatorService
+export const BlockchainLive: Layer.Layer<BlockchainService, never, BlockStoreService | BlockHeaderValidatorService> =
+	Layer.effect(
+		BlockchainService,
+		Effect.gen(function* () {
+			const store = yield* BlockStoreService
+			// Ensure validator is available in the dependency graph
+			void (yield* BlockHeaderValidatorService)
 
-		/** Head block reference — null means chain not yet initialized. */
-		const headRef = yield* Ref.make<Block | null>(null)
+			/** Head block reference — null means chain not yet initialized. */
+			const headRef = yield* Ref.make<Block | null>(null)
 
-		const getHead = (): Effect.Effect<Block, GenesisError> =>
-			Effect.gen(function* () {
-				const head = yield* Ref.get(headRef)
-				if (head === null) {
-					return yield* Effect.fail(
-						new GenesisError({ message: "Chain not initialized — genesis block has not been set" }),
-					)
-				}
-				return head
-			})
-
-		return {
-			initGenesis: (genesis) =>
+			const getHead = (): Effect.Effect<Block, GenesisError> =>
 				Effect.gen(function* () {
-					const current = yield* Ref.get(headRef)
-					if (current !== null) {
+					const head = yield* Ref.get(headRef)
+					if (head === null) {
 						return yield* Effect.fail(
-							new GenesisError({ message: "Genesis block already initialized" }),
+							new GenesisError({ message: "Chain not initialized — genesis block has not been set" }),
 						)
 					}
-					yield* store.putBlock(genesis)
-					yield* store.setCanonical(genesis.number, genesis.hash)
-					yield* Ref.set(headRef, genesis)
-				}),
+					return head
+				})
 
-			getHead,
+			return {
+				initGenesis: (genesis) =>
+					Effect.gen(function* () {
+						const current = yield* Ref.get(headRef)
+						if (current !== null) {
+							return yield* Effect.fail(new GenesisError({ message: "Genesis block already initialized" }))
+						}
+						yield* store.putBlock(genesis)
+						yield* store.setCanonical(genesis.number, genesis.hash)
+						yield* Ref.set(headRef, genesis)
+					}),
 
-			getBlock: (hash) => store.getBlock(hash),
+				getHead,
 
-			getBlockByNumber: (blockNumber) => store.getBlockByNumber(blockNumber),
+				getBlock: (hash) => store.getBlock(hash),
 
-			putBlock: (block) =>
-				Effect.gen(function* () {
-					yield* store.putBlock(block)
+				getBlockByNumber: (blockNumber) => store.getBlockByNumber(blockNumber),
 
-					const head = yield* Ref.get(headRef)
-					// Fork choice: longest chain rule — update head if new block has higher number
-					if (head === null || block.number > head.number) {
-						yield* store.setCanonical(block.number, block.hash)
-						yield* Ref.set(headRef, block)
-					}
-				}),
+				putBlock: (block) =>
+					Effect.gen(function* () {
+						yield* store.putBlock(block)
 
-			getHeadBlockNumber: () =>
-				Effect.gen(function* () {
-					const head = yield* getHead()
-					return head.number
-				}),
+						const head = yield* Ref.get(headRef)
+						// Fork choice: longest chain rule — update head if new block has higher number
+						if (head === null || block.number > head.number) {
+							yield* store.setCanonical(block.number, block.hash)
+							yield* Ref.set(headRef, block)
+						}
+					}),
 
-			getLatestBlock: () => getHead(),
-		} satisfies BlockchainApi
-	}),
-)
+				getHeadBlockNumber: () =>
+					Effect.gen(function* () {
+						const head = yield* getHead()
+						return head.number
+					}),
+
+				getLatestBlock: () => getHead(),
+			} satisfies BlockchainApi
+		}),
+	)
