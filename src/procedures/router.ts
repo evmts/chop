@@ -1,5 +1,6 @@
 import { Effect } from "effect"
 import type { TevmNodeShape } from "../node/index.js"
+import { anvilMine } from "./anvil.js"
 import { type InternalError, MethodNotFoundError } from "./errors.js"
 import {
 	type Procedure,
@@ -15,6 +16,7 @@ import {
 	ethGetTransactionReceipt,
 	ethSendTransaction,
 } from "./eth.js"
+import { evmMine, evmSetAutomine, evmSetIntervalMining } from "./evm.js"
 
 // ---------------------------------------------------------------------------
 // Method → Procedure mapping
@@ -32,6 +34,12 @@ const methods: Record<string, (node: TevmNodeShape) => Procedure> = {
 	eth_getTransactionCount: ethGetTransactionCount,
 	eth_sendTransaction: ethSendTransaction,
 	eth_getTransactionReceipt: ethGetTransactionReceipt,
+	// Anvil methods
+	anvil_mine: anvilMine,
+	// EVM methods
+	evm_mine: evmMine,
+	evm_setAutomine: evmSetAutomine,
+	evm_setIntervalMining: evmSetIntervalMining,
 }
 
 // ---------------------------------------------------------------------------

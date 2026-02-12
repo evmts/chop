@@ -26,6 +26,10 @@ export {
 } from "./eth.js"
 export type { Procedure } from "./eth.js"
 
+export { anvilMine } from "./anvil.js"
+
+export { evmMine, evmSetAutomine, evmSetIntervalMining } from "./evm.js"
+
 export { methodRouter } from "./router.js"
 
 export {

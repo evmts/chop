@@ -49,6 +49,42 @@ describe("methodRouter", () => {
 	)
 
 	// -----------------------------------------------------------------------
+	// Mining methods
+	// -----------------------------------------------------------------------
+
+	it.effect("routes anvil_mine to a procedure returning null", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const result = yield* methodRouter(node)("anvil_mine", [])
+			expect(result).toBeNull()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	it.effect("routes evm_mine to a procedure returning '0x0'", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const result = yield* methodRouter(node)("evm_mine", [])
+			expect(result).toBe("0x0")
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	it.effect("routes evm_setAutomine", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const result = yield* methodRouter(node)("evm_setAutomine", [true])
+			expect(result).toBe("true")
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	it.effect("routes evm_setIntervalMining", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const result = yield* methodRouter(node)("evm_setIntervalMining", [1000])
+			expect(result).toBe("true")
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	// -----------------------------------------------------------------------
 	// Unknown method fails
 	// -----------------------------------------------------------------------
 
