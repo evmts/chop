@@ -19,6 +19,12 @@ export const jsonOption = Options.boolean("json").pipe(
 	Options.withDescription("Output results as JSON"),
 )
 
+/** --rpc-url / -r: Ethereum JSON-RPC endpoint URL (required by default) */
+export const rpcUrlOption = Options.text("rpc-url").pipe(
+	Options.withAlias("r"),
+	Options.withDescription("Ethereum JSON-RPC endpoint URL"),
+)
+
 // ============================================================================
 // Shared Validation
 // ============================================================================

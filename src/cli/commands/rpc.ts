@@ -17,7 +17,7 @@ import { Args, Command, Options } from "@effect/cli"
 import { FetchHttpClient, type HttpClient } from "@effect/platform"
 import { Console, Effect } from "effect"
 import { type RpcClientError, rpcCall } from "../../rpc/client.js"
-import { handleCommandErrors, jsonOption } from "../shared.js"
+import { handleCommandErrors, jsonOption, rpcUrlOption } from "../shared.js"
 import {
 	type AbiError,
 	type ArgumentCountError,
@@ -31,12 +31,6 @@ import {
 // ============================================================================
 // Shared Options & Args
 // ============================================================================
-
-/** Required --rpc-url / -r option for RPC commands */
-const rpcUrlOption = Options.text("rpc-url").pipe(
-	Options.withAlias("r"),
-	Options.withDescription("Ethereum JSON-RPC endpoint URL"),
-)
 
 /** Reusable address positional argument */
 const addressArg = Args.text({ name: "address" }).pipe(
@@ -126,6 +120,9 @@ export const callHandler = (
 	Effect.gen(function* () {
 		let data = "0x"
 
+		// Parse signature once upfront if provided (avoids redundant re-parse)
+		const parsed = sig ? yield* parseSignature(sig) : undefined
+
 		// If signature provided, encode calldata
 		if (sig) {
 			data = yield* calldataHandler(sig, [...args])
@@ -133,14 +130,10 @@ export const callHandler = (
 
 		const result = (yield* rpcCall(rpcUrl, "eth_call", [{ to, data }, "latest"])) as string
 
-		// If signature has outputs, decode the result
-		if (sig) {
-			const parsed = yield* parseSignature(sig)
-			if (parsed.outputs.length > 0) {
-				// Reuse abiDecodeHandler which handles output types
-				const decoded = yield* abiDecodeHandler(sig, result)
-				return decoded.join(", ")
-			}
+		// If signature has outputs, decode the result (reuses parsed from above)
+		if (sig && parsed && parsed.outputs.length > 0) {
+			const decoded = yield* abiDecodeHandler(sig, result)
+			return decoded.join(", ")
 		}
 
 		return result

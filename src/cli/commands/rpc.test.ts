@@ -1,10 +1,10 @@
 import { FetchHttpClient } from "@effect/platform"
 import { describe, it } from "@effect/vitest"
 import { Effect } from "effect"
-import { expect } from "vitest"
+import { afterAll, beforeAll, expect } from "vitest"
 import { TevmNode, TevmNodeService } from "../../node/index.js"
 import { startRpcServer } from "../../rpc/server.js"
-import { runCli } from "../test-helpers.js"
+import { type TestServer, runCli, startTestServer } from "../test-helpers.js"
 import {
 	balanceHandler,
 	blockNumberHandler,
@@ -229,5 +229,117 @@ describe("CLI E2E — --json flag error output", () => {
 	it("chain-id --json with invalid URL exits non-zero", () => {
 		const result = runCli("chain-id -r http://127.0.0.1:1 --json")
 		expect(result.exitCode).not.toBe(0)
+	})
+})
+
+// ============================================================================
+// CLI E2E success tests (using runCli with a running RPC server)
+// ============================================================================
+
+const ZERO_ADDR = "0x0000000000000000000000000000000000000000"
+const ZERO_SLOT = "0x0000000000000000000000000000000000000000000000000000000000000000"
+const CONTRACT_ADDR = `0x${"00".repeat(19)}42`
+
+describe("CLI E2E — RPC success with running server", () => {
+	let server: TestServer
+
+	beforeAll(async () => {
+		server = await startTestServer()
+	}, 15_000)
+
+	afterAll(() => {
+		server?.kill()
+	})
+
+	// Issue 1: true CLI E2E success tests using runCli() against a running server
+
+	it("chop chain-id returns correct value", () => {
+		const result = runCli(`chain-id -r http://127.0.0.1:${server.port}`)
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout.trim()).toBe("31337")
+	})
+
+	it("chop block-number returns correct value", () => {
+		const result = runCli(`block-number -r http://127.0.0.1:${server.port}`)
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout.trim()).toBe("0")
+	})
+
+	it("chop balance returns correct value", () => {
+		const result = runCli(`balance ${ZERO_ADDR} -r http://127.0.0.1:${server.port}`)
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout.trim()).toBe("0")
+	})
+
+	it("chop nonce returns correct value", () => {
+		const result = runCli(`nonce ${ZERO_ADDR} -r http://127.0.0.1:${server.port}`)
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout.trim()).toBe("0")
+	})
+
+	it("chop code returns correct value for EOA", () => {
+		const result = runCli(`code ${ZERO_ADDR} -r http://127.0.0.1:${server.port}`)
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout.trim()).toBe("0x")
+	})
+
+	it("chop storage returns correct value", () => {
+		const result = runCli(`storage ${ZERO_ADDR} ${ZERO_SLOT} -r http://127.0.0.1:${server.port}`)
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout.trim()).toBe(ZERO_SLOT)
+	})
+
+	// Issue 2: E2E test — start server → deploy contract → chop call → correct return
+
+	it("chop call against deployed contract returns correct result", () => {
+		const result = runCli(`call --to ${CONTRACT_ADDR} -r http://127.0.0.1:${server.port}`)
+		expect(result.exitCode).toBe(0)
+		// Contract returns 0x42 as a 32-byte word
+		expect(result.stdout.trim()).toContain("42")
+	})
+
+	it("chop code returns bytecode for deployed contract", () => {
+		const result = runCli(`code ${CONTRACT_ADDR} -r http://127.0.0.1:${server.port}`)
+		expect(result.exitCode).toBe(0)
+		// Contract bytecode: 604260005260206000f3
+		expect(result.stdout.trim()).toContain("604260005260206000f3")
+	})
+
+	// Issue 3: --json flag success tests with structured JSON output
+
+	it("chop chain-id --json outputs structured JSON", () => {
+		const result = runCli(`chain-id -r http://127.0.0.1:${server.port} --json`)
+		expect(result.exitCode).toBe(0)
+		const json = JSON.parse(result.stdout.trim())
+		expect(json).toEqual({ chainId: "31337" })
+	})
+
+	it("chop block-number --json outputs structured JSON", () => {
+		const result = runCli(`block-number -r http://127.0.0.1:${server.port} --json`)
+		expect(result.exitCode).toBe(0)
+		const json = JSON.parse(result.stdout.trim())
+		expect(json).toEqual({ blockNumber: "0" })
+	})
+
+	it("chop balance --json outputs structured JSON", () => {
+		const result = runCli(`balance ${ZERO_ADDR} -r http://127.0.0.1:${server.port} --json`)
+		expect(result.exitCode).toBe(0)
+		const json = JSON.parse(result.stdout.trim())
+		expect(json).toEqual({ address: ZERO_ADDR, balance: "0" })
+	})
+
+	it("chop nonce --json outputs structured JSON", () => {
+		const result = runCli(`nonce ${ZERO_ADDR} -r http://127.0.0.1:${server.port} --json`)
+		expect(result.exitCode).toBe(0)
+		const json = JSON.parse(result.stdout.trim())
+		expect(json).toEqual({ address: ZERO_ADDR, nonce: "0" })
+	})
+
+	it("chop call --json outputs structured JSON", () => {
+		const result = runCli(`call --to ${CONTRACT_ADDR} -r http://127.0.0.1:${server.port} --json`)
+		expect(result.exitCode).toBe(0)
+		const json = JSON.parse(result.stdout.trim())
+		expect(json.to).toBe(CONTRACT_ADDR)
+		expect(json.result).toContain("42")
 	})
 })

@@ -13,19 +13,15 @@ import { bytecodeCommands } from "./commands/bytecode.js"
 import { convertCommands } from "./commands/convert.js"
 import { cryptoCommands } from "./commands/crypto.js"
 import { rpcCommands } from "./commands/rpc.js"
-import { jsonOption } from "./shared.js"
+import { jsonOption, rpcUrlOption } from "./shared.js"
 import { VERSION } from "./version.js"
 
 // ---------------------------------------------------------------------------
 // Global Options
 // ---------------------------------------------------------------------------
 
-/** --rpc-url / -r: Ethereum JSON-RPC endpoint URL */
-const rpcUrlOption = Options.text("rpc-url").pipe(
-	Options.withAlias("r"),
-	Options.optional,
-	Options.withDescription("Ethereum JSON-RPC endpoint URL"),
-)
+/** --rpc-url / -r: optional at root level, required by RPC subcommands */
+const optionalRpcUrl = rpcUrlOption.pipe(Options.optional)
 
 // ---------------------------------------------------------------------------
 // Root Command
@@ -39,7 +35,7 @@ const rpcUrlOption = Options.text("rpc-url").pipe(
  */
 export const root = Command.make(
 	"chop",
-	{ json: jsonOption, rpcUrl: rpcUrlOption },
+	{ json: jsonOption, rpcUrl: optionalRpcUrl },
 	({ json: _json, rpcUrl: _rpcUrl }) => Console.log("TUI not yet implemented"),
 ).pipe(
 	Command.withDescription("Ethereum Swiss Army knife"),

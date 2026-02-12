@@ -69,7 +69,7 @@ export const rpcCall = (
 			.execute(request)
 			.pipe(Effect.mapError((e) => new RpcClientError({ message: `RPC request failed: ${e.message}`, cause: e })))
 
-		const json = (yield* response.json.pipe(
+		const body = yield* response.json.pipe(
 			Effect.mapError(
 				(e) =>
 					new RpcClientError({
@@ -77,7 +77,19 @@ export const rpcCall = (
 						cause: e,
 					}),
 			),
-		)) as JsonRpcResponseShape
+		)
+
+		// Runtime validation: verify response has JSON-RPC 2.0 shape
+		if (typeof body !== "object" || body === null || !("jsonrpc" in body)) {
+			return yield* Effect.fail(
+				new RpcClientError({
+					message: `Malformed JSON-RPC response: expected object with 'jsonrpc' field, got ${typeof body}`,
+					cause: body,
+				}),
+			)
+		}
+
+		const json = body as JsonRpcResponseShape
 
 		if (json.error) {
 			return yield* Effect.fail(
