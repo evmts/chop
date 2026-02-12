@@ -4,6 +4,7 @@ import {
 	blockNumberHandler,
 	callHandler,
 	chainIdHandler,
+	getAccountsHandler,
 	getBalanceHandler,
 	getCodeHandler,
 	getStorageAtHandler,
@@ -26,8 +27,8 @@ export const bigintToHex32 = (n: bigint): string => `0x${n.toString(16).padStart
 // Procedure type — each takes params array, returns hex string
 // ---------------------------------------------------------------------------
 
-/** A JSON-RPC procedure: takes params array, returns hex string result. */
-export type Procedure = (params: readonly unknown[]) => Effect.Effect<string, InternalError>
+/** A JSON-RPC procedure: takes params array, returns a JSON-serializable result. */
+export type Procedure = (params: readonly unknown[]) => Effect.Effect<unknown, InternalError>
 
 // ---------------------------------------------------------------------------
 // Internal: wrap procedure body to catch both errors and defects
@@ -122,3 +123,9 @@ export const ethGetTransactionCount =
 				return bigintToHex(nonce)
 			}),
 		)
+
+/** eth_accounts → array of account addresses. */
+export const ethAccounts =
+	(node: TevmNodeShape): Procedure =>
+	(_params) =>
+		getAccountsHandler(node)()

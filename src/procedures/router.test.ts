@@ -32,6 +32,23 @@ describe("methodRouter", () => {
 	}
 
 	// -----------------------------------------------------------------------
+	// eth_accounts returns an array (not a hex string)
+	// -----------------------------------------------------------------------
+
+	it.effect("routes eth_accounts to a procedure returning an array", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const result = yield* methodRouter(node)("eth_accounts", [])
+			expect(Array.isArray(result)).toBe(true)
+			const arr = result as string[]
+			expect(arr.length).toBeGreaterThan(0)
+			for (const addr of arr) {
+				expect(addr).toMatch(/^0x[0-9a-fA-F]{40}$/)
+			}
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	// -----------------------------------------------------------------------
 	// Unknown method fails
 	// -----------------------------------------------------------------------
 
