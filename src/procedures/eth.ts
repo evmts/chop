@@ -177,7 +177,7 @@ export const ethGetTransactionReceipt =
 					cumulativeGasUsed: bigintToHex(receipt.cumulativeGasUsed),
 					gasUsed: bigintToHex(receipt.gasUsed),
 					contractAddress: receipt.contractAddress,
-					logs: receipt.logs.map((log, i) => ({
+					logs: receipt.logs.map((log) => ({
 						address: log.address,
 						topics: log.topics,
 						data: log.data,

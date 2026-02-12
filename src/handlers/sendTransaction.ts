@@ -1,5 +1,5 @@
 import { Effect } from "effect"
-import { bytesToHex, hexToBytes } from "../evm/conversions.js"
+import { hexToBytes } from "../evm/conversions.js"
 import { calculateIntrinsicGas } from "../evm/intrinsic-gas.js"
 import type { TevmNodeShape } from "../node/index.js"
 import type { TransactionReceipt } from "../node/tx-pool.js"
@@ -216,7 +216,7 @@ export const sendTransactionHandler =
 			yield* node.txPool.addTransaction({
 				hash: txHash,
 				from: params.from.toLowerCase(),
-				to: params.to?.toLowerCase(),
+				...(params.to !== undefined ? { to: params.to.toLowerCase() } : {}),
 				value,
 				gas: gasLimit,
 				gasPrice: effectiveGasPrice,
@@ -228,7 +228,10 @@ export const sendTransactionHandler =
 			})
 
 			// Mark as mined immediately (auto-mine mode)
-			yield* node.txPool.markMined(txHash, newBlockHash, newBlockNumber, 0)
+			// We just added the tx above, so TransactionNotFoundError is impossible here — die if it happens.
+			yield* node.txPool.markMined(txHash, newBlockHash, newBlockNumber, 0).pipe(
+				Effect.catchTag("TransactionNotFoundError", (e) => Effect.die(e)),
+			)
 
 			// 13. Store receipt
 			const receipt: TransactionReceipt = {

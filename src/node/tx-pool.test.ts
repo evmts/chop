@@ -1,7 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { expect } from "vitest"
-import { TransactionNotFoundError } from "../handlers/errors.js"
 import { type PoolTransaction, type TransactionReceipt, TxPoolLive, TxPoolService } from "./tx-pool.js"
 
 // ---------------------------------------------------------------------------
