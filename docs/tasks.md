@@ -187,12 +187,12 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - Unit test per handler with mocked node
 
 ### T2.7 Core Procedures + RPC Server
-- [ ] JSON-RPC request parsing
-- [ ] Method routing (method name → procedure)
-- [ ] eth_call, eth_getBalance, eth_getCode, eth_getStorageAt, eth_getTransactionCount
-- [ ] eth_blockNumber, eth_chainId
-- [ ] HTTP server on configurable port
-- [ ] Batch request support
+- [x] JSON-RPC request parsing
+- [x] Method routing (method name → procedure)
+- [x] eth_call, eth_getBalance, eth_getCode, eth_getStorageAt, eth_getTransactionCount
+- [x] eth_blockNumber, eth_chainId
+- [x] HTTP server on configurable port
+- [x] Batch request support
 
 **Validation**:
 - RPC test: `eth_chainId` → `"0x7a69"` (31337)
