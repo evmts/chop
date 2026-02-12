@@ -23,6 +23,7 @@ export type { GetTransactionReceiptParams } from "./getTransactionReceipt.js"
 export {
 	InsufficientBalanceError,
 	IntrinsicGasTooLowError,
+	MaxFeePerGasTooLowError,
 	NonceTooLowError,
 	TransactionNotFoundError,
 } from "./errors.js"

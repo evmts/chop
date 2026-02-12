@@ -1,9 +1,15 @@
 import { Effect } from "effect"
 import { hexToBytes } from "../evm/conversions.js"
+import { ConversionError } from "../evm/errors.js"
 import { calculateIntrinsicGas } from "../evm/intrinsic-gas.js"
 import type { TevmNodeShape } from "../node/index.js"
 import type { TransactionReceipt } from "../node/tx-pool.js"
-import { InsufficientBalanceError, IntrinsicGasTooLowError, NonceTooLowError } from "./errors.js"
+import {
+	InsufficientBalanceError,
+	IntrinsicGasTooLowError,
+	MaxFeePerGasTooLowError,
+	NonceTooLowError,
+} from "./errors.js"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -80,6 +86,16 @@ const calculateEffectiveGasPrice = (
 	return maxFee < basePlusPriority ? maxFee : basePlusPriority
 }
 
+/**
+ * Wrap hexToBytes in Effect.try so ConversionError becomes a typed failure
+ * rather than a thrown defect inside Effect.gen.
+ */
+const safeHexToBytes = (hex: string): Effect.Effect<Uint8Array, ConversionError> =>
+	Effect.try({
+		try: () => hexToBytes(hex),
+		catch: (e) => e as ConversionError,
+	})
+
 // ---------------------------------------------------------------------------
 // Handler
 // ---------------------------------------------------------------------------
@@ -91,12 +107,12 @@ const calculateEffectiveGasPrice = (
  * 1. Get sender account
  * 2. Validate nonce (if explicit)
  * 3. Calculate effective gas price (EIP-1559)
- * 4. Calculate intrinsic gas
- * 5. Validate gas >= intrinsic
- * 6. Validate balance >= value + gas * gasPrice
- * 7. Update sender (nonce++, balance -= maxCost)
- * 8. Transfer value to recipient
- * 9. Refund unused gas (for simple transfers, all gas above intrinsic)
+ * 4. Validate maxFeePerGas >= baseFee
+ * 5. Calculate intrinsic gas
+ * 6. Validate gas >= intrinsic
+ * 7. Validate balance >= value + gas * maxFeePerGas (worst-case reservation)
+ * 8. Update sender (nonce = txNonce + 1, balance -= actualCost)
+ * 9. Transfer value to recipient
  * 10. Auto-mine block
  * 11. Store tx + receipt in txPool
  * 12. Return deterministic tx hash
@@ -105,12 +121,15 @@ export const sendTransactionHandler =
 	(node: TevmNodeShape) =>
 	(
 		params: SendTransactionParams,
-	): Effect.Effect<SendTransactionResult, InsufficientBalanceError | NonceTooLowError | IntrinsicGasTooLowError> =>
+	): Effect.Effect<
+		SendTransactionResult,
+		InsufficientBalanceError | NonceTooLowError | IntrinsicGasTooLowError | MaxFeePerGasTooLowError | ConversionError
+	> =>
 		Effect.gen(function* () {
-			const fromBytes = hexToBytes(params.from)
+			const fromBytes = yield* safeHexToBytes(params.from)
 			const value = params.value ?? 0n
 			const gasLimit = params.gas ?? DEFAULT_GAS
-			const calldataBytes = params.data ? hexToBytes(params.data) : new Uint8Array(0)
+			const calldataBytes = params.data ? yield* safeHexToBytes(params.data) : new Uint8Array(0)
 			const isCreate = params.to === undefined
 
 			// 1. Get sender account
@@ -129,10 +148,21 @@ export const sendTransactionHandler =
 			}
 
 			// 3. Get base fee from latest block for EIP-1559
-			const latestBlock = yield* node.blockchain.getHead().pipe(
-				Effect.catchTag("GenesisError", () => Effect.die("Chain not initialized")),
-			)
+			const latestBlock = yield* node.blockchain
+				.getHead()
+				.pipe(Effect.catchTag("GenesisError", () => Effect.die("Chain not initialized")))
 			const baseFee = latestBlock.baseFeePerGas
+
+			// 4. Validate maxFeePerGas >= baseFee (reject underpriced EIP-1559 txs)
+			if (params.maxFeePerGas !== undefined && params.maxFeePerGas < baseFee) {
+				return yield* Effect.fail(
+					new MaxFeePerGasTooLowError({
+						message: `maxFeePerGas (${params.maxFeePerGas}) < baseFee (${baseFee})`,
+						maxFeePerGas: params.maxFeePerGas,
+						baseFee,
+					}),
+				)
+			}
 
 			const effectiveGasPrice = calculateEffectiveGasPrice(
 				baseFee,
@@ -141,7 +171,7 @@ export const sendTransactionHandler =
 				params.gasPrice,
 			)
 
-			// 4. Calculate intrinsic gas
+			// 5. Calculate intrinsic gas
 			const intrinsicGas = calculateIntrinsicGas(
 				{
 					data: calldataBytes,
@@ -150,7 +180,7 @@ export const sendTransactionHandler =
 				node.releaseSpec,
 			)
 
-			// 5. Validate gas >= intrinsic
+			// 6. Validate gas >= intrinsic
 			if (gasLimit < intrinsicGas) {
 				return yield* Effect.fail(
 					new IntrinsicGasTooLowError({
@@ -161,8 +191,14 @@ export const sendTransactionHandler =
 				)
 			}
 
-			// 6. Validate balance >= value + gas * gasPrice
-			const maxCost = value + gasLimit * effectiveGasPrice
+			// 7. Validate balance >= value + gas * maxGasPrice (worst-case reservation)
+			//    For EIP-1559: reserve gasLimit * maxFeePerGas (not effectiveGasPrice)
+			//    For legacy: reserve gasLimit * gasPrice
+			const maxGasPrice =
+				params.maxFeePerGas === undefined && params.gasPrice !== undefined
+					? params.gasPrice
+					: (params.maxFeePerGas ?? baseFee)
+			const maxCost = value + gasLimit * maxGasPrice
 			if (senderAccount.balance < maxCost) {
 				return yield* Effect.fail(
 					new InsufficientBalanceError({
@@ -173,24 +209,24 @@ export const sendTransactionHandler =
 				)
 			}
 
-			// 7. Compute tx hash (deterministic from sender + nonce)
+			// 8. Compute tx hash (deterministic from sender + nonce)
 			const txHash = computeTxHash(params.from, txNonce)
 
-			// 8. For simple transfers, gasUsed = intrinsicGas
+			// 9. For simple transfers, gasUsed = intrinsicGas
 			//    For contract calls, we'd run EVM and get actual gas used
 			const gasUsed = intrinsicGas
 
-			// 9. Update sender: nonce++, balance -= (value + gasUsed * effectiveGasPrice)
+			// 10. Update sender: nonce = txNonce + 1, balance -= (value + gasUsed * effectiveGasPrice)
 			const actualCost = value + gasUsed * effectiveGasPrice
 			yield* node.hostAdapter.setAccount(fromBytes, {
 				...senderAccount,
-				nonce: senderAccount.nonce + 1n,
+				nonce: txNonce + 1n,
 				balance: senderAccount.balance - actualCost,
 			})
 
-			// 10. Transfer value to recipient (if not create and value > 0)
+			// 11. Transfer value to recipient (if not create and value > 0)
 			if (params.to && value > 0n) {
-				const toBytes = hexToBytes(params.to)
+				const toBytes = yield* safeHexToBytes(params.to)
 				const recipientAccount = yield* node.hostAdapter.getAccount(toBytes)
 				yield* node.hostAdapter.setAccount(toBytes, {
 					...recipientAccount,
@@ -198,7 +234,7 @@ export const sendTransactionHandler =
 				})
 			}
 
-			// 11. Auto-mine block
+			// 12. Auto-mine block
 			const newBlockNumber = latestBlock.number + 1n
 			const newBlockHash = `0x${newBlockNumber.toString(16).padStart(64, "0")}`
 			const newBlock = {
@@ -212,7 +248,7 @@ export const sendTransactionHandler =
 			}
 			yield* node.blockchain.putBlock(newBlock)
 
-			// 12. Store transaction in pool
+			// 13. Store transaction in pool
 			yield* node.txPool.addTransaction({
 				hash: txHash,
 				from: params.from.toLowerCase(),
@@ -229,11 +265,11 @@ export const sendTransactionHandler =
 
 			// Mark as mined immediately (auto-mine mode)
 			// We just added the tx above, so TransactionNotFoundError is impossible here — die if it happens.
-			yield* node.txPool.markMined(txHash, newBlockHash, newBlockNumber, 0).pipe(
-				Effect.catchTag("TransactionNotFoundError", (e) => Effect.die(e)),
-			)
+			yield* node.txPool
+				.markMined(txHash, newBlockHash, newBlockNumber, 0)
+				.pipe(Effect.catchTag("TransactionNotFoundError", (e) => Effect.die(e)))
 
-			// 13. Store receipt
+			// 14. Store receipt
 			const receipt: TransactionReceipt = {
 				transactionHash: txHash,
 				transactionIndex: 0,

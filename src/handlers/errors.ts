@@ -46,6 +46,13 @@ export class IntrinsicGasTooLowError extends Data.TaggedError("IntrinsicGasTooLo
 	readonly provided: bigint
 }> {}
 
+/** maxFeePerGas is below the block's baseFee. */
+export class MaxFeePerGasTooLowError extends Data.TaggedError("MaxFeePerGasTooLowError")<{
+	readonly message: string
+	readonly maxFeePerGas: bigint
+	readonly baseFee: bigint
+}> {}
+
 /** Transaction not found in the pool or chain. */
 export class TransactionNotFoundError extends Data.TaggedError("TransactionNotFoundError")<{
 	readonly hash: string

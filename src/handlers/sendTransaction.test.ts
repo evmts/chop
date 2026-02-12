@@ -276,4 +276,110 @@ describe("sendTransactionHandler", () => {
 			expect(receipt.status).toBe(1)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
+
+	// -----------------------------------------------------------------------
+	// Error: maxFeePerGas < baseFee
+	// -----------------------------------------------------------------------
+
+	it.effect("fails with MaxFeePerGasTooLowError when maxFeePerGas < baseFee", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const sender = node.accounts[0]!
+
+			const result = yield* sendTransactionHandler(node)({
+				from: sender.address,
+				to: `0x${"22".repeat(20)}`,
+				value: 0n,
+				maxFeePerGas: 0n, // baseFee is 1_000_000_000n (1 gwei)
+			}).pipe(Effect.either)
+
+			expect(result._tag).toBe("Left")
+			if (result._tag === "Left") {
+				expect(result.left._tag).toBe("MaxFeePerGasTooLowError")
+			}
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	// -----------------------------------------------------------------------
+	// Error: malformed hex input
+	// -----------------------------------------------------------------------
+
+	it.effect("fails with ConversionError for malformed hex address", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+
+			const result = yield* sendTransactionHandler(node)({
+				from: "0xZZZ", // odd-length, invalid hex
+				to: `0x${"22".repeat(20)}`,
+				value: 0n,
+			}).pipe(Effect.either)
+
+			expect(result._tag).toBe("Left")
+			if (result._tag === "Left") {
+				expect(result.left._tag).toBe("ConversionError")
+			}
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	// -----------------------------------------------------------------------
+	// Nonce: explicit nonce > account nonce sets nonce correctly
+	// -----------------------------------------------------------------------
+
+	it.effect("sets nonce to txNonce + 1 when explicit nonce > account nonce", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const sender = node.accounts[0]!
+
+			// Send with explicit nonce 5 (account nonce is 0)
+			yield* sendTransactionHandler(node)({
+				from: sender.address,
+				to: `0x${"22".repeat(20)}`,
+				value: 0n,
+				nonce: 5n,
+			})
+
+			const account = yield* node.hostAdapter.getAccount(hexToBytes(sender.address))
+			// Should be 6 (txNonce + 1), not 1 (senderAccount.nonce + 1)
+			expect(account.nonce).toBe(6n)
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	// -----------------------------------------------------------------------
+	// Balance check: uses maxFeePerGas for worst-case reservation
+	// -----------------------------------------------------------------------
+
+	it.effect("balance check uses maxFeePerGas (worst-case) not effectiveGasPrice", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+
+			// Give account a precise balance: just enough for value + gas * effectiveGasPrice
+			// but NOT enough for value + gas * maxFeePerGas
+			const testAddr = `0x${"bb".repeat(20)}`
+			// baseFee = 1_000_000_000n (1 gwei), maxFeePerGas = 10_000_000_000n (10 gwei)
+			// effectiveGasPrice = min(10 gwei, 1 gwei + 0) = 1 gwei
+			// With gas=21000: effective cost = 21000 * 1 gwei = 21_000_000_000_000
+			// maxFee cost = 21000 * 10 gwei = 210_000_000_000_000
+			const balanceTooLowForMaxFee = 100_000_000_000_000n // 0.0001 ETH — enough for effective, not max
+			yield* node.hostAdapter.setAccount(hexToBytes(testAddr), {
+				nonce: 0n,
+				balance: balanceTooLowForMaxFee,
+				codeHash: new Uint8Array(32),
+				code: new Uint8Array(0),
+			})
+
+			const result = yield* sendTransactionHandler(node)({
+				from: testAddr,
+				to: `0x${"22".repeat(20)}`,
+				value: 0n,
+				gas: 21000n,
+				maxFeePerGas: 10_000_000_000n, // 10 gwei — much higher than baseFee of 1 gwei
+			}).pipe(Effect.either)
+
+			// Should fail because balance < gas * maxFeePerGas (worst case)
+			expect(result._tag).toBe("Left")
+			if (result._tag === "Left") {
+				expect(result.left._tag).toBe("InsufficientBalanceError")
+			}
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
 })
