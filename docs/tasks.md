@@ -216,11 +216,11 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - E2E test: start chop node → deploy contract → `chop call` → correct return
 
 ### T2.9 `chop node` Command
-- [ ] `chop node` starts HTTP server, prints banner with accounts
-- [ ] `chop node --port <n>` binds to specified port
-- [ ] `chop node --chain-id <n>` sets chain ID
-- [ ] `chop node --accounts <n>` creates N funded accounts
-- [ ] Ctrl+C graceful shutdown
+- [x] `chop node` starts HTTP server, prints banner with accounts
+- [x] `chop node --port <n>` binds to specified port
+- [x] `chop node --chain-id <n>` sets chain ID
+- [x] `chop node --accounts <n>` creates N funded accounts
+- [x] Ctrl+C graceful shutdown
 
 **Validation**:
 - E2E test: `chop node` starts, responds to `eth_chainId`

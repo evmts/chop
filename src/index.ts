@@ -21,6 +21,7 @@ export {
 	blockNumberHandler,
 	callHandler,
 	chainIdHandler,
+	getAccountsHandler,
 	getBalanceHandler,
 	getCodeHandler,
 	getStorageAtHandler,
@@ -28,3 +29,7 @@ export {
 	HandlerError,
 } from "./handlers/index.js"
 export type { CallParams, CallResult, GetBalanceParams, GetCodeParams, GetStorageAtParams, GetTransactionCountParams } from "./handlers/index.js"
+
+// Node (composition root)
+export type { TestAccount } from "./node/accounts.js"
+export { getTestAccounts, DEFAULT_BALANCE } from "./node/accounts.js"

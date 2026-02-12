@@ -26,7 +26,7 @@ describe("methodRouter", () => {
 				const node = yield* TevmNodeService
 				const result = yield* methodRouter(node)(method, params)
 				expect(typeof result).toBe("string")
-				expect(result.startsWith("0x")).toBe(true)
+				expect((result as string).startsWith("0x")).toBe(true)
 			}).pipe(Effect.provide(TevmNode.LocalTest())),
 		)
 	}

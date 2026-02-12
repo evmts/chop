@@ -2,7 +2,7 @@ import { describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { expect } from "vitest"
 import { HostAdapterService, HostAdapterTest } from "../evm/host-adapter.js"
-import { DEFAULT_BALANCE, type TestAccount, fundAccounts, getTestAccounts } from "./accounts.js"
+import { DEFAULT_BALANCE, fundAccounts, getTestAccounts } from "./accounts.js"
 
 // ---------------------------------------------------------------------------
 // getTestAccounts — pure function

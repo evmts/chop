@@ -7,7 +7,7 @@
 
 import { Command, Options } from "@effect/cli"
 import { Console, Effect } from "effect"
-import { type TestAccount, getTestAccounts } from "../../node/accounts.js"
+import type { TestAccount } from "../../node/accounts.js"
 import { TevmNode, TevmNodeService } from "../../node/index.js"
 import type { RpcServer } from "../../rpc/server.js"
 import { startRpcServer } from "../../rpc/server.js"
@@ -99,10 +99,11 @@ export const startNodeServer = (
 	readonly close: () => Effect.Effect<void>
 }> =>
 	Effect.gen(function* () {
-		const nodeLayer = TevmNode.LocalTest({
-			chainId: options.chainId,
-			accounts: options.accounts,
-		})
+		const nodeOpts = {
+			...(options.chainId !== undefined ? { chainId: options.chainId } : {}),
+			...(options.accounts !== undefined ? { accounts: options.accounts } : {}),
+		}
+		const nodeLayer = TevmNode.LocalTest(nodeOpts)
 
 		const node = yield* Effect.provide(TevmNodeService, nodeLayer)
 		const server = yield* startRpcServer({ port: options.port }, node)

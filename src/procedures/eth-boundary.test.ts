@@ -173,7 +173,7 @@ describe("ethGetCode — boundary conditions", () => {
 				codeHash: new Uint8Array(32),
 				code: largeCode,
 			})
-			const result = yield* ethGetCode(node)([addr])
+			const result = (yield* ethGetCode(node)([addr])) as string
 			expect(result.length).toBe(2 + 1024 * 2) // 0x + hex
 			expect(result).toBe("0x" + "60".repeat(1024))
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
