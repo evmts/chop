@@ -29,6 +29,7 @@
 			"#state/*": ["./src/state/*"],
 			"#blockchain/*": ["./src/blockchain/*"],
 			"#handlers/*": ["./src/handlers/*"],
+			"#procedures/*": ["./src/procedures/*"],
 			"#mcp/*": ["./src/mcp/*"],
 			"#rpc/*": ["./src/rpc/*"],
 			"#shared/*": ["./src/shared/*"]

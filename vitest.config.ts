@@ -33,6 +33,7 @@ export default defineConfig({
 			"#state": resolve(__dirname, "src/state"),
 			"#blockchain": resolve(__dirname, "src/blockchain"),
 			"#handlers": resolve(__dirname, "src/handlers"),
+			"#procedures": resolve(__dirname, "src/procedures"),
 			"#mcp": resolve(__dirname, "src/mcp"),
 			"#rpc": resolve(__dirname, "src/rpc"),
 			"#shared": resolve(__dirname, "src/shared"),
