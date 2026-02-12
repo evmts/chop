@@ -13,6 +13,7 @@ import { EvmWasmLive, EvmWasmService, EvmWasmTest } from "../evm/wasm.js"
 import type { EvmWasmShape } from "../evm/wasm.js"
 import { JournalLive } from "../state/journal.js"
 import { WorldStateLive } from "../state/world-state.js"
+import { type TestAccount, fundAccounts, getTestAccounts } from "./accounts.js"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -30,6 +31,8 @@ export interface TevmNodeShape {
 	readonly releaseSpec: ReleaseSpecShape
 	/** Chain ID (default: 31337 for local devnet). */
 	readonly chainId: bigint
+	/** Pre-funded test accounts (deterministic Hardhat/Anvil defaults). */
+	readonly accounts: readonly TestAccount[]
 }
 
 /** Options for creating a local-mode TevmNode. */
@@ -40,6 +43,8 @@ export interface NodeOptions {
 	readonly hardfork?: string
 	/** Path to WASM binary (only for TevmNode.Local). */
 	readonly wasmPath?: string
+	/** Number of pre-funded test accounts (default: 10, max: 10). */
+	readonly accounts?: number
 }
 
 // ---------------------------------------------------------------------------
@@ -80,7 +85,11 @@ const TevmNodeLive = (
 				Effect.catchTag("GenesisError", (e) => Effect.die(e)), // Should never fail on fresh node
 			)
 
-			return { evm, hostAdapter, blockchain, releaseSpec, chainId } satisfies TevmNodeShape
+			// Create and fund deterministic test accounts
+			const accounts = getTestAccounts(options.accounts ?? 10)
+			yield* fundAccounts(hostAdapter, accounts)
+
+			return { evm, hostAdapter, blockchain, releaseSpec, chainId, accounts } satisfies TevmNodeShape
 		}),
 	)
 

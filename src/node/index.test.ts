@@ -2,6 +2,7 @@ import { describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { expect } from "vitest"
 import { bigintToBytes32, bytesToBigint, hexToBytes } from "../evm/conversions.js"
+import { DEFAULT_BALANCE } from "./accounts.js"
 import { TevmNode, TevmNodeService } from "./index.js"
 
 // ---------------------------------------------------------------------------
@@ -47,6 +48,36 @@ describe("TevmNodeService — genesis initialization", () => {
 			const genesis = yield* node.blockchain.getBlockByNumber(0n)
 			expect(genesis.number).toBe(0n)
 			expect(genesis.gasLimit).toBe(30_000_000n)
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+})
+
+// ---------------------------------------------------------------------------
+// Pre-funded accounts
+// ---------------------------------------------------------------------------
+
+describe("TevmNodeService — accounts", () => {
+	it.effect("default creates 10 accounts", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			expect(node.accounts).toHaveLength(10)
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	it.effect("custom accounts count is respected", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			expect(node.accounts).toHaveLength(5)
+		}).pipe(Effect.provide(TevmNode.LocalTest({ accounts: 5 }))),
+	)
+
+	it.effect("accounts are funded with DEFAULT_BALANCE", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const first = node.accounts[0]!
+			const addrBytes = hexToBytes(first.address)
+			const account = yield* node.hostAdapter.getAccount(addrBytes)
+			expect(account.balance).toBe(DEFAULT_BALANCE)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 })
