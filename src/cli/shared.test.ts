@@ -1,6 +1,20 @@
 import { describe, expect, it } from "@effect/vitest"
 import { Effect } from "effect"
+import { vi } from "vitest"
+import { Hex } from "voltaire-effect"
 import { handleCommandErrors, jsonOption, validateHexData } from "./shared"
+
+// Wrap Hex.toBytes with vi.fn so we can override per-test while keeping real impl as default.
+vi.mock("voltaire-effect", async (importOriginal) => {
+	const orig = await importOriginal<typeof import("voltaire-effect")>()
+	return {
+		...orig,
+		Hex: {
+			...orig.Hex,
+			toBytes: vi.fn((...args: Parameters<typeof orig.Hex.toBytes>) => orig.Hex.toBytes(...args)),
+		},
+	}
+})
 
 class TestError {
 	constructor(
@@ -58,7 +72,7 @@ describe("validateHexData", () => {
 
 		it.effect("accepts valid long hex (64 chars)", () =>
 			Effect.gen(function* () {
-				const longHex = "0x" + "a".repeat(64)
+				const longHex = `0x${"a".repeat(64)}`
 				const result = yield* validateHexData(longHex, mkTestError)
 				expect(result.length).toBe(32)
 				expect(result).toEqual(new Uint8Array(32).fill(0xaa))
@@ -194,4 +208,46 @@ describe("handleCommandErrors", () => {
 			expect(r2).toEqual(error2)
 		}),
 	)
+})
+
+// ============================================================================
+// validateHexData — non-Error catch branch (shared.ts line 50)
+// ============================================================================
+
+describe("validateHexData — non-Error catch branch coverage", () => {
+	it.effect("wraps non-Error thrown by Hex.toBytes into error via String(e)", () => {
+		vi.mocked(Hex.toBytes).mockImplementationOnce(() => {
+			throw "non-Error string thrown"
+		})
+		return Effect.gen(function* () {
+			const result = yield* Effect.flip(validateHexData("0xdeadbeef", mkTestError))
+			expect(result).toBeInstanceOf(TestError)
+			expect(result.message).toContain("Invalid hex data")
+			expect(result.message).toContain("non-Error string thrown")
+		})
+	})
+
+	it.effect("wraps non-Error number thrown by Hex.toBytes into error via String(e)", () => {
+		vi.mocked(Hex.toBytes).mockImplementationOnce(() => {
+			throw 42
+		})
+		return Effect.gen(function* () {
+			const result = yield* Effect.flip(validateHexData("0xdeadbeef", mkTestError))
+			expect(result).toBeInstanceOf(TestError)
+			expect(result.message).toContain("Invalid hex data")
+			expect(result.message).toContain("42")
+		})
+	})
+
+	it.effect("wraps non-Error null thrown by Hex.toBytes into error via String(e)", () => {
+		vi.mocked(Hex.toBytes).mockImplementationOnce(() => {
+			throw null
+		})
+		return Effect.gen(function* () {
+			const result = yield* Effect.flip(validateHexData("0xdeadbeef", mkTestError))
+			expect(result).toBeInstanceOf(TestError)
+			expect(result.message).toContain("Invalid hex data")
+			expect(result.message).toContain("null")
+		})
+	})
 })

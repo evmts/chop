@@ -61,9 +61,9 @@ describe("BlockchainService — genesis", () => {
 		Effect.gen(function* () {
 			const chain = yield* BlockchainService
 			yield* chain.initGenesis(GENESIS_BLOCK)
-			const result = yield* chain.initGenesis(GENESIS_BLOCK).pipe(
-				Effect.catchTag("GenesisError", (e) => Effect.succeed(e.message)),
-			)
+			const result = yield* chain
+				.initGenesis(GENESIS_BLOCK)
+				.pipe(Effect.catchTag("GenesisError", (e) => Effect.succeed(e.message)))
 			expect(result).toContain("already")
 		}).pipe(Effect.provide(TestLayer)),
 	)
@@ -71,9 +71,7 @@ describe("BlockchainService — genesis", () => {
 	it.effect("getHead fails with GenesisError before genesis is initialized", () =>
 		Effect.gen(function* () {
 			const chain = yield* BlockchainService
-			const result = yield* chain.getHead().pipe(
-				Effect.catchTag("GenesisError", (e) => Effect.succeed(e.message)),
-			)
+			const result = yield* chain.getHead().pipe(Effect.catchTag("GenesisError", (e) => Effect.succeed(e.message)))
 			expect(result).toContain("not initialized")
 		}).pipe(Effect.provide(TestLayer)),
 	)
@@ -153,9 +151,9 @@ describe("BlockchainService — block operations", () => {
 		Effect.gen(function* () {
 			const chain = yield* BlockchainService
 			yield* chain.initGenesis(GENESIS_BLOCK)
-			const result = yield* chain.getBlock("0xnonexistent").pipe(
-				Effect.catchTag("BlockNotFoundError", (e) => Effect.succeed(e.identifier)),
-			)
+			const result = yield* chain
+				.getBlock("0xnonexistent")
+				.pipe(Effect.catchTag("BlockNotFoundError", (e) => Effect.succeed(e.identifier)))
 			expect(result).toBe("0xnonexistent")
 		}).pipe(Effect.provide(TestLayer)),
 	)
