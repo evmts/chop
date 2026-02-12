@@ -2,6 +2,7 @@
 // Pure data + a single Effect function for funding.
 
 import { Effect } from "effect"
+import { hexToBytes } from "../evm/conversions.js"
 import { EMPTY_CODE_HASH } from "../state/account.js"
 import type { HostAdapterShape } from "../evm/host-adapter.js"
 
@@ -106,16 +107,3 @@ export const fundAccounts = (hostAdapter: HostAdapterShape, accounts: readonly T
 			})
 		}
 	})
-
-// ---------------------------------------------------------------------------
-// Internal helper
-// ---------------------------------------------------------------------------
-
-function hexToBytes(hex: string): Uint8Array {
-	const clean = hex.startsWith("0x") ? hex.slice(2) : hex
-	const bytes = new Uint8Array(clean.length / 2)
-	for (let i = 0; i < bytes.length; i++) {
-		bytes[i] = Number.parseInt(clean.slice(i * 2, i * 2 + 2), 16)
-	}
-	return bytes
-}

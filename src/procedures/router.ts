@@ -3,6 +3,7 @@ import type { TevmNodeShape } from "../node/index.js"
 import { type InternalError, MethodNotFoundError } from "./errors.js"
 import {
 	type Procedure,
+	type ProcedureResult,
 	ethAccounts,
 	ethBlockNumber,
 	ethCall,
@@ -39,7 +40,7 @@ const methods: Record<string, (node: TevmNodeShape) => Procedure> = {
  */
 export const methodRouter =
 	(node: TevmNodeShape) =>
-	(method: string, params: readonly unknown[]): Effect.Effect<unknown, MethodNotFoundError | InternalError> => {
+	(method: string, params: readonly unknown[]): Effect.Effect<ProcedureResult, MethodNotFoundError | InternalError> => {
 		const factory = methods[method]
 		if (!factory) {
 			return Effect.fail(new MethodNotFoundError({ method }))

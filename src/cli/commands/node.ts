@@ -7,7 +7,7 @@
 
 import { Command, Options } from "@effect/cli"
 import { Console, Effect } from "effect"
-import type { TestAccount } from "../../node/accounts.js"
+import { DEFAULT_BALANCE, type TestAccount } from "../../node/accounts.js"
 import { TevmNode, TevmNodeService } from "../../node/index.js"
 import type { RpcServer } from "../../rpc/server.js"
 import { startRpcServer } from "../../rpc/server.js"
@@ -45,6 +45,7 @@ const accountsOption = Options.integer("accounts").pipe(
  * @returns A formatted banner string.
  */
 export const formatBanner = (port: number, accounts: readonly TestAccount[]): string => {
+	const ethAmount = DEFAULT_BALANCE / 10n ** 18n
 	const lines: string[] = []
 
 	lines.push("")
@@ -56,7 +57,7 @@ export const formatBanner = (port: number, accounts: readonly TestAccount[]): st
 		lines.push("  Available Accounts")
 		lines.push("  ───────────────────────────────────────────────────────────────")
 		for (let i = 0; i < accounts.length; i++) {
-			lines.push(`  (${i}) ${accounts[i]!.address} (10000 ETH)`)
+			lines.push(`  (${i}) ${accounts[i]!.address} (${ethAmount} ETH)`)
 		}
 		lines.push("")
 

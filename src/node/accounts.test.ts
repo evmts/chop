@@ -1,6 +1,7 @@
 import { describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { expect } from "vitest"
+import { hexToBytes } from "../evm/conversions.js"
 import { HostAdapterService, HostAdapterTest } from "../evm/host-adapter.js"
 import { DEFAULT_BALANCE, fundAccounts, getTestAccounts } from "./accounts.js"
 
@@ -93,16 +94,3 @@ describe("fundAccounts", () => {
 		}).pipe(Effect.provide(HostAdapterTest)),
 	)
 })
-
-// ---------------------------------------------------------------------------
-// Helper
-// ---------------------------------------------------------------------------
-
-function hexToBytes(hex: string): Uint8Array {
-	const clean = hex.startsWith("0x") ? hex.slice(2) : hex
-	const bytes = new Uint8Array(clean.length / 2)
-	for (let i = 0; i < bytes.length; i++) {
-		bytes[i] = Number.parseInt(clean.slice(i * 2, i * 2 + 2), 16)
-	}
-	return bytes
-}
