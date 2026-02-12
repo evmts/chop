@@ -203,13 +203,13 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - RPC test: invalid JSON → -32700 error
 
 ### T2.8 CLI RPC Commands
-- [ ] `chop call --to <addr> <sig> [args] -r <url>`
-- [ ] `chop balance <addr> -r <url>`
-- [ ] `chop nonce <addr> -r <url>`
-- [ ] `chop code <addr> -r <url>`
-- [ ] `chop storage <addr> <slot> -r <url>`
-- [ ] `chop block-number -r <url>`
-- [ ] `chop chain-id -r <url>`
+- [x] `chop call --to <addr> <sig> [args] -r <url>`
+- [x] `chop balance <addr> -r <url>`
+- [x] `chop nonce <addr> -r <url>`
+- [x] `chop code <addr> -r <url>`
+- [x] `chop storage <addr> <slot> -r <url>`
+- [x] `chop block-number -r <url>`
+- [x] `chop chain-id -r <url>`
 
 **Validation**:
 - E2E test: start chop node → `chop balance` → correct value
