@@ -15,3 +15,16 @@ export { ChopError } from "./shared/errors.js"
 export { cli, root } from "./cli/index.js"
 export { CliError } from "./cli/errors.js"
 export { VERSION } from "./cli/version.js"
+
+// Handlers (business logic layer)
+export {
+	blockNumberHandler,
+	callHandler,
+	chainIdHandler,
+	getBalanceHandler,
+	getCodeHandler,
+	getStorageAtHandler,
+	getTransactionCountHandler,
+	HandlerError,
+} from "./handlers/index.js"
+export type { CallParams, CallResult, GetBalanceParams, GetCodeParams, GetStorageAtParams, GetTransactionCountParams } from "./handlers/index.js"

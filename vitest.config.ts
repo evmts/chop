@@ -32,6 +32,7 @@ export default defineConfig({
 			"#evm": resolve(__dirname, "src/evm"),
 			"#state": resolve(__dirname, "src/state"),
 			"#blockchain": resolve(__dirname, "src/blockchain"),
+			"#handlers": resolve(__dirname, "src/handlers"),
 			"#mcp": resolve(__dirname, "src/mcp"),
 			"#rpc": resolve(__dirname, "src/rpc"),
 			"#shared": resolve(__dirname, "src/shared"),

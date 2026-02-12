@@ -28,6 +28,7 @@
 			"#evm/*": ["./src/evm/*"],
 			"#state/*": ["./src/state/*"],
 			"#blockchain/*": ["./src/blockchain/*"],
+			"#handlers/*": ["./src/handlers/*"],
 			"#mcp/*": ["./src/mcp/*"],
 			"#rpc/*": ["./src/rpc/*"],
 			"#shared/*": ["./src/shared/*"]
