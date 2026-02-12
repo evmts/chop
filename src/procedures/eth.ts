@@ -13,7 +13,7 @@ import {
 	sendTransactionHandler,
 } from "../handlers/index.js"
 import type { TevmNodeShape } from "../node/index.js"
-import { InternalError } from "./errors.js"
+import { InternalError, wrapErrors } from "./errors.js"
 
 // ---------------------------------------------------------------------------
 // Serialization helpers
@@ -32,17 +32,6 @@ export const bigintToHex32 = (n: bigint): string => `0x${n.toString(16).padStart
 /** A JSON-RPC procedure: takes params array, returns a JSON-serializable result. */
 export type ProcedureResult = string | readonly string[] | Record<string, unknown> | null
 export type Procedure = (params: readonly unknown[]) => Effect.Effect<ProcedureResult, InternalError>
-
-// ---------------------------------------------------------------------------
-// Internal: wrap procedure body to catch both errors and defects
-// ---------------------------------------------------------------------------
-
-/** Catch all errors AND defects, wrapping them as InternalError. */
-const wrapErrors = <A>(effect: Effect.Effect<A, unknown>): Effect.Effect<A, InternalError> =>
-	effect.pipe(
-		Effect.catchAll((e) => Effect.fail(new InternalError({ message: String(e) }))),
-		Effect.catchAllDefect((defect) => Effect.fail(new InternalError({ message: String(defect) }))),
-	)
 
 // ---------------------------------------------------------------------------
 // Procedures

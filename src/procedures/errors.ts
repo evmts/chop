@@ -1,4 +1,4 @@
-import { Data } from "effect"
+import { Data, Effect } from "effect"
 
 // ---------------------------------------------------------------------------
 // JSON-RPC 2.0 error codes
@@ -81,3 +81,14 @@ export const rpcErrorMessage = (error: RpcError): string => {
 			return error.message
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Procedure helpers
+// ---------------------------------------------------------------------------
+
+/** Catch all errors AND defects, wrapping them as InternalError. */
+export const wrapErrors = <A>(effect: Effect.Effect<A, unknown>): Effect.Effect<A, InternalError> =>
+	effect.pipe(
+		Effect.catchAll((e) => Effect.fail(new InternalError({ message: String(e) }))),
+		Effect.catchAllDefect((defect) => Effect.fail(new InternalError({ message: String(defect) }))),
+	)

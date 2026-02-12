@@ -3,19 +3,8 @@
 import { Effect } from "effect"
 import { mineHandler, setAutomineHandler, setIntervalMiningHandler } from "../handlers/mine.js"
 import type { TevmNodeShape } from "../node/index.js"
-import { InternalError } from "./errors.js"
+import { wrapErrors } from "./errors.js"
 import type { Procedure } from "./eth.js"
-
-// ---------------------------------------------------------------------------
-// Internal: wrap procedure body to catch both errors and defects
-// ---------------------------------------------------------------------------
-
-/** Catch all errors AND defects, wrapping them as InternalError. */
-const wrapErrors = <A>(effect: Effect.Effect<A, unknown>): Effect.Effect<A, InternalError> =>
-	effect.pipe(
-		Effect.catchAll((e) => Effect.fail(new InternalError({ message: String(e) }))),
-		Effect.catchAllDefect((defect) => Effect.fail(new InternalError({ message: String(defect) }))),
-	)
 
 // ---------------------------------------------------------------------------
 // Procedures

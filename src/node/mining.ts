@@ -64,11 +64,13 @@ const buildBlock = (
 
 	// 3. Create block
 	const blockHash = `0x${blockNumber.toString(16).padStart(64, "0")}`
+	const timestamp = BigInt(Math.floor(Date.now() / 1000))
+	const blockTimestamp = timestamp > parent.timestamp ? timestamp : parent.timestamp + 1n
 	const block: Block = {
 		hash: blockHash,
 		parentHash: parent.hash,
 		number: blockNumber,
-		timestamp: BigInt(Math.floor(Date.now() / 1000)),
+		timestamp: blockTimestamp,
 		gasLimit: parent.gasLimit,
 		gasUsed: cumulativeGasUsed,
 		baseFeePerGas: parent.baseFeePerGas,

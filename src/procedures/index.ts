@@ -10,6 +10,7 @@ export {
 	RpcErrorCode,
 	rpcErrorCode,
 	rpcErrorMessage,
+	wrapErrors,
 } from "./errors.js"
 export type { RpcError } from "./errors.js"
 
