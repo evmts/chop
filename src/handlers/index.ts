@@ -18,6 +18,8 @@ export { getTransactionCountHandler } from "./getTransactionCount.js"
 export type { GetTransactionCountParams } from "./getTransactionCount.js"
 export { sendTransactionHandler } from "./sendTransaction.js"
 export type { SendTransactionParams, SendTransactionResult } from "./sendTransaction.js"
+export { getTransactionReceiptHandler } from "./getTransactionReceipt.js"
+export type { GetTransactionReceiptParams } from "./getTransactionReceipt.js"
 export {
 	InsufficientBalanceError,
 	IntrinsicGasTooLowError,
