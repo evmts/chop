@@ -16,3 +16,11 @@ export type { GetStorageAtParams } from "./getStorageAt.js"
 export { getAccountsHandler } from "./getAccounts.js"
 export { getTransactionCountHandler } from "./getTransactionCount.js"
 export type { GetTransactionCountParams } from "./getTransactionCount.js"
+export { sendTransactionHandler } from "./sendTransaction.js"
+export type { SendTransactionParams, SendTransactionResult } from "./sendTransaction.js"
+export {
+	InsufficientBalanceError,
+	IntrinsicGasTooLowError,
+	NonceTooLowError,
+	TransactionNotFoundError,
+} from "./errors.js"
