@@ -1,6 +1,6 @@
 import { Effect } from "effect"
 import { hexToBytes } from "../evm/conversions.js"
-import type { ExecuteResult } from "../evm/wasm.js"
+import type { ExecuteParams, ExecuteResult } from "../evm/wasm.js"
 import type { TevmNodeShape } from "../node/index.js"
 import { HandlerError } from "./errors.js"
 
@@ -33,6 +33,36 @@ export interface CallResult {
 }
 
 // ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
+/** Convert a bigint to 32-byte big-endian Uint8Array. */
+const bigintToBytes32Simple = (n: bigint): Uint8Array => {
+	const bytes = new Uint8Array(32)
+	let val = n < 0n ? 0n : n
+	for (let i = 31; i >= 0; i--) {
+		bytes[i] = Number(val & 0xffn)
+		val >>= 8n
+	}
+	return bytes
+}
+
+/**
+ * Build ExecuteParams, only including optional fields when they have values.
+ * This is needed because exactOptionalPropertyTypes disallows assigning undefined
+ * to optional properties.
+ */
+const buildExecuteParams = (base: { bytecode: Uint8Array }, extras: CallParams): ExecuteParams => {
+	const params: Record<string, unknown> = { bytecode: base.bytecode }
+	if (extras.from) params["caller"] = hexToBytes(extras.from)
+	if (extras.value !== undefined) params["value"] = bigintToBytes32Simple(extras.value)
+	if (extras.gas !== undefined) params["gas"] = extras.gas
+	if (extras.to) params["address"] = hexToBytes(extras.to)
+	if (extras.data && extras.to) params["calldata"] = hexToBytes(extras.data)
+	return params as unknown as ExecuteParams
+}
+
+// ---------------------------------------------------------------------------
 // Handler
 // ---------------------------------------------------------------------------
 
@@ -50,10 +80,6 @@ export const callHandler =
 	(node: TevmNodeShape) =>
 	(params: CallParams): Effect.Effect<CallResult, HandlerError> =>
 		Effect.gen(function* () {
-			const caller = params.from ? hexToBytes(params.from) : undefined
-			const value = params.value !== undefined ? bigintToBytes32Simple(params.value) : undefined
-			const gas = params.gas
-
 			let result: ExecuteResult
 
 			if (params.to) {
@@ -67,20 +93,10 @@ export const callHandler =
 					return { success: true, output: new Uint8Array(0), gasUsed: 0n } satisfies CallResult
 				}
 
-				const calldata = params.data ? hexToBytes(params.data) : undefined
+				const executeParams = buildExecuteParams({ bytecode }, params)
 
 				result = yield* node.evm
-					.executeAsync(
-						{
-							bytecode,
-							address: toBytes,
-							caller,
-							calldata,
-							value,
-							gas,
-						},
-						node.hostAdapter.hostCallbacks,
-					)
+					.executeAsync(executeParams, node.hostAdapter.hostCallbacks)
 					.pipe(
 						Effect.catchTag("WasmExecutionError", (e) =>
 							Effect.fail(new HandlerError({ message: e.message, cause: e })),
@@ -93,17 +109,10 @@ export const callHandler =
 				}
 
 				const bytecode = hexToBytes(params.data)
+				const executeParams = buildExecuteParams({ bytecode }, params)
 
 				result = yield* node.evm
-					.executeAsync(
-						{
-							bytecode,
-							caller,
-							value,
-							gas,
-						},
-						node.hostAdapter.hostCallbacks,
-					)
+					.executeAsync(executeParams, node.hostAdapter.hostCallbacks)
 					.pipe(
 						Effect.catchTag("WasmExecutionError", (e) =>
 							Effect.fail(new HandlerError({ message: e.message, cause: e })),
@@ -117,18 +126,3 @@ export const callHandler =
 				gasUsed: result.gasUsed,
 			} satisfies CallResult
 		})
-
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
-/** Convert a bigint to 32-byte big-endian Uint8Array (inline, avoids import cycle issues). */
-const bigintToBytes32Simple = (n: bigint): Uint8Array => {
-	const bytes = new Uint8Array(32)
-	let val = n < 0n ? 0n : n
-	for (let i = 31; i >= 0; i--) {
-		bytes[i] = Number(val & 0xffn)
-		val >>= 8n
-	}
-	return bytes
-}

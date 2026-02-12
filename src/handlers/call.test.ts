@@ -17,9 +17,6 @@ describe("callHandler", () => {
 			const node = yield* TevmNodeService
 
 			// Bytecode: PUSH1 0x42, PUSH1 0x00, MSTORE, PUSH1 0x20, PUSH1 0x00, RETURN
-			const bytecode = "0x60426000526020600060f3"
-			// Disasm: PUSH1 0x42 | PUSH1 0x00 | MSTORE | PUSH1 0x20 | PUSH1 0x00 | RETURN (0xf3 not in this hex)
-			// Actually, let me construct the right hex
 			const data = bytesToHex(new Uint8Array([0x60, 0x42, 0x60, 0x00, 0x52, 0x60, 0x20, 0x60, 0x00, 0xf3]))
 
 			const result = yield* callHandler(node)({ data })
