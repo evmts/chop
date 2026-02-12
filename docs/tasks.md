@@ -143,9 +143,9 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - Unit test: nested snapshots (depth 3)
 
 ### T2.3 Blockchain Services
-- [ ] `BlockStoreService` with block CRUD, canonical index
-- [ ] `BlockchainService` with genesis, fork choice, events
-- [ ] `BlockHeaderValidatorService`
+- [x] `BlockStoreService` with block CRUD, canonical index
+- [x] `BlockchainService` with genesis, fork choice, events
+- [x] `BlockHeaderValidatorService`
 
 **Validation**:
 - Unit test: put block → get by hash → matches
