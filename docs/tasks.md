@@ -251,11 +251,11 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - RPC test: nonce too low → error
 
 ### T3.2 Mining
-- [ ] Auto-mine mode (mine after each tx)
-- [ ] Manual mine (`anvil_mine`, `evm_mine`)
-- [ ] Interval mining (`evm_setIntervalMining`)
-- [ ] Block building (header, tx ordering, gas accumulation)
-- [ ] Block finalization (state root, receipt root)
+- [x] Auto-mine mode (mine after each tx)
+- [x] Manual mine (`anvil_mine`, `evm_mine`)
+- [x] Interval mining (`evm_setIntervalMining`)
+- [x] Block building (header, tx ordering, gas accumulation)
+- [x] Block finalization (state root, receipt root)
 
 **Validation**:
 - RPC test: auto-mine → send tx → block number increments
