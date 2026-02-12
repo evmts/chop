@@ -103,3 +103,140 @@ describe("rpcCall", () => {
 		}).pipe(Effect.provide(FetchHttpClient.layer)),
 	)
 })
+
+// ============================================================================
+// rpcCall — edge cases for response parsing and validation
+// ============================================================================
+
+import * as http from "node:http"
+
+/** Start a mock HTTP server that returns a custom response body. */
+const startMockServer = (responseBody: string, statusCode = 200): Promise<{ port: number; close: () => void }> =>
+	new Promise((resolve) => {
+		const server = http.createServer((_req, res) => {
+			res.writeHead(statusCode, { "Content-Type": "application/json" })
+			res.end(responseBody)
+		})
+		server.listen(0, "127.0.0.1", () => {
+			const addr = server.address()
+			const port = typeof addr === "object" && addr !== null ? addr.port : 0
+			resolve({ port, close: () => server.close() })
+		})
+	})
+
+describe("rpcCall — malformed response handling", () => {
+	it.effect("returns RpcClientError when response body is not valid JSON", () =>
+		Effect.gen(function* () {
+			const mock = yield* Effect.promise(() => startMockServer("not valid json at all {{{"))
+			try {
+				const error = yield* rpcCall(`http://127.0.0.1:${mock.port}`, "eth_chainId", []).pipe(Effect.flip)
+				expect(error._tag).toBe("RpcClientError")
+				expect(error.message).toContain("Failed to parse RPC response")
+			} finally {
+				mock.close()
+			}
+		}).pipe(Effect.provide(FetchHttpClient.layer)),
+	)
+
+	it.effect("returns RpcClientError when response has no jsonrpc field", () =>
+		Effect.gen(function* () {
+			// Returns valid JSON but not a JSON-RPC response
+			const mock = yield* Effect.promise(() => startMockServer(JSON.stringify({ result: "0x1" })))
+			try {
+				const error = yield* rpcCall(`http://127.0.0.1:${mock.port}`, "eth_chainId", []).pipe(Effect.flip)
+				expect(error._tag).toBe("RpcClientError")
+				expect(error.message).toContain("Malformed JSON-RPC response")
+			} finally {
+				mock.close()
+			}
+		}).pipe(Effect.provide(FetchHttpClient.layer)),
+	)
+
+	it.effect("returns RpcClientError when response is a JSON null value", () =>
+		Effect.gen(function* () {
+			const mock = yield* Effect.promise(() => startMockServer("null"))
+			try {
+				const error = yield* rpcCall(`http://127.0.0.1:${mock.port}`, "eth_chainId", []).pipe(Effect.flip)
+				expect(error._tag).toBe("RpcClientError")
+				expect(error.message).toContain("Malformed JSON-RPC response")
+			} finally {
+				mock.close()
+			}
+		}).pipe(Effect.provide(FetchHttpClient.layer)),
+	)
+
+	it.effect("returns RpcClientError when response is a JSON string", () =>
+		Effect.gen(function* () {
+			const mock = yield* Effect.promise(() => startMockServer('"just a string"'))
+			try {
+				const error = yield* rpcCall(`http://127.0.0.1:${mock.port}`, "eth_chainId", []).pipe(Effect.flip)
+				expect(error._tag).toBe("RpcClientError")
+				expect(error.message).toContain("Malformed JSON-RPC response")
+			} finally {
+				mock.close()
+			}
+		}).pipe(Effect.provide(FetchHttpClient.layer)),
+	)
+
+	it.effect("returns RpcClientError when response is a JSON number", () =>
+		Effect.gen(function* () {
+			const mock = yield* Effect.promise(() => startMockServer("42"))
+			try {
+				const error = yield* rpcCall(`http://127.0.0.1:${mock.port}`, "eth_chainId", []).pipe(Effect.flip)
+				expect(error._tag).toBe("RpcClientError")
+				expect(error.message).toContain("Malformed JSON-RPC response")
+			} finally {
+				mock.close()
+			}
+		}).pipe(Effect.provide(FetchHttpClient.layer)),
+	)
+
+	it.effect("returns RpcClientError when response is a JSON array (not object)", () =>
+		Effect.gen(function* () {
+			const mock = yield* Effect.promise(() => startMockServer("[1, 2, 3]"))
+			try {
+				const error = yield* rpcCall(`http://127.0.0.1:${mock.port}`, "eth_chainId", []).pipe(Effect.flip)
+				expect(error._tag).toBe("RpcClientError")
+				expect(error.message).toContain("Malformed JSON-RPC response")
+			} finally {
+				mock.close()
+			}
+		}).pipe(Effect.provide(FetchHttpClient.layer)),
+	)
+
+	it.effect("returns RpcClientError with error details when response has error field", () =>
+		Effect.gen(function* () {
+			const mock = yield* Effect.promise(() =>
+				startMockServer(
+					JSON.stringify({
+						jsonrpc: "2.0",
+						error: { code: -32000, message: "Custom error message" },
+						id: 1,
+					}),
+				),
+			)
+			try {
+				const error = yield* rpcCall(`http://127.0.0.1:${mock.port}`, "eth_test", []).pipe(Effect.flip)
+				expect(error._tag).toBe("RpcClientError")
+				expect(error.message).toContain("-32000")
+				expect(error.message).toContain("Custom error message")
+			} finally {
+				mock.close()
+			}
+		}).pipe(Effect.provide(FetchHttpClient.layer)),
+	)
+
+	it.effect("succeeds when response has valid JSON-RPC shape with null result", () =>
+		Effect.gen(function* () {
+			const mock = yield* Effect.promise(() =>
+				startMockServer(JSON.stringify({ jsonrpc: "2.0", result: null, id: 1 })),
+			)
+			try {
+				const result = yield* rpcCall(`http://127.0.0.1:${mock.port}`, "eth_test", [])
+				expect(result).toBeNull()
+			} finally {
+				mock.close()
+			}
+		}).pipe(Effect.provide(FetchHttpClient.layer)),
+	)
+})

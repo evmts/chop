@@ -428,3 +428,265 @@ describe("EvmWasmService — tag", () => {
 		expect(EvmWasmService.key).toBe("EvmWasm")
 	})
 })
+
+// ---------------------------------------------------------------------------
+// Additional coverage: mini EVM edge cases (stack underflows, params)
+// ---------------------------------------------------------------------------
+
+describe("EvmWasmService — mini EVM stack underflow edge cases", () => {
+	it.effect("SLOAD with empty stack produces WasmExecutionError", () =>
+		Effect.gen(function* () {
+			const evm = yield* EvmWasmService
+			// SLOAD (0x54) with nothing on stack
+			const result = yield* evm
+				.execute({ bytecode: new Uint8Array([0x54]) })
+				.pipe(Effect.catchTag("WasmExecutionError", (e) => Effect.succeed(e)))
+			expect(result).toBeInstanceOf(WasmExecutionError)
+			expect((result as WasmExecutionError).message).toContain("SLOAD")
+			expect((result as WasmExecutionError).message).toContain("stack underflow")
+		}).pipe(Effect.provide(EvmWasmTest)),
+	)
+
+	it.effect("MLOAD with empty stack produces WasmExecutionError", () =>
+		Effect.gen(function* () {
+			const evm = yield* EvmWasmService
+			// MLOAD (0x51) with nothing on stack
+			const result = yield* evm
+				.execute({ bytecode: new Uint8Array([0x51]) })
+				.pipe(Effect.catchTag("WasmExecutionError", (e) => Effect.succeed(e)))
+			expect(result).toBeInstanceOf(WasmExecutionError)
+			expect((result as WasmExecutionError).message).toContain("MLOAD")
+			expect((result as WasmExecutionError).message).toContain("stack underflow")
+		}).pipe(Effect.provide(EvmWasmTest)),
+	)
+
+	it.effect("RETURN with empty stack produces WasmExecutionError", () =>
+		Effect.gen(function* () {
+			const evm = yield* EvmWasmService
+			// RETURN (0xf3) with nothing on stack
+			const result = yield* evm
+				.execute({ bytecode: new Uint8Array([0xf3]) })
+				.pipe(Effect.catchTag("WasmExecutionError", (e) => Effect.succeed(e)))
+			expect(result).toBeInstanceOf(WasmExecutionError)
+			expect((result as WasmExecutionError).message).toContain("RETURN")
+			expect((result as WasmExecutionError).message).toContain("stack underflow")
+		}).pipe(Effect.provide(EvmWasmTest)),
+	)
+
+	it.effect("RETURN with only one value on stack produces WasmExecutionError", () =>
+		Effect.gen(function* () {
+			const evm = yield* EvmWasmService
+			// PUSH1 0x20, RETURN → only offset on stack, no size
+			const result = yield* evm
+				.execute({ bytecode: new Uint8Array([0x60, 0x20, 0xf3]) })
+				.pipe(Effect.catchTag("WasmExecutionError", (e) => Effect.succeed(e)))
+			expect(result).toBeInstanceOf(WasmExecutionError)
+			expect((result as WasmExecutionError).message).toContain("RETURN")
+			expect((result as WasmExecutionError).message).toContain("stack underflow")
+		}).pipe(Effect.provide(EvmWasmTest)),
+	)
+
+	it.effect("BALANCE with empty stack produces WasmExecutionError", () =>
+		Effect.gen(function* () {
+			const evm = yield* EvmWasmService
+			// BALANCE (0x31) with empty stack
+			const result = yield* evm
+				.execute({ bytecode: new Uint8Array([0x31]) })
+				.pipe(Effect.catchTag("WasmExecutionError", (e) => Effect.succeed(e)))
+			expect(result).toBeInstanceOf(WasmExecutionError)
+			expect((result as WasmExecutionError).message).toContain("BALANCE")
+			expect((result as WasmExecutionError).message).toContain("stack underflow")
+		}).pipe(Effect.provide(EvmWasmTest)),
+	)
+
+	it.effect("MSTORE with only one value on stack produces WasmExecutionError", () =>
+		Effect.gen(function* () {
+			const evm = yield* EvmWasmService
+			// PUSH1 0x00, MSTORE → only offset, no value
+			const result = yield* evm
+				.execute({ bytecode: new Uint8Array([0x60, 0x00, 0x52]) })
+				.pipe(Effect.catchTag("WasmExecutionError", (e) => Effect.succeed(e)))
+			expect(result).toBeInstanceOf(WasmExecutionError)
+			expect((result as WasmExecutionError).message).toContain("MSTORE")
+			expect((result as WasmExecutionError).message).toContain("stack underflow")
+		}).pipe(Effect.provide(EvmWasmTest)),
+	)
+})
+
+describe("EvmWasmService — MLOAD happy path", () => {
+	it.effect("MLOAD reads 32-byte word from memory correctly", () =>
+		Effect.gen(function* () {
+			const evm = yield* EvmWasmService
+			// Bytecode:
+			//   PUSH1 0xAB, PUSH1 0x00, MSTORE → memory[0..32] = pad32(0xAB)
+			//   PUSH1 0x00, MLOAD              → push memory[0..32] onto stack
+			//   PUSH1 0x00, MSTORE             → store the MLOAD result back to memory[0..32]
+			//   PUSH1 0x20, PUSH1 0x00, RETURN → return memory[0..32]
+			const bytecode = new Uint8Array([
+				0x60, 0xab, // PUSH1 0xAB
+				0x60, 0x00, // PUSH1 0x00
+				0x52,       // MSTORE → mem[0..32] = pad32(0xAB)
+				0x60, 0x00, // PUSH1 0x00
+				0x51,       // MLOAD  → reads 32 bytes at offset 0
+				0x60, 0x00, // PUSH1 0x00
+				0x52,       // MSTORE → stores MLOAD result back (should be same)
+				0x60, 0x20, // PUSH1 0x20
+				0x60, 0x00, // PUSH1 0x00
+				0xf3,       // RETURN
+			])
+
+			const result = yield* evm.execute({ bytecode })
+			expect(result.success).toBe(true)
+			expect(result.output.length).toBe(32)
+			// Should be pad32(0xAB)
+			expect(bytesToHex(result.output)).toBe(
+				"0x00000000000000000000000000000000000000000000000000000000000000ab",
+			)
+			expect(result.gasUsed).toBeGreaterThan(0n)
+		}).pipe(Effect.provide(EvmWasmTest)),
+	)
+
+	it.effect("MLOAD at non-zero offset reads correctly", () =>
+		Effect.gen(function* () {
+			const evm = yield* EvmWasmService
+			// Store 0xFF at offset 32, then MLOAD from offset 32
+			const bytecode = new Uint8Array([
+				0x60, 0xff, // PUSH1 0xFF
+				0x60, 0x20, // PUSH1 0x20 (offset 32)
+				0x52,       // MSTORE → mem[32..64] = pad32(0xFF)
+				0x60, 0x20, // PUSH1 0x20 (offset 32)
+				0x51,       // MLOAD  → reads 32 bytes at offset 32
+				0x60, 0x00, // PUSH1 0x00
+				0x52,       // MSTORE → stores to mem[0..32]
+				0x60, 0x20, // PUSH1 0x20
+				0x60, 0x00, // PUSH1 0x00
+				0xf3,       // RETURN
+			])
+
+			const result = yield* evm.execute({ bytecode })
+			expect(result.success).toBe(true)
+			expect(bytesToHex(result.output)).toBe(
+				"0x00000000000000000000000000000000000000000000000000000000000000ff",
+			)
+		}).pipe(Effect.provide(EvmWasmTest)),
+	)
+})
+
+describe("EvmWasmService — execute with custom params", () => {
+	it.effect("execute respects gas parameter", () =>
+		Effect.gen(function* () {
+			const evm = yield* EvmWasmService
+			// PUSH1 0x42, PUSH1 0x00, MSTORE, PUSH1 0x20, PUSH1 0x00, RETURN
+			const bytecode = new Uint8Array([0x60, 0x42, 0x60, 0x00, 0x52, 0x60, 0x20, 0x60, 0x00, 0xf3])
+			const result = yield* evm.execute({ bytecode, gas: 500_000n })
+			expect(result.success).toBe(true)
+			expect(result.gasUsed).toBeGreaterThan(0n)
+		}).pipe(Effect.provide(EvmWasmTest)),
+	)
+
+	it.effect("execute respects caller parameter", () =>
+		Effect.gen(function* () {
+			const evm = yield* EvmWasmService
+			const caller = new Uint8Array(20)
+			caller[19] = 0x42
+			const result = yield* evm.execute({ bytecode: new Uint8Array([0x00]), caller })
+			expect(result.success).toBe(true)
+		}).pipe(Effect.provide(EvmWasmTest)),
+	)
+
+	it.effect("execute respects address parameter", () =>
+		Effect.gen(function* () {
+			const evm = yield* EvmWasmService
+			const address = new Uint8Array(20)
+			address[19] = 0xff
+			const result = yield* evm.execute({ bytecode: new Uint8Array([0x00]), address })
+			expect(result.success).toBe(true)
+		}).pipe(Effect.provide(EvmWasmTest)),
+	)
+
+	it.effect("execute respects value parameter", () =>
+		Effect.gen(function* () {
+			const evm = yield* EvmWasmService
+			const value = new Uint8Array(32)
+			value[31] = 0x01
+			const result = yield* evm.execute({ bytecode: new Uint8Array([0x00]), value })
+			expect(result.success).toBe(true)
+		}).pipe(Effect.provide(EvmWasmTest)),
+	)
+
+	it.effect("execute respects calldata parameter", () =>
+		Effect.gen(function* () {
+			const evm = yield* EvmWasmService
+			const calldata = new Uint8Array([0x01, 0x02, 0x03, 0x04])
+			const result = yield* evm.execute({ bytecode: new Uint8Array([0x00]), calldata })
+			expect(result.success).toBe(true)
+		}).pipe(Effect.provide(EvmWasmTest)),
+	)
+})
+
+describe("EvmWasmService — executeAsync edge cases", () => {
+	it.effect("executeAsync with all params set and storage callback", () =>
+		Effect.gen(function* () {
+			const evm = yield* EvmWasmService
+			const caller = new Uint8Array(20)
+			caller[19] = 0xab
+			const address = new Uint8Array(20)
+			address[19] = 0xcd
+			const value = new Uint8Array(32)
+			value[31] = 0x01
+			const calldata = new Uint8Array([0xaa, 0xbb])
+
+			// PUSH1 0x00, SLOAD, PUSH1 0x00, MSTORE, PUSH1 0x20, PUSH1 0x00, RETURN
+			const bytecode = new Uint8Array([0x60, 0x00, 0x54, 0x60, 0x00, 0x52, 0x60, 0x20, 0x60, 0x00, 0xf3])
+			const storageValue = new Uint8Array(32)
+			storageValue[31] = 0x99
+
+			let receivedAddr: Uint8Array | null = null
+			const result = yield* evm.executeAsync(
+				{ bytecode, caller, address, value, calldata, gas: 100_000n },
+				{
+					onStorageRead: (addr, _slot) =>
+						Effect.sync(() => {
+							receivedAddr = addr
+							return storageValue
+						}),
+				},
+			)
+
+			expect(result.success).toBe(true)
+			expect(result.output.length).toBe(32)
+			// The address used by SLOAD is params.address
+			expect(receivedAddr).not.toBeNull()
+			// Check storage value was returned
+			expect(result.output[31]).toBe(0x99)
+		}).pipe(Effect.provide(EvmWasmTest)),
+	)
+
+	it.effect("executeAsync with STOP returns empty output", () =>
+		Effect.gen(function* () {
+			const evm = yield* EvmWasmService
+			const result = yield* evm.executeAsync({ bytecode: new Uint8Array([0x00]) }, {})
+			expect(result.success).toBe(true)
+			expect(result.output.length).toBe(0)
+		}).pipe(Effect.provide(EvmWasmTest)),
+	)
+
+	it.effect("executeAsync with empty bytecode returns empty output", () =>
+		Effect.gen(function* () {
+			const evm = yield* EvmWasmService
+			const result = yield* evm.executeAsync({ bytecode: new Uint8Array([]) }, {})
+			expect(result.success).toBe(true)
+			expect(result.output.length).toBe(0)
+		}).pipe(Effect.provide(EvmWasmTest)),
+	)
+
+	it.effect("executeAsync unsupported opcode produces WasmExecutionError", () =>
+		Effect.gen(function* () {
+			const evm = yield* EvmWasmService
+			const result = yield* evm
+				.executeAsync({ bytecode: new Uint8Array([0xfe]) }, {})
+				.pipe(Effect.catchTag("WasmExecutionError", (e) => Effect.succeed(e)))
+			expect(result).toBeInstanceOf(WasmExecutionError)
+		}).pipe(Effect.provide(EvmWasmTest)),
+	)
+})

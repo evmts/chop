@@ -262,3 +262,207 @@ describe("RPC Server", () => {
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 })
+
+// ---------------------------------------------------------------------------
+// Additional coverage: server edge cases
+// ---------------------------------------------------------------------------
+
+describe("RPC Server — edge cases", () => {
+	it.effect("server graceful shutdown prevents further connections", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+
+			// Verify server is working
+			const res1 = (yield* rpcCall(server.port, {
+				jsonrpc: "2.0",
+				method: "eth_chainId",
+				params: [],
+				id: 1,
+			})) as RpcResult
+
+			expect(res1.result).toBe("0x7a69")
+
+			// Close server
+			yield* server.close()
+
+			// Attempt another request after close should fail
+			const result = yield* Effect.tryPromise({
+				try: () => httpPost(server.port, JSON.stringify({ jsonrpc: "2.0", method: "eth_chainId", params: [], id: 2 })),
+				catch: (e) => e,
+			}).pipe(Effect.either)
+
+			// Connection should be refused after close
+			expect(result._tag).toBe("Left")
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	it.effect("server handles empty batch request", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+
+			const res = (yield* rpcCall(server.port, [])) as RpcResult
+
+			// Empty batch → invalid request error
+			expect(res.error?.code).toBe(-32600)
+
+			yield* server.close()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	it.effect("server handles request with missing method", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+
+			const res = (yield* rpcCall(server.port, {
+				jsonrpc: "2.0",
+				params: [],
+				id: 1,
+			})) as RpcResult
+
+			expect(res.error).toBeDefined()
+			expect(res.error?.code).toBe(-32600)
+			expect(res.id).toBe(1)
+
+			yield* server.close()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	it.effect("server handles request with invalid jsonrpc field", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+
+			const res = (yield* rpcCall(server.port, {
+				jsonrpc: "1.0",
+				method: "eth_chainId",
+				params: [],
+				id: 1,
+			})) as RpcResult
+
+			expect(res.error).toBeDefined()
+			expect(res.error?.code).toBe(-32600)
+
+			yield* server.close()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	it.effect("server handles request with no params (omitted)", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+
+			// No params field at all — should default to []
+			const res = (yield* rpcCall(server.port, {
+				jsonrpc: "2.0",
+				method: "eth_chainId",
+				id: 1,
+			})) as RpcResult
+
+			expect(res.result).toBe("0x7a69")
+			expect(res.error).toBeUndefined()
+
+			yield* server.close()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	it.effect("server handles request with no id (notification style)", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+
+			const res = (yield* rpcCall(server.port, {
+				jsonrpc: "2.0",
+				method: "eth_chainId",
+				params: [],
+			})) as RpcResult
+
+			expect(res.result).toBe("0x7a69")
+			expect(res.id).toBeNull()
+
+			yield* server.close()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	it.effect("server handles request body that is a JSON primitive (not object)", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+
+			// Send a JSON string value instead of an object
+			const res = yield* Effect.tryPromise({
+				try: async () => {
+					const raw = await httpPost(server.port, '"hello"')
+					return JSON.parse(raw.body) as RpcResult
+				},
+				catch: (e) => new Error(`http request failed: ${e}`),
+			})
+
+			expect(res.error).toBeDefined()
+			expect(res.error?.code).toBe(-32600)
+
+			yield* server.close()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	it.effect("server handles request body that is a JSON number", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+
+			const res = yield* Effect.tryPromise({
+				try: async () => {
+					const raw = await httpPost(server.port, "42")
+					return JSON.parse(raw.body) as RpcResult
+				},
+				catch: (e) => new Error(`http request failed: ${e}`),
+			})
+
+			expect(res.error).toBeDefined()
+			expect(res.error?.code).toBe(-32600)
+
+			yield* server.close()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	it.effect("server handles batch with mixed valid and invalid requests", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+
+			const res = (yield* rpcCall(server.port, [
+				{ jsonrpc: "2.0", method: "eth_chainId", params: [], id: 1 },
+				{ jsonrpc: "1.0", method: "eth_chainId", params: [], id: 2 }, // invalid jsonrpc
+				{ jsonrpc: "2.0", method: "eth_unknownMethod", params: [], id: 3 }, // unknown method
+			])) as RpcResult[]
+
+			expect(Array.isArray(res)).toBe(true)
+			expect(res).toHaveLength(3)
+			expect(res[0]?.result).toBe("0x7a69")
+			expect(res[1]?.error).toBeDefined()
+			expect(res[2]?.error?.code).toBe(-32601)
+
+			yield* server.close()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	it.effect("server with custom host parameter", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0, host: "127.0.0.1" }, node)
+
+			const res = (yield* rpcCall(server.port, {
+				jsonrpc: "2.0",
+				method: "eth_chainId",
+				params: [],
+				id: 1,
+			})) as RpcResult
+
+			expect(res.result).toBe("0x7a69")
+
+			yield* server.close()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+})

@@ -2,6 +2,7 @@ import { FetchHttpClient } from "@effect/platform"
 import { describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { afterAll, beforeAll, expect } from "vitest"
+import { hexToBytes } from "../../evm/conversions.js"
 import { TevmNode, TevmNodeService } from "../../node/index.js"
 import { startRpcServer } from "../../rpc/server.js"
 import { type TestServer, runCli, startTestServer } from "../test-helpers.js"
@@ -341,5 +342,143 @@ describe("CLI E2E — RPC success with running server", () => {
 		const json = JSON.parse(result.stdout.trim())
 		expect(json.to).toBe(CONTRACT_ADDR)
 		expect(json.result).toContain("42")
+	})
+})
+
+// ============================================================================
+// Additional coverage: callHandler with signature, JSON outputs, hexToDecimal
+// ============================================================================
+
+describe("callHandler — with function signature", () => {
+	it.effect("calls with signature and decodes output", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+
+			// Deploy contract at 0x00...42 that returns 0x42 as a 32-byte word
+			const contractAddr = `0x${"00".repeat(19)}42`
+			const contractCode = new Uint8Array([0x60, 0x42, 0x60, 0x00, 0x52, 0x60, 0x20, 0x60, 0x00, 0xf3])
+			yield* node.hostAdapter.setAccount(hexToBytes(contractAddr), {
+				nonce: 0n,
+				balance: 0n,
+				codeHash: new Uint8Array(32),
+				code: contractCode,
+			})
+
+			try {
+				// Call with a signature that has output types → decodes the result
+				const result = yield* callHandler(
+					`http://127.0.0.1:${server.port}`,
+					contractAddr,
+					"getValue()(uint256)",
+					[],
+				)
+				// Should decode the uint256 output
+				expect(result).toContain("66") // 0x42 = 66 decimal
+			} finally {
+				yield* server.close()
+			}
+		}).pipe(Effect.provide(TevmNode.LocalTest()), Effect.provide(FetchHttpClient.layer)),
+	)
+
+	it.effect("calls with signature that has no output types", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+
+			const contractAddr = `0x${"00".repeat(19)}42`
+			const contractCode = new Uint8Array([0x60, 0x42, 0x60, 0x00, 0x52, 0x60, 0x20, 0x60, 0x00, 0xf3])
+			yield* node.hostAdapter.setAccount(hexToBytes(contractAddr), {
+				nonce: 0n,
+				balance: 0n,
+				codeHash: new Uint8Array(32),
+				code: contractCode,
+			})
+
+			try {
+				// Call with a signature that has NO output types → returns raw hex
+				const result = yield* callHandler(
+					`http://127.0.0.1:${server.port}`,
+					contractAddr,
+					"getValue()",
+					[],
+				)
+				// Should return raw hex since no output types
+				expect(result).toContain("42")
+			} finally {
+				yield* server.close()
+			}
+		}).pipe(Effect.provide(TevmNode.LocalTest()), Effect.provide(FetchHttpClient.layer)),
+	)
+
+	it.effect("calls with signature and args to encode calldata", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+
+			// This contract just returns whatever it receives
+			const contractAddr = `0x${"00".repeat(19)}42`
+			const contractCode = new Uint8Array([0x60, 0x42, 0x60, 0x00, 0x52, 0x60, 0x20, 0x60, 0x00, 0xf3])
+			yield* node.hostAdapter.setAccount(hexToBytes(contractAddr), {
+				nonce: 0n,
+				balance: 0n,
+				codeHash: new Uint8Array(32),
+				code: contractCode,
+			})
+
+			try {
+				const result = yield* callHandler(
+					`http://127.0.0.1:${server.port}`,
+					contractAddr,
+					"balanceOf(address)(uint256)",
+					["0x0000000000000000000000000000000000000001"],
+				)
+				// The result should be decoded from the contract's output
+				expect(result).toContain("66") // 0x42 = 66
+			} finally {
+				yield* server.close()
+			}
+		}).pipe(Effect.provide(TevmNode.LocalTest()), Effect.provide(FetchHttpClient.layer)),
+	)
+})
+
+describe("CLI E2E — RPC JSON output for all commands", () => {
+	let server: TestServer
+
+	beforeAll(async () => {
+		server = await startTestServer()
+	}, 15_000)
+
+	afterAll(() => {
+		server?.kill()
+	})
+
+	it("chop code --json outputs structured JSON", () => {
+		const addr = "0x0000000000000000000000000000000000000000"
+		const result = runCli(`code ${addr} -r http://127.0.0.1:${server.port} --json`)
+		expect(result.exitCode).toBe(0)
+		const json = JSON.parse(result.stdout.trim())
+		expect(json).toHaveProperty("address", addr)
+		expect(json).toHaveProperty("code")
+	})
+
+	it("chop storage --json outputs structured JSON", () => {
+		const addr = "0x0000000000000000000000000000000000000000"
+		const slot = "0x0000000000000000000000000000000000000000000000000000000000000000"
+		const result = runCli(`storage ${addr} ${slot} -r http://127.0.0.1:${server.port} --json`)
+		expect(result.exitCode).toBe(0)
+		const json = JSON.parse(result.stdout.trim())
+		expect(json).toHaveProperty("address", addr)
+		expect(json).toHaveProperty("slot", slot)
+		expect(json).toHaveProperty("value")
+	})
+
+	it("chop code --json for contract with bytecode", () => {
+		const contractAddr = `0x${"00".repeat(19)}42`
+		const result = runCli(`code ${contractAddr} -r http://127.0.0.1:${server.port} --json`)
+		expect(result.exitCode).toBe(0)
+		const json = JSON.parse(result.stdout.trim())
+		expect(json.address).toBe(contractAddr)
+		expect(json.code).toContain("604260005260206000f3")
 	})
 })
