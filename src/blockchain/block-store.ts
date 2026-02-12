@@ -63,20 +63,29 @@ export const BlockStoreLive = (): Layer.Layer<BlockStoreService> =>
 		/** Set of orphan block hashes. */
 		const orphans = new Set<string>()
 
+		const getBlock: BlockStoreApi["getBlock"] = (hash) =>
+			Effect.sync(() => blocks.get(hash)).pipe(
+				Effect.flatMap((block) =>
+					block !== undefined ? Effect.succeed(block) : Effect.fail(new BlockNotFoundError({ identifier: hash })),
+				),
+			)
+
+		const getCanonical: BlockStoreApi["getCanonical"] = (blockNumber) =>
+			Effect.sync(() => canonicalIndex.get(blockNumber)).pipe(
+				Effect.flatMap((hash) =>
+					hash !== undefined
+						? Effect.succeed(hash)
+						: Effect.fail(new BlockNotFoundError({ identifier: String(blockNumber) })),
+				),
+			)
+
 		return {
 			putBlock: (block) =>
 				Effect.sync(() => {
 					blocks.set(block.hash, block)
 				}),
 
-			getBlock: (hash) =>
-				Effect.sync(() => blocks.get(hash)).pipe(
-					Effect.flatMap((block) =>
-						block !== undefined
-							? Effect.succeed(block)
-							: Effect.fail(new BlockNotFoundError({ identifier: hash })),
-					),
-				),
+			getBlock,
 
 			hasBlock: (hash) => Effect.sync(() => blocks.has(hash)),
 
@@ -90,30 +99,9 @@ export const BlockStoreLive = (): Layer.Layer<BlockStoreService> =>
 					canonicalIndex.set(blockNumber, hash)
 				}),
 
-			getCanonical: (blockNumber) =>
-				Effect.sync(() => canonicalIndex.get(blockNumber)).pipe(
-					Effect.flatMap((hash) =>
-						hash !== undefined
-							? Effect.succeed(hash)
-							: Effect.fail(new BlockNotFoundError({ identifier: String(blockNumber) })),
-					),
-				),
+			getCanonical,
 
-			getBlockByNumber: (blockNumber) =>
-				Effect.gen(function* () {
-					const hash = yield* Effect.sync(() => canonicalIndex.get(blockNumber)).pipe(
-						Effect.flatMap((h) =>
-							h !== undefined
-								? Effect.succeed(h)
-								: Effect.fail(new BlockNotFoundError({ identifier: String(blockNumber) })),
-						),
-					)
-					const block = blocks.get(hash)
-					if (block === undefined) {
-						return yield* Effect.fail(new BlockNotFoundError({ identifier: hash }))
-					}
-					return block
-				}),
+			getBlockByNumber: (blockNumber) => getCanonical(blockNumber).pipe(Effect.flatMap(getBlock)),
 
 			addOrphan: (hash) =>
 				Effect.sync(() => {

@@ -60,6 +60,9 @@ export class GenesisError extends Data.TaggedError("GenesisError")<{
 /**
  * Error returned when canonical chain operations fail.
  *
+ * TODO: Currently unused — will be used in Phase 3 chain reorg logic
+ * (e.g., detecting gaps in the canonical chain, failed reorg attempts).
+ *
  * @example
  * ```ts
  * import { CanonicalChainError } from "#blockchain/errors"
