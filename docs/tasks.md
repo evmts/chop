@@ -155,9 +155,9 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - Unit test: header validation (gas limit bounds, base fee, timestamp)
 
 ### T2.4 Host Adapter
-- [ ] Bridge WASM async protocol to WorldState
-- [ ] Storage reads: WASM yields → HostAdapter fetches from WorldState → WASM resumes
-- [ ] Balance, code, nonce reads same pattern
+- [x] Bridge WASM async protocol to WorldState
+- [x] Storage reads: WASM yields → HostAdapter fetches from WorldState → WASM resumes
+- [x] Balance, code, nonce reads same pattern
 
 **Validation**:
 - Integration test: deploy contract (CREATE) → storage is set
