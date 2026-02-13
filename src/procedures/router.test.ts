@@ -15,6 +15,25 @@ const validParams: Record<string, readonly unknown[]> = {
 	eth_getTransactionCount: [`0x${"00".repeat(20)}`],
 }
 
+// T3.7 methods that should be registered in the router
+const t37Methods: Record<string, readonly unknown[]> = {
+	anvil_dumpState: [],
+	anvil_reset: [],
+	anvil_setMinGasPrice: ["0x3B9ACA00"],
+	anvil_setNextBlockBaseFeePerGas: ["0x5F5E100"],
+	anvil_setCoinbase: [`0x${"ab".repeat(20)}`],
+	anvil_setBlockGasLimit: ["0x1C9C380"],
+	anvil_setBlockTimestampInterval: [12],
+	anvil_removeBlockTimestampInterval: [],
+	anvil_setChainId: ["0x2a"],
+	anvil_setRpcUrl: ["https://eth-mainnet.example.com"],
+	anvil_dropAllTransactions: [],
+	anvil_enableTraces: [],
+	anvil_nodeInfo: [],
+	evm_increaseTime: [60],
+	evm_setNextBlockTimestamp: [9999999],
+}
+
 describe("methodRouter", () => {
 	// -----------------------------------------------------------------------
 	// Known methods resolve
@@ -168,6 +187,70 @@ describe("methodRouter", () => {
 			const node = yield* TevmNodeService
 			const error = yield* methodRouter(node)("", []).pipe(Effect.flip)
 			expect(error._tag).toBe("MethodNotFoundError")
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	// -----------------------------------------------------------------------
+	// T3.7 — remaining anvil_*/evm_* methods are registered
+	// -----------------------------------------------------------------------
+
+	for (const [method, params] of Object.entries(t37Methods)) {
+		it.effect(`routes ${method} without MethodNotFoundError`, () =>
+			Effect.gen(function* () {
+				const node = yield* TevmNodeService
+				const result = yield* methodRouter(node)(method, params)
+				// Just verify it didn't throw MethodNotFoundError — the method is registered
+				expect(result).toBeDefined()
+			}).pipe(Effect.provide(TevmNode.LocalTest())),
+		)
+	}
+
+	// -----------------------------------------------------------------------
+	// T3.7 — router integration: anvil_loadState via router
+	// -----------------------------------------------------------------------
+
+	it.effect("routes anvil_loadState with state dump", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const dump = yield* methodRouter(node)("anvil_dumpState", [])
+			const result = yield* methodRouter(node)("anvil_loadState", [dump])
+			expect(result).toBe(true)
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	// -----------------------------------------------------------------------
+	// T3.7 — router integration: anvil_dropTransaction via router
+	// -----------------------------------------------------------------------
+
+	it.effect("routes anvil_dropTransaction → null when no matching tx", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const result = yield* methodRouter(node)("anvil_dropTransaction", ["0xnonexistent"])
+			expect(result).toBeNull()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	// -----------------------------------------------------------------------
+	// T3.7 — router integration: evm_increaseTime via router
+	// -----------------------------------------------------------------------
+
+	it.effect("routes evm_increaseTime → returns hex offset", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const result = yield* methodRouter(node)("evm_increaseTime", [60])
+			expect(result).toBe("0x3c")
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	// -----------------------------------------------------------------------
+	// T3.7 — router integration: evm_setNextBlockTimestamp via router
+	// -----------------------------------------------------------------------
+
+	it.effect("routes evm_setNextBlockTimestamp → returns hex timestamp", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const result = yield* methodRouter(node)("evm_setNextBlockTimestamp", [9999999])
+			expect(result).toBe("0x98967f")
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 })
