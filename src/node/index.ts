@@ -18,6 +18,7 @@ import type { ForkDataError } from "./fork/errors.js"
 import { resolveForkConfig } from "./fork/fork-config.js"
 import { ForkWorldStateLive } from "./fork/fork-state.js"
 import { HttpTransportLive, HttpTransportService } from "./fork/http-transport.js"
+import { type FilterManagerApi, makeFilterManager } from "./filter-manager.js"
 import { type ImpersonationManagerApi, makeImpersonationManager } from "./impersonation-manager.js"
 import { MiningService, MiningServiceLive } from "./mining.js"
 import type { MiningServiceApi } from "./mining.js"
@@ -47,6 +48,8 @@ export interface TevmNodeShape {
 	readonly snapshotManager: SnapshotManagerApi
 	/** Impersonation manager for anvil_impersonateAccount / anvil_stopImpersonatingAccount. */
 	readonly impersonationManager: ImpersonationManagerApi
+	/** Filter manager for eth_newFilter / eth_getFilterChanges / eth_uninstallFilter. */
+	readonly filterManager: FilterManagerApi
 	/** Chain ID (default: 31337 for local devnet). */
 	readonly chainId: bigint
 	/** Pre-funded test accounts (deterministic Hardhat/Anvil defaults). */
@@ -127,6 +130,9 @@ const TevmNodeLive = (
 			// Create impersonation manager
 			const impersonationManager = makeImpersonationManager()
 
+			// Create filter manager
+			const filterManager = makeFilterManager()
+
 			// Create and fund deterministic test accounts
 			const accounts = getTestAccounts(options.accounts ?? 10)
 			yield* fundAccounts(hostAdapter, accounts)
@@ -140,6 +146,7 @@ const TevmNodeLive = (
 				mining,
 				snapshotManager,
 				impersonationManager,
+				filterManager,
 				chainId,
 				accounts,
 			} satisfies TevmNodeShape
@@ -301,6 +308,7 @@ export const TevmNode = {
 // ---------------------------------------------------------------------------
 
 export { NodeInitError } from "./errors.js"
+export type { FilterManagerApi } from "./filter-manager.js"
 export type { ImpersonationManagerApi } from "./impersonation-manager.js"
 export { MiningService, MiningServiceLive } from "./mining.js"
 export type { MiningMode, MiningServiceApi } from "./mining.js"

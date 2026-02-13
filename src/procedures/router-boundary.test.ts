@@ -46,10 +46,10 @@ describe("methodRouter — method name edge cases", () => {
 	it.effect("MethodNotFoundError includes the method name", () =>
 		Effect.gen(function* () {
 			const node = yield* TevmNodeService
-			const error = yield* methodRouter(node)("net_version", []).pipe(Effect.flip)
+			const error = yield* methodRouter(node)("nonexistent_method", []).pipe(Effect.flip)
 			expect(error._tag).toBe("MethodNotFoundError")
 			if (error._tag === "MethodNotFoundError") {
-				expect(error.method).toBe("net_version")
+				expect(error.method).toBe("nonexistent_method")
 			}
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)

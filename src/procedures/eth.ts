@@ -4,16 +4,23 @@ import {
 	blockNumberHandler,
 	callHandler,
 	chainIdHandler,
+	estimateGasHandler,
+	gasPriceHandler,
 	getAccountsHandler,
 	getBalanceHandler,
+	getBlockByHashHandler,
+	getBlockByNumberHandler,
 	getCodeHandler,
+	getLogsHandler,
 	getStorageAtHandler,
+	getTransactionByHashHandler,
 	getTransactionCountHandler,
 	getTransactionReceiptHandler,
 	sendTransactionHandler,
 } from "../handlers/index.js"
 import type { TevmNodeShape } from "../node/index.js"
-import { InternalError, wrapErrors } from "./errors.js"
+import { InvalidParamsError, InternalError, wrapErrors } from "./errors.js"
+import { serializeBlock, serializeLog, serializeTransaction } from "./helpers.js"
 
 // ---------------------------------------------------------------------------
 // Serialization helpers
@@ -181,5 +188,396 @@ export const ethGetTransactionReceipt =
 					effectiveGasPrice: bigintToHex(receipt.effectiveGasPrice),
 					type: bigintToHex(BigInt(receipt.type)),
 				} satisfies Record<string, unknown>
+			}),
+		)
+
+// ---------------------------------------------------------------------------
+// Block retrieval procedures
+// ---------------------------------------------------------------------------
+
+/** eth_getBlockByNumber → block object or null. */
+export const ethGetBlockByNumber =
+	(node: TevmNodeShape): Procedure =>
+	(params) =>
+		wrapErrors(
+			Effect.gen(function* () {
+				const blockTag = (params[0] as string) ?? "latest"
+				const includeFullTxs = (params[1] as boolean) ?? false
+				const block = yield* getBlockByNumberHandler(node)({ blockTag, includeFullTxs })
+				if (!block) return null
+				return serializeBlock(block, includeFullTxs)
+			}),
+		)
+
+/** eth_getBlockByHash → block object or null. */
+export const ethGetBlockByHash =
+	(node: TevmNodeShape): Procedure =>
+	(params) =>
+		wrapErrors(
+			Effect.gen(function* () {
+				const hash = params[0] as string
+				const includeFullTxs = (params[1] as boolean) ?? false
+				const block = yield* getBlockByHashHandler(node)({ hash, includeFullTxs })
+				if (!block) return null
+				return serializeBlock(block, includeFullTxs)
+			}),
+		)
+
+// ---------------------------------------------------------------------------
+// Transaction retrieval procedures
+// ---------------------------------------------------------------------------
+
+/** eth_getTransactionByHash → transaction object or null. */
+export const ethGetTransactionByHash =
+	(node: TevmNodeShape): Procedure =>
+	(params) =>
+		wrapErrors(
+			Effect.gen(function* () {
+				const hash = params[0] as string
+				const tx = yield* getTransactionByHashHandler(node)({ hash })
+				if (!tx) return null
+				return serializeTransaction(tx)
+			}),
+		)
+
+// ---------------------------------------------------------------------------
+// Gas / fee procedures
+// ---------------------------------------------------------------------------
+
+/** eth_gasPrice → hex gas price. */
+export const ethGasPrice =
+	(node: TevmNodeShape): Procedure =>
+	(_params) =>
+		wrapErrors(
+			Effect.gen(function* () {
+				const price = yield* gasPriceHandler(node)()
+				return bigintToHex(price)
+			}),
+		)
+
+/** eth_maxPriorityFeePerGas → "0x0" (local devnet, no priority fee needed). */
+export const ethMaxPriorityFeePerGas =
+	(_node: TevmNodeShape): Procedure =>
+	(_params) =>
+		Effect.succeed("0x0")
+
+/** eth_estimateGas → hex gas estimate. */
+export const ethEstimateGas =
+	(node: TevmNodeShape): Procedure =>
+	(params) =>
+		wrapErrors(
+			Effect.gen(function* () {
+				const callObj = (params[0] ?? {}) as Record<string, unknown>
+				const gas = yield* estimateGasHandler(node)({
+					...(typeof callObj.to === "string" ? { to: callObj.to } : {}),
+					...(typeof callObj.from === "string" ? { from: callObj.from } : {}),
+					...(typeof callObj.data === "string" ? { data: callObj.data } : {}),
+					...(callObj.value !== undefined ? { value: BigInt(callObj.value as string) } : {}),
+					...(callObj.gas !== undefined ? { gas: BigInt(callObj.gas as string) } : {}),
+				})
+				return bigintToHex(gas)
+			}),
+		)
+
+/** eth_feeHistory → fee history object. */
+export const ethFeeHistory =
+	(node: TevmNodeShape): Procedure =>
+	(params) =>
+		wrapErrors(
+			Effect.gen(function* () {
+				const blockCount = Number(params[0] as string)
+				const head = yield* node.blockchain.getHead().pipe(
+					Effect.catchTag("GenesisError", () =>
+						Effect.succeed({ number: 0n, baseFeePerGas: 1_000_000_000n, gasUsed: 0n, gasLimit: 30_000_000n }),
+					),
+				)
+
+				const baseFeePerGas: string[] = []
+				const gasUsedRatio: number[] = []
+				const oldestBlock = head.number - BigInt(Math.min(blockCount, Number(head.number) + 1)) + 1n
+
+				for (let i = 0; i < Math.min(blockCount, Number(head.number) + 1); i++) {
+					const blockNum = oldestBlock + BigInt(i)
+					const block = yield* node.blockchain.getBlockByNumber(blockNum).pipe(
+						Effect.catchTag("BlockNotFoundError", () =>
+							Effect.succeed({ baseFeePerGas: 1_000_000_000n, gasUsed: 0n, gasLimit: 30_000_000n }),
+						),
+					)
+					baseFeePerGas.push(bigintToHex(block.baseFeePerGas))
+					gasUsedRatio.push(block.gasLimit > 0n ? Number(block.gasUsed) / Number(block.gasLimit) : 0)
+				}
+
+				// Add one more baseFee for the "next" block
+				baseFeePerGas.push(bigintToHex(head.baseFeePerGas))
+
+				return {
+					oldestBlock: bigintToHex(oldestBlock),
+					baseFeePerGas,
+					gasUsedRatio,
+					reward: [],
+				} satisfies Record<string, unknown>
+			}),
+		)
+
+// ---------------------------------------------------------------------------
+// Log procedures
+// ---------------------------------------------------------------------------
+
+/** eth_getLogs → array of log objects. */
+export const ethGetLogs =
+	(node: TevmNodeShape): Procedure =>
+	(params) =>
+		wrapErrors(
+			Effect.gen(function* () {
+				const filterObj = (params[0] ?? {}) as Record<string, unknown>
+				const logs = yield* getLogsHandler(node)({
+					...(typeof filterObj.fromBlock === "string" ? { fromBlock: filterObj.fromBlock } : {}),
+					...(typeof filterObj.toBlock === "string" ? { toBlock: filterObj.toBlock } : {}),
+					...(filterObj.address !== undefined ? { address: filterObj.address as string | readonly string[] } : {}),
+					...(filterObj.topics !== undefined
+						? { topics: filterObj.topics as readonly (string | readonly string[] | null)[] }
+						: {}),
+					...(typeof filterObj.blockHash === "string" ? { blockHash: filterObj.blockHash } : {}),
+				})
+				return logs.map(serializeLog) as unknown as Record<string, unknown>
+			}),
+		)
+
+// ---------------------------------------------------------------------------
+// Signing / proof stubs
+// ---------------------------------------------------------------------------
+
+/** eth_sign → error (no private key signing in devnet). */
+export const ethSign =
+	(_node: TevmNodeShape): Procedure =>
+	(_params) =>
+		Effect.fail(new InternalError({ message: "eth_sign is not supported — use eth_sendTransaction instead" }))
+
+/** eth_getProof → stub proof structure with empty values. */
+export const ethGetProof =
+	(_node: TevmNodeShape): Procedure =>
+	(params) =>
+		wrapErrors(
+			Effect.gen(function* () {
+				const address = params[0] as string
+				return {
+					address,
+					accountProof: [],
+					balance: "0x0",
+					codeHash: `0x${"00".repeat(32)}`,
+					nonce: "0x0",
+					storageHash: `0x${"00".repeat(32)}`,
+					storageProof: [],
+				} satisfies Record<string, unknown>
+			}),
+		)
+
+// ---------------------------------------------------------------------------
+// Filter procedures
+// ---------------------------------------------------------------------------
+
+/** eth_newFilter → hex filter ID. */
+export const ethNewFilter =
+	(node: TevmNodeShape): Procedure =>
+	(params) =>
+		wrapErrors(
+			Effect.gen(function* () {
+				const filterObj = (params[0] ?? {}) as Record<string, unknown>
+				const head = yield* node.blockchain.getHead().pipe(
+					Effect.catchTag("GenesisError", () => Effect.succeed({ number: 0n })),
+				)
+
+				const fromBlock = filterObj.fromBlock
+					? filterObj.fromBlock === "latest"
+						? head.number
+						: BigInt(filterObj.fromBlock as string)
+					: undefined
+				const toBlock = filterObj.toBlock
+					? filterObj.toBlock === "latest"
+						? head.number
+						: BigInt(filterObj.toBlock as string)
+					: undefined
+
+				const id = node.filterManager.newFilter(
+					{
+						...(fromBlock !== undefined ? { fromBlock } : {}),
+						...(toBlock !== undefined ? { toBlock } : {}),
+						...(filterObj.address !== undefined
+							? { address: filterObj.address as string | readonly string[] }
+							: {}),
+						...(filterObj.topics !== undefined
+							? { topics: filterObj.topics as readonly (string | readonly string[] | null)[] }
+							: {}),
+					},
+					head.number,
+				)
+				return id
+			}),
+		)
+
+/** eth_getFilterChanges → changes since last poll. */
+export const ethGetFilterChanges =
+	(node: TevmNodeShape): Procedure =>
+	(params) =>
+		wrapErrors(
+			Effect.gen(function* () {
+				const filterId = params[0] as string
+				const filter = node.filterManager.getFilter(filterId)
+				if (!filter) {
+					return yield* Effect.fail(new InvalidParamsError({ message: `Filter ${filterId} not found` }))
+				}
+
+				const head = yield* node.blockchain.getHead().pipe(
+					Effect.catchTag("GenesisError", () => Effect.succeed({ number: 0n })),
+				)
+
+				if (filter.type === "block") {
+					// Return block hashes since last poll
+					const hashes: string[] = []
+					for (let i = filter.lastPolledBlock + 1n; i <= head.number; i++) {
+						const block = yield* node.blockchain.getBlockByNumber(i).pipe(
+							Effect.catchTag("BlockNotFoundError", () => Effect.succeed(null)),
+						)
+						if (block) hashes.push(block.hash)
+					}
+					node.filterManager.updateLastPolled(filterId, head.number)
+					return hashes as unknown as Record<string, unknown>
+				}
+
+				if (filter.type === "pendingTransaction") {
+					// Return pending tx hashes
+					const pending = yield* node.txPool.getPendingHashes()
+					node.filterManager.updateLastPolled(filterId, head.number)
+					return pending as unknown as Record<string, unknown>
+				}
+
+				// Log filter: return logs since last poll
+				const logs = yield* getLogsHandler(node)({
+					fromBlock: bigintToHex(filter.lastPolledBlock + 1n),
+					toBlock: "latest",
+					...(filter.criteria?.address !== undefined ? { address: filter.criteria.address } : {}),
+					...(filter.criteria?.topics !== undefined ? { topics: filter.criteria.topics } : {}),
+				})
+				node.filterManager.updateLastPolled(filterId, head.number)
+				return logs.map(serializeLog) as unknown as Record<string, unknown>
+			}),
+		)
+
+/** eth_uninstallFilter → boolean success. */
+export const ethUninstallFilter =
+	(node: TevmNodeShape): Procedure =>
+	(params) =>
+		wrapErrors(
+			Effect.gen(function* () {
+				const filterId = params[0] as string
+				return node.filterManager.removeFilter(filterId)
+			}),
+		)
+
+/** eth_newBlockFilter → hex filter ID. */
+export const ethNewBlockFilter =
+	(node: TevmNodeShape): Procedure =>
+	(_params) =>
+		wrapErrors(
+			Effect.gen(function* () {
+				const head = yield* node.blockchain.getHead().pipe(
+					Effect.catchTag("GenesisError", () => Effect.succeed({ number: 0n })),
+				)
+				return node.filterManager.newBlockFilter(head.number)
+			}),
+		)
+
+/** eth_newPendingTransactionFilter → hex filter ID. */
+export const ethNewPendingTransactionFilter =
+	(node: TevmNodeShape): Procedure =>
+	(_params) =>
+		wrapErrors(
+			Effect.gen(function* () {
+				const head = yield* node.blockchain.getHead().pipe(
+					Effect.catchTag("GenesisError", () => Effect.succeed({ number: 0n })),
+				)
+				return node.filterManager.newPendingTransactionFilter(head.number)
+			}),
+		)
+
+// ---------------------------------------------------------------------------
+// Raw transaction stub
+// ---------------------------------------------------------------------------
+
+/** eth_sendRawTransaction → error (needs RLP tx decoding, not yet implemented). */
+export const ethSendRawTransaction =
+	(_node: TevmNodeShape): Procedure =>
+	(_params) =>
+		Effect.fail(
+			new InternalError({ message: "eth_sendRawTransaction is not yet implemented — use eth_sendTransaction instead" }),
+		)
+
+// ---------------------------------------------------------------------------
+// Block transaction count procedures
+// ---------------------------------------------------------------------------
+
+/** eth_getBlockTransactionCountByHash → hex count of transactions in a block by hash. */
+export const ethGetBlockTransactionCountByHash =
+	(node: TevmNodeShape): Procedure =>
+	(params) =>
+		wrapErrors(
+			Effect.gen(function* () {
+				const hash = params[0] as string
+				const block = yield* getBlockByHashHandler(node)({ hash, includeFullTxs: false })
+				if (!block) return null
+				return bigintToHex(BigInt(block.transactionHashes?.length ?? 0))
+			}),
+		)
+
+/** eth_getBlockTransactionCountByNumber → hex count of transactions in a block by number. */
+export const ethGetBlockTransactionCountByNumber =
+	(node: TevmNodeShape): Procedure =>
+	(params) =>
+		wrapErrors(
+			Effect.gen(function* () {
+				const blockTag = (params[0] as string) ?? "latest"
+				const block = yield* getBlockByNumberHandler(node)({ blockTag, includeFullTxs: false })
+				if (!block) return null
+				return bigintToHex(BigInt(block.transactionHashes?.length ?? 0))
+			}),
+		)
+
+// ---------------------------------------------------------------------------
+// Transaction-by-index procedures
+// ---------------------------------------------------------------------------
+
+/** eth_getTransactionByBlockHashAndIndex → tx object or null. */
+export const ethGetTransactionByBlockHashAndIndex =
+	(node: TevmNodeShape): Procedure =>
+	(params) =>
+		wrapErrors(
+			Effect.gen(function* () {
+				const hash = params[0] as string
+				const index = Number(params[1] as string)
+				const block = yield* getBlockByHashHandler(node)({ hash, includeFullTxs: false })
+				if (!block || !block.transactionHashes) return null
+				const txHash = block.transactionHashes[index]
+				if (!txHash) return null
+				const tx = yield* getTransactionByHashHandler(node)({ hash: txHash })
+				if (!tx) return null
+				return serializeTransaction(tx)
+			}),
+		)
+
+/** eth_getTransactionByBlockNumberAndIndex → tx object or null. */
+export const ethGetTransactionByBlockNumberAndIndex =
+	(node: TevmNodeShape): Procedure =>
+	(params) =>
+		wrapErrors(
+			Effect.gen(function* () {
+				const blockTag = (params[0] as string) ?? "latest"
+				const index = Number(params[1] as string)
+				const block = yield* getBlockByNumberHandler(node)({ blockTag, includeFullTxs: false })
+				if (!block || !block.transactionHashes) return null
+				const txHash = block.transactionHashes[index]
+				if (!txHash) return null
+				const tx = yield* getTransactionByHashHandler(node)({ hash: txHash })
+				if (!tx) return null
+				return serializeTransaction(tx)
 			}),
 		)
