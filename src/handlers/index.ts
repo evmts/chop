@@ -36,6 +36,17 @@ export {
 	stopImpersonatingAccountHandler,
 	autoImpersonateAccountHandler,
 } from "./impersonate.js"
+export { getBlockByNumberHandler } from "./getBlockByNumber.js"
+export type { GetBlockByNumberParams } from "./getBlockByNumber.js"
+export { getBlockByHashHandler } from "./getBlockByHash.js"
+export type { GetBlockByHashParams } from "./getBlockByHash.js"
+export { getTransactionByHashHandler } from "./getTransactionByHash.js"
+export type { GetTransactionByHashParams } from "./getTransactionByHash.js"
+export { gasPriceHandler } from "./gasPrice.js"
+export { estimateGasHandler } from "./estimateGas.js"
+export type { EstimateGasParams } from "./estimateGas.js"
+export { getLogsHandler } from "./getLogs.js"
+export type { GetLogsParams } from "./getLogs.js"
 export {
 	InsufficientBalanceError,
 	IntrinsicGasTooLowError,
