@@ -12,8 +12,8 @@
 
 import { Args, Command } from "@effect/cli"
 import { FetchHttpClient, type HttpClient } from "@effect/platform"
-import { Console, Data, Effect } from "effect"
 import { hashHex, hashString } from "@tevm/voltaire/Keccak256"
+import { Console, Data, Effect } from "effect"
 import { Hex } from "voltaire-effect"
 import { type RpcClientError, rpcCall } from "../../rpc/client.js"
 import { handleCommandErrors, jsonOption, rpcUrlOption } from "../shared.js"
@@ -58,7 +58,7 @@ const hexToBytes = (hex: string): Uint8Array => {
 	const clean = hex.startsWith("0x") ? hex.slice(2) : hex
 	const bytes = new Uint8Array(clean.length / 2)
 	for (let i = 0; i < bytes.length; i++) {
-		bytes[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16)
+		bytes[i] = Number.parseInt(clean.slice(i * 2, i * 2 + 2), 16)
 	}
 	return bytes
 }
@@ -97,7 +97,7 @@ export const namehashHandler = (name: string): Effect.Effect<string, EnsError> =
 
 			// Process from right to left
 			for (let i = labels.length - 1; i >= 0; i--) {
-				const label = labels[i]!
+				const label = labels[i] as string
 				const labelHash = new Uint8Array(hashString(label))
 				node = new Uint8Array(hashHex(Hex.fromBytes(concatBytes(node, labelHash))))
 			}
@@ -131,9 +131,7 @@ export const resolveNameHandler = (
 		const resolverResult = yield* rpcCall(rpcUrl, "eth_call", [
 			{ to: ENS_REGISTRY, data: resolverData },
 			"latest",
-		]).pipe(
-			Effect.mapError((e) => new EnsError({ message: `ENS registry call failed: ${e.message}`, cause: e })),
-		)
+		]).pipe(Effect.mapError((e) => new EnsError({ message: `ENS registry call failed: ${e.message}`, cause: e })))
 
 		const resolverHex = String(resolverResult)
 		// Extract address from 32-byte return (last 20 bytes of 32-byte word)
@@ -145,10 +143,7 @@ export const resolveNameHandler = (
 
 		// Call addr(bytes32) on the resolver
 		const addrData = `0x${ADDR_SELECTOR}${nameHashClean}`
-		const addrResult = yield* rpcCall(rpcUrl, "eth_call", [
-			{ to: resolverAddr, data: addrData },
-			"latest",
-		]).pipe(
+		const addrResult = yield* rpcCall(rpcUrl, "eth_call", [{ to: resolverAddr, data: addrData }, "latest"]).pipe(
 			Effect.mapError((e) => new EnsError({ message: `ENS resolver call failed: ${e.message}`, cause: e })),
 		)
 
@@ -186,9 +181,7 @@ export const lookupAddressHandler = (
 		const resolverResult = yield* rpcCall(rpcUrl, "eth_call", [
 			{ to: ENS_REGISTRY, data: resolverData },
 			"latest",
-		]).pipe(
-			Effect.mapError((e) => new EnsError({ message: `ENS registry call failed: ${e.message}`, cause: e })),
-		)
+		]).pipe(Effect.mapError((e) => new EnsError({ message: `ENS registry call failed: ${e.message}`, cause: e })))
 
 		const resolverHex = String(resolverResult)
 		const resolverAddr = `0x${resolverHex.slice(26)}`
@@ -199,10 +192,7 @@ export const lookupAddressHandler = (
 
 		// Call name(bytes32) on the resolver
 		const nameData = `0x${NAME_SELECTOR}${nameHashClean}`
-		const nameResult = yield* rpcCall(rpcUrl, "eth_call", [
-			{ to: resolverAddr, data: nameData },
-			"latest",
-		]).pipe(
+		const nameResult = yield* rpcCall(rpcUrl, "eth_call", [{ to: resolverAddr, data: nameData }, "latest"]).pipe(
 			Effect.mapError((e) => new EnsError({ message: `ENS resolver call failed: ${e.message}`, cause: e })),
 		)
 
@@ -280,9 +270,7 @@ export const resolveNameCommand = Command.make(
 export const lookupAddressCommand = Command.make(
 	"lookup-address",
 	{
-		address: Args.text({ name: "address" }).pipe(
-			Args.withDescription("Ethereum address to look up (0x-prefixed)"),
-		),
+		address: Args.text({ name: "address" }).pipe(Args.withDescription("Ethereum address to look up (0x-prefixed)")),
 		rpcUrl: rpcUrlOption,
 		json: jsonOption,
 	},

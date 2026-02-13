@@ -361,7 +361,7 @@ export const sendHandler = (
 
 		const txParams: Record<string, unknown> = { from, to, data }
 		if (value) {
-			txParams["value"] = value.startsWith("0x") ? value : `0x${BigInt(value).toString(16)}`
+			txParams.value = value.startsWith("0x") ? value : `0x${BigInt(value).toString(16)}`
 		}
 
 		const result = yield* rpcCall(rpcUrl, "eth_sendTransaction", [txParams])
@@ -440,10 +440,7 @@ export const sendCommand = Command.make(
 			Options.withDescription("Private key for signing (stored for future use)"),
 			Options.optional,
 		),
-		value: Options.text("value").pipe(
-			Options.withDescription("Value to send in wei"),
-			Options.optional,
-		),
+		value: Options.text("value").pipe(Options.withDescription("Value to send in wei"), Options.optional),
 		sig: Args.text({ name: "sig" }).pipe(
 			Args.withDescription("Function signature, e.g. 'transfer(address,uint256)'"),
 			Args.optional,
@@ -473,9 +470,7 @@ export const sendCommand = Command.make(
 export const rpcGenericCommand = Command.make(
 	"rpc",
 	{
-		method: Args.text({ name: "method" }).pipe(
-			Args.withDescription("JSON-RPC method name (e.g. 'eth_chainId')"),
-		),
+		method: Args.text({ name: "method" }).pipe(Args.withDescription("JSON-RPC method name (e.g. 'eth_chainId')")),
 		params: Args.text({ name: "params" }).pipe(
 			Args.withDescription("Method parameters (JSON values or strings)"),
 			Args.repeated,

@@ -49,9 +49,7 @@ const hexToDecimal = (hex: unknown): string => {
  * Supports: decimal number, hex number, block tags (latest/earliest/pending/safe/finalized),
  * or a 66-char block hash (dispatches to eth_getBlockByHash).
  */
-export const parseBlockId = (
-	id: string,
-): Effect.Effect<{ method: string; params: unknown[] }, InvalidBlockIdError> => {
+export const parseBlockId = (id: string): Effect.Effect<{ method: string; params: unknown[] }, InvalidBlockIdError> => {
 	const tags = ["latest", "earliest", "pending", "safe", "finalized"]
 	if (tags.includes(id)) {
 		return Effect.succeed({ method: "eth_getBlockByNumber", params: [id, true] })
@@ -86,16 +84,16 @@ export const parseBlockId = (
  */
 const formatBlock = (block: Record<string, unknown>): string => {
 	const lines: string[] = []
-	const num = block["number"]
+	const num = block.number
 	if (num) lines.push(`Block:          ${hexToDecimal(num)}`)
-	if (block["hash"]) lines.push(`Hash:           ${block["hash"]}`)
-	if (block["parentHash"]) lines.push(`Parent Hash:    ${block["parentHash"]}`)
-	if (block["timestamp"]) lines.push(`Timestamp:      ${hexToDecimal(block["timestamp"])}`)
-	if (block["gasUsed"]) lines.push(`Gas Used:       ${hexToDecimal(block["gasUsed"])}`)
-	if (block["gasLimit"]) lines.push(`Gas Limit:      ${hexToDecimal(block["gasLimit"])}`)
-	if (block["baseFeePerGas"]) lines.push(`Base Fee:       ${hexToDecimal(block["baseFeePerGas"])}`)
-	if (block["miner"]) lines.push(`Miner:          ${block["miner"]}`)
-	const txs = block["transactions"]
+	if (block.hash) lines.push(`Hash:           ${block.hash}`)
+	if (block.parentHash) lines.push(`Parent Hash:    ${block.parentHash}`)
+	if (block.timestamp) lines.push(`Timestamp:      ${hexToDecimal(block.timestamp)}`)
+	if (block.gasUsed) lines.push(`Gas Used:       ${hexToDecimal(block.gasUsed)}`)
+	if (block.gasLimit) lines.push(`Gas Limit:      ${hexToDecimal(block.gasLimit)}`)
+	if (block.baseFeePerGas) lines.push(`Base Fee:       ${hexToDecimal(block.baseFeePerGas)}`)
+	if (block.miner) lines.push(`Miner:          ${block.miner}`)
+	const txs = block.transactions
 	if (Array.isArray(txs)) lines.push(`Transactions:   ${txs.length}`)
 	return lines.join("\n")
 }
@@ -105,15 +103,15 @@ const formatBlock = (block: Record<string, unknown>): string => {
  */
 const formatTx = (tx: Record<string, unknown>): string => {
 	const lines: string[] = []
-	if (tx["hash"]) lines.push(`Hash:        ${tx["hash"]}`)
-	if (tx["from"]) lines.push(`From:        ${tx["from"]}`)
-	if (tx["to"]) lines.push(`To:          ${tx["to"] ?? "(contract creation)"}`)
-	if (tx["value"]) lines.push(`Value:       ${hexToDecimal(tx["value"])} wei`)
-	if (tx["nonce"]) lines.push(`Nonce:       ${hexToDecimal(tx["nonce"])}`)
-	if (tx["gas"]) lines.push(`Gas:         ${hexToDecimal(tx["gas"])}`)
-	if (tx["gasPrice"]) lines.push(`Gas Price:   ${hexToDecimal(tx["gasPrice"])}`)
-	if (tx["blockNumber"]) lines.push(`Block:       ${hexToDecimal(tx["blockNumber"])}`)
-	if (tx["input"]) lines.push(`Input:       ${tx["input"]}`)
+	if (tx.hash) lines.push(`Hash:        ${tx.hash}`)
+	if (tx.from) lines.push(`From:        ${tx.from}`)
+	if (tx.to) lines.push(`To:          ${tx.to ?? "(contract creation)"}`)
+	if (tx.value) lines.push(`Value:       ${hexToDecimal(tx.value)} wei`)
+	if (tx.nonce) lines.push(`Nonce:       ${hexToDecimal(tx.nonce)}`)
+	if (tx.gas) lines.push(`Gas:         ${hexToDecimal(tx.gas)}`)
+	if (tx.gasPrice) lines.push(`Gas Price:   ${hexToDecimal(tx.gasPrice)}`)
+	if (tx.blockNumber) lines.push(`Block:       ${hexToDecimal(tx.blockNumber)}`)
+	if (tx.input) lines.push(`Input:       ${tx.input}`)
 	return lines.join("\n")
 }
 
@@ -122,16 +120,39 @@ const formatTx = (tx: Record<string, unknown>): string => {
  */
 const formatReceipt = (receipt: Record<string, unknown>): string => {
 	const lines: string[] = []
-	if (receipt["transactionHash"]) lines.push(`Tx Hash:       ${receipt["transactionHash"]}`)
-	if (receipt["status"]) lines.push(`Status:        ${receipt["status"] === "0x1" ? "Success" : "Reverted"}`)
-	if (receipt["blockNumber"]) lines.push(`Block:         ${hexToDecimal(receipt["blockNumber"])}`)
-	if (receipt["from"]) lines.push(`From:          ${receipt["from"]}`)
-	if (receipt["to"]) lines.push(`To:            ${receipt["to"] ?? "(contract creation)"}`)
-	if (receipt["gasUsed"]) lines.push(`Gas Used:      ${hexToDecimal(receipt["gasUsed"])}`)
-	if (receipt["contractAddress"]) lines.push(`Contract:      ${receipt["contractAddress"]}`)
-	const logs = receipt["logs"]
+	if (receipt.transactionHash) lines.push(`Tx Hash:       ${receipt.transactionHash}`)
+	if (receipt.status) lines.push(`Status:        ${receipt.status === "0x1" ? "Success" : "Reverted"}`)
+	if (receipt.blockNumber) lines.push(`Block:         ${hexToDecimal(receipt.blockNumber)}`)
+	if (receipt.from) lines.push(`From:          ${receipt.from}`)
+	if (receipt.to) lines.push(`To:            ${receipt.to ?? "(contract creation)"}`)
+	if (receipt.gasUsed) lines.push(`Gas Used:      ${hexToDecimal(receipt.gasUsed)}`)
+	if (receipt.contractAddress) lines.push(`Contract:      ${receipt.contractAddress}`)
+	const logs = receipt.logs
 	if (Array.isArray(logs)) lines.push(`Logs:          ${logs.length}`)
 	return lines.join("\n")
+}
+
+/**
+ * Format a single log entry for human-readable output.
+ */
+const formatLog = (log: Record<string, unknown>): string => {
+	const lines: string[] = []
+	lines.push(`Address: ${log.address ?? ""}`)
+	const topics = (log.topics as string[]) ?? []
+	for (let i = 0; i < topics.length; i++) {
+		lines.push(`Topic ${i}: ${topics[i]}`)
+	}
+	lines.push(`Data:    ${log.data ?? "0x"}`)
+	lines.push("---")
+	return lines.join("\n")
+}
+
+/**
+ * Format a logs result set for human-readable output.
+ */
+const formatLogs = (logs: readonly Record<string, unknown>[]): string => {
+	if (logs.length === 0) return "No logs found"
+	return logs.map(formatLog).join("\n")
 }
 
 // ============================================================================
@@ -149,9 +170,7 @@ export const blockHandler = (
 		const { method, params } = yield* parseBlockId(blockId)
 		const result = yield* rpcCall(rpcUrl, method, params)
 		if (result === null || result === undefined) {
-			return yield* Effect.fail(
-				new InvalidBlockIdError({ message: `Block not found: ${blockId}` }),
-			)
+			return yield* Effect.fail(new InvalidBlockIdError({ message: `Block not found: ${blockId}` }))
 		}
 		return result as Record<string, unknown>
 	})
@@ -166,9 +185,7 @@ export const txHandler = (
 	Effect.gen(function* () {
 		const result = yield* rpcCall(rpcUrl, "eth_getTransactionByHash", [hash])
 		if (result === null || result === undefined) {
-			return yield* Effect.fail(
-				new InvalidBlockIdError({ message: `Transaction not found: ${hash}` }),
-			)
+			return yield* Effect.fail(new InvalidBlockIdError({ message: `Transaction not found: ${hash}` }))
 		}
 		return result as Record<string, unknown>
 	})
@@ -183,9 +200,7 @@ export const receiptHandler = (
 	Effect.gen(function* () {
 		const result = yield* rpcCall(rpcUrl, "eth_getTransactionReceipt", [hash])
 		if (result === null || result === undefined) {
-			return yield* Effect.fail(
-				new InvalidBlockIdError({ message: `Receipt not found: ${hash}` }),
-			)
+			return yield* Effect.fail(new InvalidBlockIdError({ message: `Receipt not found: ${hash}` }))
 		}
 		return result as Record<string, unknown>
 	})
@@ -207,8 +222,8 @@ export const logsHandler = (
 			fromBlock: opts.fromBlock ?? "latest",
 			toBlock: opts.toBlock ?? "latest",
 		}
-		if (opts.address) filter["address"] = opts.address
-		if (opts.topics && opts.topics.length > 0) filter["topics"] = [...opts.topics]
+		if (opts.address) filter.address = opts.address
+		if (opts.topics && opts.topics.length > 0) filter.topics = [...opts.topics]
 		const result = yield* rpcCall(rpcUrl, "eth_getLogs", [filter])
 		return (result ?? []) as readonly Record<string, unknown>[]
 	})
@@ -216,9 +231,7 @@ export const logsHandler = (
 /**
  * Get current gas price as a decimal string (wei).
  */
-export const gasPriceHandler = (
-	rpcUrl: string,
-): Effect.Effect<string, RpcClientError, HttpClient.HttpClient> =>
+export const gasPriceHandler = (rpcUrl: string): Effect.Effect<string, RpcClientError, HttpClient.HttpClient> =>
 	rpcCall(rpcUrl, "eth_gasPrice", []).pipe(Effect.map(hexToDecimal))
 
 /**
@@ -229,11 +242,9 @@ export const baseFeeHandler = (
 ): Effect.Effect<string, RpcClientError | InvalidBlockIdError, HttpClient.HttpClient> =>
 	Effect.gen(function* () {
 		const block = yield* blockHandler(rpcUrl, "latest")
-		const baseFee = block["baseFeePerGas"]
+		const baseFee = block.baseFeePerGas
 		if (typeof baseFee !== "string") {
-			return yield* Effect.fail(
-				new InvalidBlockIdError({ message: "Latest block does not have baseFeePerGas" }),
-			)
+			return yield* Effect.fail(new InvalidBlockIdError({ message: "Latest block does not have baseFeePerGas" }))
 		}
 		return hexToDecimal(baseFee)
 	})
@@ -248,20 +259,18 @@ export const findBlockHandler = (
 	Effect.gen(function* () {
 		const target = Number(targetTimestamp)
 		if (!Number.isFinite(target) || target < 0) {
-			return yield* Effect.fail(
-				new InvalidTimestampError({ message: `Invalid timestamp: ${targetTimestamp}` }),
-			)
+			return yield* Effect.fail(new InvalidTimestampError({ message: `Invalid timestamp: ${targetTimestamp}` }))
 		}
 
 		const latestBlock = yield* blockHandler(rpcUrl, "latest")
-		const latestNumber = Number(BigInt(latestBlock["number"] as string))
-		const latestTimestamp = Number(BigInt(latestBlock["timestamp"] as string))
+		const latestNumber = Number(BigInt(latestBlock.number as string))
+		const latestTimestamp = Number(BigInt(latestBlock.timestamp as string))
 
 		if (target >= latestTimestamp) return String(latestNumber)
 		if (latestNumber === 0) return "0"
 
 		const genesisBlock = yield* blockHandler(rpcUrl, "0")
-		const genesisTimestamp = Number(BigInt(genesisBlock["timestamp"] as string))
+		const genesisTimestamp = Number(BigInt(genesisBlock.timestamp as string))
 
 		if (target <= genesisTimestamp) return "0"
 
@@ -272,7 +281,7 @@ export const findBlockHandler = (
 		while (low < high) {
 			const mid = Math.floor((low + high + 1) / 2)
 			const midBlock = yield* blockHandler(rpcUrl, String(mid))
-			const midTimestamp = Number(BigInt(midBlock["timestamp"] as string))
+			const midTimestamp = Number(BigInt(midBlock.timestamp as string))
 
 			if (midTimestamp <= target) {
 				low = mid
@@ -396,21 +405,7 @@ export const logsCommand = Command.make(
 			if (json) {
 				yield* Console.log(JSON.stringify(result))
 			} else {
-				if (result.length === 0) {
-					yield* Console.log("No logs found")
-				} else {
-					for (const log of result) {
-						const addr = log["address"] ?? ""
-						const topics = (log["topics"] as string[]) ?? []
-						const data = log["data"] ?? "0x"
-						yield* Console.log(`Address: ${addr}`)
-						for (let i = 0; i < topics.length; i++) {
-							yield* Console.log(`Topic ${i}: ${topics[i]}`)
-						}
-						yield* Console.log(`Data:    ${data}`)
-						yield* Console.log("---")
-					}
-				}
+				yield* Console.log(formatLogs(result))
 			}
 		}).pipe(Effect.provide(FetchHttpClient.layer), handleCommandErrors),
 ).pipe(Command.withDescription("Get logs matching a filter"))
@@ -435,18 +430,15 @@ export const gasPriceCommand = Command.make(
 /**
  * `chop base-fee -r <url>`
  */
-export const baseFeeCommand = Command.make(
-	"base-fee",
-	{ rpcUrl: rpcUrlOption, json: jsonOption },
-	({ rpcUrl, json }) =>
-		Effect.gen(function* () {
-			const result = yield* baseFeeHandler(rpcUrl)
-			if (json) {
-				yield* Console.log(JSON.stringify({ baseFee: result }))
-			} else {
-				yield* Console.log(result)
-			}
-		}).pipe(Effect.provide(FetchHttpClient.layer), handleCommandErrors),
+export const baseFeeCommand = Command.make("base-fee", { rpcUrl: rpcUrlOption, json: jsonOption }, ({ rpcUrl, json }) =>
+	Effect.gen(function* () {
+		const result = yield* baseFeeHandler(rpcUrl)
+		if (json) {
+			yield* Console.log(JSON.stringify({ baseFee: result }))
+		} else {
+			yield* Console.log(result)
+		}
+	}).pipe(Effect.provide(FetchHttpClient.layer), handleCommandErrors),
 ).pipe(Command.withDescription("Get the current base fee per gas (wei)"))
 
 /**
@@ -455,9 +447,7 @@ export const baseFeeCommand = Command.make(
 export const findBlockCommand = Command.make(
 	"find-block",
 	{
-		timestamp: Args.text({ name: "timestamp" }).pipe(
-			Args.withDescription("Unix timestamp to search for"),
-		),
+		timestamp: Args.text({ name: "timestamp" }).pipe(Args.withDescription("Unix timestamp to search for")),
 		rpcUrl: rpcUrlOption,
 		json: jsonOption,
 	},
