@@ -49,6 +49,8 @@ export { getLogsHandler } from "./getLogs.js"
 export type { GetLogsParams } from "./getLogs.js"
 export { traceCallHandler } from "./traceCall.js"
 export type { TraceCallParams } from "./traceCall.js"
+export { traceTransactionHandler } from "./traceTransaction.js"
+export type { TraceTransactionParams } from "./traceTransaction.js"
 export {
 	InsufficientBalanceError,
 	IntrinsicGasTooLowError,
