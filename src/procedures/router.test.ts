@@ -85,6 +85,70 @@ describe("methodRouter", () => {
 	)
 
 	// -----------------------------------------------------------------------
+	// Anvil account management methods
+	// -----------------------------------------------------------------------
+
+	it.effect("routes anvil_setBalance → returns null", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const result = yield* methodRouter(node)("anvil_setBalance", [`0x${"00".repeat(20)}`, "0x1"])
+			expect(result).toBeNull()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	it.effect("routes anvil_setCode → returns null", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const result = yield* methodRouter(node)("anvil_setCode", [`0x${"00".repeat(20)}`, "0xdeadbeef"])
+			expect(result).toBeNull()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	it.effect("routes anvil_setNonce → returns null", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const result = yield* methodRouter(node)("anvil_setNonce", [`0x${"00".repeat(20)}`, "0x1"])
+			expect(result).toBeNull()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	it.effect("routes anvil_setStorageAt → returns true", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const result = yield* methodRouter(node)("anvil_setStorageAt", [
+				`0x${"00".repeat(20)}`,
+				`0x${"00".repeat(32)}`,
+				"0x1",
+			])
+			expect(result).toBe(true)
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	it.effect("routes anvil_impersonateAccount → returns null", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const result = yield* methodRouter(node)("anvil_impersonateAccount", [`0x${"ab".repeat(20)}`])
+			expect(result).toBeNull()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	it.effect("routes anvil_stopImpersonatingAccount → returns null", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const result = yield* methodRouter(node)("anvil_stopImpersonatingAccount", [`0x${"ab".repeat(20)}`])
+			expect(result).toBeNull()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	it.effect("routes anvil_autoImpersonateAccount → returns null", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const result = yield* methodRouter(node)("anvil_autoImpersonateAccount", [true])
+			expect(result).toBeNull()
+		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	)
+
+	// -----------------------------------------------------------------------
 	// Unknown method fails
 	// -----------------------------------------------------------------------
 

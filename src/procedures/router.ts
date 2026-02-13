@@ -1,6 +1,15 @@
 import { Effect } from "effect"
 import type { TevmNodeShape } from "../node/index.js"
-import { anvilMine } from "./anvil.js"
+import {
+	anvilAutoImpersonateAccount,
+	anvilImpersonateAccount,
+	anvilMine,
+	anvilSetBalance,
+	anvilSetCode,
+	anvilSetNonce,
+	anvilSetStorageAt,
+	anvilStopImpersonatingAccount,
+} from "./anvil.js"
 import { type InternalError, MethodNotFoundError } from "./errors.js"
 import {
 	type Procedure,
@@ -36,6 +45,13 @@ const methods: Record<string, (node: TevmNodeShape) => Procedure> = {
 	eth_getTransactionReceipt: ethGetTransactionReceipt,
 	// Anvil methods
 	anvil_mine: anvilMine,
+	anvil_setBalance: anvilSetBalance,
+	anvil_setCode: anvilSetCode,
+	anvil_setNonce: anvilSetNonce,
+	anvil_setStorageAt: anvilSetStorageAt,
+	anvil_impersonateAccount: anvilImpersonateAccount,
+	anvil_stopImpersonatingAccount: anvilStopImpersonatingAccount,
+	anvil_autoImpersonateAccount: anvilAutoImpersonateAccount,
 	// EVM methods
 	evm_mine: evmMine,
 	evm_setAutomine: evmSetAutomine,
