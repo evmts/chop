@@ -3,11 +3,14 @@
  *
  * Starts an HTTP server, creates pre-funded test accounts,
  * prints a startup banner, and blocks until Ctrl+C.
+ *
+ * Supports fork mode with --fork-url and --fork-block-number.
  */
 
 import { Command, Options } from "@effect/cli"
 import { Console, Effect } from "effect"
 import { DEFAULT_BALANCE, type TestAccount } from "../../node/accounts.js"
+import type { ForkDataError } from "../../node/fork/errors.js"
 import { TevmNode, TevmNodeService } from "../../node/index.js"
 import type { RpcServer } from "../../rpc/server.js"
 import { startRpcServer } from "../../rpc/server.js"
@@ -33,6 +36,17 @@ const accountsOption = Options.integer("accounts").pipe(
 	Options.withDefault(10),
 )
 
+const forkUrlOption = Options.text("fork-url").pipe(
+	Options.withAlias("f"),
+	Options.withDescription("Fork from a remote RPC URL"),
+	Options.optional,
+)
+
+const forkBlockNumberOption = Options.integer("fork-block-number").pipe(
+	Options.withDescription("Pin fork to a specific block number (default: latest)"),
+	Options.optional,
+)
+
 // ---------------------------------------------------------------------------
 // Banner formatter (pure)
 // ---------------------------------------------------------------------------
@@ -42,9 +56,16 @@ const accountsOption = Options.integer("accounts").pipe(
  *
  * @param port - The port the server is listening on.
  * @param accounts - The pre-funded test accounts.
+ * @param forkUrl - Optional fork URL to display.
+ * @param forkBlockNumber - Optional fork block number to display.
  * @returns A formatted banner string.
  */
-export const formatBanner = (port: number, accounts: readonly TestAccount[]): string => {
+export const formatBanner = (
+	port: number,
+	accounts: readonly TestAccount[],
+	forkUrl?: string,
+	forkBlockNumber?: bigint,
+): string => {
 	const ethAmount = DEFAULT_BALANCE / 10n ** 18n
 	const lines: string[] = []
 
@@ -53,18 +74,28 @@ export const formatBanner = (port: number, accounts: readonly TestAccount[]): st
 	lines.push("  ═══════════════════════════════════════════════════════════════")
 	lines.push("")
 
+	if (forkUrl !== undefined) {
+		lines.push("  Fork Mode")
+		lines.push("  ───────────────────────────────────────────────────────────────")
+		lines.push(`  Fork URL: ${forkUrl}`)
+		if (forkBlockNumber !== undefined) {
+			lines.push(`  Block Number: ${forkBlockNumber}`)
+		}
+		lines.push("")
+	}
+
 	if (accounts.length > 0) {
 		lines.push("  Available Accounts")
 		lines.push("  ───────────────────────────────────────────────────────────────")
 		for (let i = 0; i < accounts.length; i++) {
-			lines.push(`  (${i}) ${accounts[i]!.address} (${ethAmount} ETH)`)
+			lines.push(`  (${i}) ${accounts[i]?.address} (${ethAmount} ETH)`)
 		}
 		lines.push("")
 
 		lines.push("  Private Keys")
 		lines.push("  ───────────────────────────────────────────────────────────────")
 		for (let i = 0; i < accounts.length; i++) {
-			lines.push(`  (${i}) ${accounts[i]!.privateKey}`)
+			lines.push(`  (${i}) ${accounts[i]?.privateKey}`)
 		}
 		lines.push("")
 	}
@@ -84,6 +115,8 @@ export interface NodeServerOptions {
 	readonly port: number
 	readonly chainId?: bigint
 	readonly accounts?: number
+	readonly forkUrl?: string
+	readonly forkBlockNumber?: bigint
 }
 
 /**
@@ -94,12 +127,37 @@ export interface NodeServerOptions {
  */
 export const startNodeServer = (
 	options: NodeServerOptions,
-): Effect.Effect<{
-	readonly server: RpcServer
-	readonly accounts: readonly TestAccount[]
-	readonly close: () => Effect.Effect<void>
-}> =>
+): Effect.Effect<
+	{
+		readonly server: RpcServer
+		readonly accounts: readonly TestAccount[]
+		readonly close: () => Effect.Effect<void>
+		readonly forkBlockNumber?: bigint
+	},
+	ForkDataError
+> =>
 	Effect.gen(function* () {
+		if (options.forkUrl !== undefined) {
+			// Fork mode
+			const forkNodeLayer = yield* TevmNode.ForkTest({
+				forkUrl: options.forkUrl,
+				...(options.forkBlockNumber !== undefined ? { forkBlockNumber: options.forkBlockNumber } : {}),
+				...(options.chainId !== undefined ? { chainId: options.chainId } : {}),
+				...(options.accounts !== undefined ? { accounts: options.accounts } : {}),
+			})
+
+			const node = yield* Effect.provide(TevmNodeService, forkNodeLayer)
+			const server = yield* startRpcServer({ port: options.port }, node)
+
+			return {
+				server,
+				accounts: node.accounts,
+				close: server.close,
+				...(options.forkBlockNumber !== undefined ? { forkBlockNumber: options.forkBlockNumber } : {}),
+			}
+		}
+
+		// Local mode
 		const nodeOpts = {
 			...(options.chainId !== undefined ? { chainId: options.chainId } : {}),
 			...(options.accounts !== undefined ? { accounts: options.accounts } : {}),
@@ -128,17 +186,28 @@ export const startNodeServer = (
  */
 export const nodeCommand = Command.make(
 	"node",
-	{ port: portOption, chainId: chainIdOption, accounts: accountsOption },
-	({ port, chainId, accounts: accountsCount }) =>
+	{
+		port: portOption,
+		chainId: chainIdOption,
+		accounts: accountsOption,
+		forkUrl: forkUrlOption,
+		forkBlockNumber: forkBlockNumberOption,
+	},
+	({ port, chainId, accounts: accountsCount, forkUrl, forkBlockNumber }) =>
 		Effect.gen(function* () {
+			const forkUrlValue = forkUrl._tag === "Some" ? forkUrl.value : undefined
+			const forkBlockValue = forkBlockNumber._tag === "Some" ? BigInt(forkBlockNumber.value) : undefined
+
 			const { server, accounts } = yield* startNodeServer({
 				port,
 				chainId: BigInt(chainId),
 				accounts: accountsCount,
+				...(forkUrlValue !== undefined ? { forkUrl: forkUrlValue } : {}),
+				...(forkBlockValue !== undefined ? { forkBlockNumber: forkBlockValue } : {}),
 			})
 
 			// Print startup banner
-			yield* Console.log(formatBanner(server.port, accounts))
+			yield* Console.log(formatBanner(server.port, accounts, forkUrlValue, forkBlockValue))
 
 			// Block until interrupted (Ctrl+C)
 			yield* Effect.never.pipe(
