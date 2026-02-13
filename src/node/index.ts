@@ -1,4 +1,4 @@
-// Node module — composition root for local-mode EVM devnet
+// Node module — composition root for local-mode and fork-mode EVM devnet
 
 import { Context, Effect, Layer } from "effect"
 import type { Block } from "../blockchain/block-store.js"
@@ -14,9 +14,13 @@ import type { EvmWasmShape } from "../evm/wasm.js"
 import { JournalLive } from "../state/journal.js"
 import { WorldStateLive } from "../state/world-state.js"
 import { type TestAccount, fundAccounts, getTestAccounts } from "./accounts.js"
+import type { ForkDataError } from "./fork/errors.js"
+import { resolveForkConfig } from "./fork/fork-config.js"
+import { ForkWorldStateLive } from "./fork/fork-state.js"
+import { HttpTransportLive, HttpTransportService } from "./fork/http-transport.js"
+import { type ImpersonationManagerApi, makeImpersonationManager } from "./impersonation-manager.js"
 import { MiningService, MiningServiceLive } from "./mining.js"
 import type { MiningServiceApi } from "./mining.js"
-import { type ImpersonationManagerApi, makeImpersonationManager } from "./impersonation-manager.js"
 import { type SnapshotManagerApi, makeSnapshotManager } from "./snapshot-manager.js"
 import { TxPoolLive, TxPoolService } from "./tx-pool.js"
 import type { TxPoolApi } from "./tx-pool.js"
@@ -59,6 +63,18 @@ export interface NodeOptions {
 	readonly wasmPath?: string
 	/** Number of pre-funded test accounts (default: 10, max: 10). */
 	readonly accounts?: number
+}
+
+/** Options for creating a fork-mode TevmNode. */
+export interface ForkNodeOptions extends NodeOptions {
+	/** Upstream RPC URL to fork from. */
+	readonly forkUrl: string
+	/** Pin to a specific block number (default: latest). */
+	readonly forkBlockNumber?: bigint
+	/** HTTP transport timeout in ms (default: 10_000). */
+	readonly transportTimeoutMs?: number
+	/** HTTP transport max retries (default: 3). */
+	readonly transportMaxRetries?: number
 }
 
 // ---------------------------------------------------------------------------
@@ -148,6 +164,26 @@ const sharedSubLayers = (options: NodeOptions = {}) => {
 }
 
 // ---------------------------------------------------------------------------
+// Fork-mode shared sub-service layers
+// ---------------------------------------------------------------------------
+
+const forkSharedSubLayers = (options: NodeOptions, forkBlockNumber: bigint) => {
+	const journalLayer = JournalLive()
+	const forkWorldState = ForkWorldStateLive({ blockNumber: forkBlockNumber }).pipe(
+		Layer.provide(journalLayer),
+		// HttpTransportService is provided externally
+	)
+
+	const base = Layer.mergeAll(
+		HostAdapterLive.pipe(Layer.provide(forkWorldState)),
+		BlockchainLive.pipe(Layer.provide(BlockStoreLive())),
+		ReleaseSpecLive(options.hardfork ?? "prague"),
+		TxPoolLive(),
+	)
+	return Layer.mergeAll(base, MiningServiceLive.pipe(Layer.provide(base)))
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -168,6 +204,57 @@ export const TevmNode = {
 	 */
 	LocalTest: (options: NodeOptions = {}): Layer.Layer<TevmNodeService> =>
 		TevmNodeLive(options).pipe(Layer.provide(sharedSubLayers(options)), Layer.provide(EvmWasmTest)),
+
+	/**
+	 * Fork mode layer with test EVM.
+	 *
+	 * Resolves chain ID and block number from the upstream RPC,
+	 * then creates a node with a ForkWorldState overlay.
+	 *
+	 * The returned Effect must be run to resolve the fork config
+	 * before building the layer.
+	 */
+	ForkTest: (options: ForkNodeOptions): Effect.Effect<Layer.Layer<TevmNodeService>, ForkDataError> =>
+		Effect.gen(function* () {
+			const transportLayer = HttpTransportLive({
+				url: options.forkUrl,
+				...(options.transportTimeoutMs !== undefined ? { timeoutMs: options.transportTimeoutMs } : {}),
+				...(options.transportMaxRetries !== undefined ? { maxRetries: options.transportMaxRetries } : {}),
+			})
+
+			// Resolve fork config (chain ID + block number) from remote
+			const transport = yield* Effect.provide(HttpTransportService, transportLayer)
+			const config = yield* resolveForkConfig(transport, {
+				url: options.forkUrl,
+				...(options.forkBlockNumber !== undefined ? { blockNumber: options.forkBlockNumber } : {}),
+			})
+
+			const nodeOpts: NodeOptions = {
+				chainId: options.chainId ?? config.chainId,
+				...(options.hardfork !== undefined ? { hardfork: options.hardfork } : {}),
+				...(options.accounts !== undefined ? { accounts: options.accounts } : {}),
+			}
+
+			return TevmNodeLive(nodeOpts).pipe(
+				Layer.provide(forkSharedSubLayers(nodeOpts, config.blockNumber)),
+				Layer.provide(transportLayer),
+				Layer.provide(EvmWasmTest),
+			)
+		}),
+
+	/**
+	 * Create a fork-mode node layer from a pre-resolved config and mock transport.
+	 * Useful for tests that don't need a real RPC endpoint.
+	 */
+	ForkTestWithTransport: (
+		options: NodeOptions & { readonly blockNumber: bigint },
+		transportLayer: Layer.Layer<HttpTransportService>,
+	): Layer.Layer<TevmNodeService> =>
+		TevmNodeLive(options).pipe(
+			Layer.provide(forkSharedSubLayers(options, options.blockNumber)),
+			Layer.provide(transportLayer),
+			Layer.provide(EvmWasmTest),
+		),
 } as const
 
 // ---------------------------------------------------------------------------
@@ -180,3 +267,8 @@ export { MiningService, MiningServiceLive } from "./mining.js"
 export type { MiningMode, MiningServiceApi } from "./mining.js"
 export { UnknownSnapshotError } from "./snapshot-manager.js"
 export type { SnapshotManagerApi } from "./snapshot-manager.js"
+export { ForkRpcError, ForkDataError, TransportTimeoutError } from "./fork/errors.js"
+export { HttpTransportService, HttpTransportLive } from "./fork/http-transport.js"
+export type { HttpTransportApi } from "./fork/http-transport.js"
+export { ForkConfigService, ForkConfigFromRpc, ForkConfigStatic } from "./fork/fork-config.js"
+export type { ForkConfig, ForkOptions } from "./fork/fork-config.js"
