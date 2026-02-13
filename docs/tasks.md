@@ -338,10 +338,10 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - RPC test per method
 
 ### T3.8 Debug Methods
-- [ ] debug_traceTransaction
-- [ ] debug_traceCall
-- [ ] debug_traceBlockByNumber
-- [ ] debug_traceBlockByHash
+- [x] debug_traceTransaction
+- [x] debug_traceCall
+- [x] debug_traceBlockByNumber
+- [x] debug_traceBlockByHash
 
 **Validation**:
 - RPC test: trace simple transfer → has expected trace entries
