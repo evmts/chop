@@ -40,9 +40,10 @@ const anvilMethods: Record<string, { params: readonly unknown[]; expectedType: s
 	anvil_nodeInfo: { params: [], expectedType: "object" },
 }
 
-const evmMethods: Record<string, { params: readonly unknown[]; expectedType: string }> = {
+const evmMethods: Record<string, { params: readonly unknown[]; expectedType: string; expectedValue?: string }> = {
 	evm_increaseTime: { params: [60], expectedType: "string" },
 	evm_setNextBlockTimestamp: { params: [2_000_000_000], expectedType: "string" },
+	evm_setAutomine: { params: [true], expectedType: "string", expectedValue: "true" },
 }
 
 describe("router — T3.7 anvil_* methods", () => {
@@ -67,13 +68,15 @@ describe("router — T3.7 anvil_* methods", () => {
 })
 
 describe("router — T3.7 evm_* methods", () => {
-	for (const [method, { params, expectedType }] of Object.entries(evmMethods)) {
+	for (const [method, { params, expectedType, expectedValue }] of Object.entries(evmMethods)) {
 		it.effect(`routes ${method} successfully`, () =>
 			Effect.gen(function* () {
 				const node = yield* TevmNodeService
 				const result = yield* methodRouter(node)(method, params)
 
-				if (expectedType === "string") {
+				if (expectedValue !== undefined) {
+					expect(result).toBe(expectedValue)
+				} else if (expectedType === "string") {
 					expect(typeof result).toBe("string")
 					expect((result as string).startsWith("0x")).toBe(true)
 				}
