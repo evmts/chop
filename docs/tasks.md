@@ -287,13 +287,13 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - RPC test: stop impersonation → send tx → fails
 
 ### T3.5 Fork Mode
-- [ ] `HttpTransport` with retry, timeout, batch
-- [ ] `ForkConfigFromRpc` resolves chain ID + block number
-- [ ] Lazy state loading (account fetched on first access)
-- [ ] Fork cache (don't re-fetch)
-- [ ] Local modifications overlay fork
-- [ ] `chop node --fork-url <url>` works
-- [ ] `chop node --fork-url <url> --fork-block-number <n>` pins block
+- [x] `HttpTransport` with retry, timeout, batch
+- [x] `ForkConfigFromRpc` resolves chain ID + block number
+- [x] Lazy state loading (account fetched on first access)
+- [x] Fork cache (don't re-fetch)
+- [x] Local modifications overlay fork
+- [x] `chop node --fork-url <url>` works
+- [x] `chop node --fork-url <url> --fork-block-number <n>` pins block
 
 **Validation**:
 - Integration test: fork mainnet → read USDC balance → matches actual
