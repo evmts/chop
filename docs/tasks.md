@@ -274,12 +274,12 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - RPC test: nested snapshots (3 deep) with partial reverts
 
 ### T3.4 Account Management
-- [ ] `anvil_setBalance`
-- [ ] `anvil_setCode`
-- [ ] `anvil_setNonce`
-- [ ] `anvil_setStorageAt`
-- [ ] `anvil_impersonateAccount` / `anvil_stopImpersonatingAccount`
-- [ ] `anvil_autoImpersonateAccount`
+- [x] `anvil_setBalance`
+- [x] `anvil_setCode`
+- [x] `anvil_setNonce`
+- [x] `anvil_setStorageAt`
+- [x] `anvil_impersonateAccount` / `anvil_stopImpersonatingAccount`
+- [x] `anvil_autoImpersonateAccount`
 
 **Validation**:
 - RPC test per method: set → get → matches
