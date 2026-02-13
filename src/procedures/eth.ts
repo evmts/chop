@@ -30,7 +30,7 @@ export const bigintToHex32 = (n: bigint): string => `0x${n.toString(16).padStart
 // ---------------------------------------------------------------------------
 
 /** A JSON-RPC procedure: takes params array, returns a JSON-serializable result. */
-export type ProcedureResult = string | readonly string[] | Record<string, unknown> | null
+export type ProcedureResult = string | boolean | readonly string[] | Record<string, unknown> | null
 export type Procedure = (params: readonly unknown[]) => Effect.Effect<ProcedureResult, InternalError>
 
 // ---------------------------------------------------------------------------

@@ -16,7 +16,7 @@ import {
 	ethGetTransactionReceipt,
 	ethSendTransaction,
 } from "./eth.js"
-import { evmMine, evmSetAutomine, evmSetIntervalMining } from "./evm.js"
+import { evmMine, evmRevert, evmSetAutomine, evmSetIntervalMining, evmSnapshot } from "./evm.js"
 
 // ---------------------------------------------------------------------------
 // Method → Procedure mapping
@@ -40,6 +40,8 @@ const methods: Record<string, (node: TevmNodeShape) => Procedure> = {
 	evm_mine: evmMine,
 	evm_setAutomine: evmSetAutomine,
 	evm_setIntervalMining: evmSetIntervalMining,
+	evm_snapshot: evmSnapshot,
+	evm_revert: evmRevert,
 }
 
 // ---------------------------------------------------------------------------

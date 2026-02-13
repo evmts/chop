@@ -2,9 +2,10 @@
 
 import { Effect } from "effect"
 import { mineHandler, setAutomineHandler, setIntervalMiningHandler } from "../handlers/mine.js"
+import { revertHandler, snapshotHandler } from "../handlers/snapshot.js"
 import type { TevmNodeShape } from "../node/index.js"
 import { wrapErrors } from "./errors.js"
-import type { Procedure } from "./eth.js"
+import { type Procedure, bigintToHex } from "./eth.js"
 
 // ---------------------------------------------------------------------------
 // Procedures
@@ -54,5 +55,36 @@ export const evmSetIntervalMining =
 				const intervalMs = Number(params[0])
 				yield* setIntervalMiningHandler(node)(intervalMs)
 				return "true"
+			}),
+		)
+
+/**
+ * evm_snapshot → take a snapshot of the current state.
+ * Params: [] (none)
+ * Returns: hex snapshot ID (e.g. "0x1").
+ */
+export const evmSnapshot =
+	(node: TevmNodeShape): Procedure =>
+	(_params) =>
+		wrapErrors(
+			Effect.gen(function* () {
+				const id = yield* snapshotHandler(node)()
+				return bigintToHex(BigInt(id))
+			}),
+		)
+
+/**
+ * evm_revert → revert state to a previous snapshot.
+ * Params: [snapshotId: hex string]
+ * Returns: true on success.
+ */
+export const evmRevert =
+	(node: TevmNodeShape): Procedure =>
+	(params) =>
+		wrapErrors(
+			Effect.gen(function* () {
+				const snapshotId = Number(params[0] as string)
+				const result = yield* revertHandler(node)(snapshotId)
+				return result
 			}),
 		)
