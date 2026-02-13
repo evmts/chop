@@ -51,6 +51,8 @@ export { traceCallHandler } from "./traceCall.js"
 export type { TraceCallParams } from "./traceCall.js"
 export { traceTransactionHandler } from "./traceTransaction.js"
 export type { TraceTransactionParams } from "./traceTransaction.js"
+export { traceBlockByNumberHandler, traceBlockByHashHandler } from "./traceBlock.js"
+export type { TraceBlockByNumberParams, TraceBlockByHashParams, BlockTraceResult } from "./traceBlock.js"
 export {
 	InsufficientBalanceError,
 	IntrinsicGasTooLowError,
