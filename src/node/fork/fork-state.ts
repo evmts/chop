@@ -155,7 +155,14 @@ export const ForkWorldStateLive = (
 					const cached = cache.getAccount(address)
 					if (cached !== undefined) return cached
 
-					// 4. Fetch from remote (die on transport errors — they're defects in this context)
+					// 4. Fetch from remote.
+					// Design decision: ForkDataError is promoted to a defect (Effect.die) here because
+					// resolveAccount returns Effect<Account> with no error channel — the WorldStateApi
+					// contract requires infallible account reads. If the fork URL becomes unreachable
+					// mid-session, this will crash the fiber. This is intentional: partial fork data
+					// would silently corrupt EVM execution (e.g., returning zero balance for funded
+					// accounts). A fiber crash surfaces the issue immediately rather than producing
+					// incorrect state. Recovery should be handled at the node/session level, not per-read.
 					const remote = yield* fetchRemoteAccount(transport, address, blockTag).pipe(
 						Effect.catchTag("ForkDataError", (e) => Effect.die(e)),
 					)
@@ -180,7 +187,11 @@ export const ForkWorldStateLive = (
 						return cache.getStorage(address, slot) ?? 0n
 					}
 
-					// 4. Fetch from remote
+					// 4. Fetch from remote.
+					// Design decision: same rationale as resolveAccount above — ForkDataError is
+					// promoted to a defect because the WorldStateApi contract requires infallible
+					// storage reads. A mid-session RPC failure crashes the fiber rather than
+					// returning incorrect zero-values that would silently corrupt EVM execution.
 					const remote = yield* fetchRemoteStorage(transport, address, slot, blockTag).pipe(
 						Effect.catchTag("ForkDataError", (e) => Effect.die(e)),
 					)

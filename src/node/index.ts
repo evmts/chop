@@ -206,6 +206,45 @@ export const TevmNode = {
 		TevmNodeLive(options).pipe(Layer.provide(sharedSubLayers(options)), Layer.provide(EvmWasmTest)),
 
 	/**
+	 * Fork mode layer with real WASM EVM.
+	 *
+	 * Resolves chain ID and block number from the upstream RPC,
+	 * then creates a node with a ForkWorldState overlay.
+	 * Requires the guillotine-mini WASM binary on disk.
+	 *
+	 * The returned Effect must be run to resolve the fork config
+	 * before building the layer.
+	 */
+	Fork: (options: ForkNodeOptions): Effect.Effect<Layer.Layer<TevmNodeService, WasmLoadError>, ForkDataError> =>
+		Effect.gen(function* () {
+			const transportLayer = HttpTransportLive({
+				url: options.forkUrl,
+				...(options.transportTimeoutMs !== undefined ? { timeoutMs: options.transportTimeoutMs } : {}),
+				...(options.transportMaxRetries !== undefined ? { maxRetries: options.transportMaxRetries } : {}),
+			})
+
+			// Resolve fork config (chain ID + block number) from remote
+			const transport = yield* Effect.provide(HttpTransportService, transportLayer)
+			const config = yield* resolveForkConfig(transport, {
+				url: options.forkUrl,
+				...(options.forkBlockNumber !== undefined ? { blockNumber: options.forkBlockNumber } : {}),
+			})
+
+			const nodeOpts: NodeOptions = {
+				chainId: options.chainId ?? config.chainId,
+				...(options.hardfork !== undefined ? { hardfork: options.hardfork } : {}),
+				...(options.accounts !== undefined ? { accounts: options.accounts } : {}),
+				...(options.wasmPath !== undefined ? { wasmPath: options.wasmPath } : {}),
+			}
+
+			return TevmNodeLive(nodeOpts).pipe(
+				Layer.provide(forkSharedSubLayers(nodeOpts, config.blockNumber)),
+				Layer.provide(transportLayer),
+				Layer.provide(EvmWasmLive(options.wasmPath, options.hardfork)),
+			)
+		}),
+
+	/**
 	 * Fork mode layer with test EVM.
 	 *
 	 * Resolves chain ID and block number from the upstream RPC,

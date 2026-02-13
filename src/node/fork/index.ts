@@ -6,6 +6,6 @@ export type { HttpTransportApi, HttpTransportConfig, JsonRpcRequest, JsonRpcResp
 export { ForkConfigService, ForkConfigFromRpc, ForkConfigStatic, resolveForkConfig } from "./fork-config.js"
 export type { ForkConfig, ForkOptions, ForkConfigApi } from "./fork-config.js"
 export { makeForkCache } from "./fork-cache.js"
-export type { ForkCache, CachedAccountData } from "./fork-cache.js"
+export type { ForkCache } from "./fork-cache.js"
 export { ForkWorldStateLive, ForkWorldStateTest } from "./fork-state.js"
 export type { ForkWorldStateOptions } from "./fork-state.js"

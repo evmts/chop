@@ -1,6 +1,7 @@
 import { describe, it } from "@effect/vitest"
 import { Effect, Layer } from "effect"
 import { expect } from "vitest"
+import { ForkRpcError } from "./errors.js"
 import { ForkConfigFromRpc, ForkConfigService, ForkConfigStatic, resolveForkConfig } from "./fork-config.js"
 import { type HttpTransportApi, HttpTransportService } from "./http-transport.js"
 
@@ -13,13 +14,7 @@ const mockTransport = (responses: Record<string, unknown>): HttpTransportApi => 
 		Effect.gen(function* () {
 			const result = responses[method]
 			if (result === undefined) {
-				return yield* Effect.fail(
-					new (yield* Effect.sync(() => {
-						// Use import to get ForkRpcError
-						const { ForkRpcError } = require("./errors.js")
-						return ForkRpcError
-					}))({ method, message: "not found" }),
-				)
+				return yield* Effect.fail(new ForkRpcError({ method, message: "not found" }))
 			}
 			return result
 		}) as Effect.Effect<unknown, never>,

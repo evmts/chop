@@ -11,14 +11,6 @@ import type { Account } from "../../state/account.js"
 // Types
 // ---------------------------------------------------------------------------
 
-/** What we cache per address from the remote. */
-export interface CachedAccountData {
-	readonly nonce: bigint
-	readonly balance: bigint
-	readonly codeHash: Uint8Array
-	readonly code: Uint8Array
-}
-
 /** Fork cache instance. */
 export interface ForkCache {
 	/** Check if an account has been fetched from remote. */

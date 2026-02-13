@@ -5,7 +5,7 @@
  * Uses globalThis.fetch for portability.
  */
 
-import { Context, Effect, Layer, Schedule } from "effect"
+import { Context, Effect, Layer, Ref, Schedule } from "effect"
 import { ForkRpcError, TransportTimeoutError } from "./errors.js"
 
 // ---------------------------------------------------------------------------
@@ -95,11 +95,13 @@ const fetchWithTimeout = (
 				signal: controller.signal,
 			})
 				.then(async (res: FetchResponse) => {
-					clearTimeout(timer)
 					if (!res.ok) {
+						clearTimeout(timer)
 						throw new Error(`HTTP ${res.status}: ${res.statusText}`)
 					}
-					return res.text()
+					const text = await res.text()
+					clearTimeout(timer)
+					return text
 				})
 				.catch((err: unknown) => {
 					clearTimeout(timer)
@@ -142,80 +144,86 @@ const parseBatchResponse = (text: string): Effect.Effect<readonly JsonRpcRespons
 export const HttpTransportLive = (config: HttpTransportConfig): Layer.Layer<HttpTransportService> => {
 	const timeoutMs = config.timeoutMs ?? 10_000
 	const maxRetries = config.maxRetries ?? 3
-	let idCounter = 1
 
 	const retrySchedule = Schedule.exponential("100 millis").pipe(Schedule.compose(Schedule.recurs(maxRetries)))
 
-	return Layer.succeed(HttpTransportService, {
-		request: (method, params) =>
-			Effect.gen(function* () {
-				const id = idCounter++
-				const body = JSON.stringify({ jsonrpc: "2.0", method, params, id })
-				const text = yield* fetchWithTimeout(config.url, body, timeoutMs).pipe(
-					Effect.retry(retrySchedule),
-					Effect.catchTag("TransportTimeoutError", (e) =>
-						Effect.fail(
-							new ForkRpcError({
-								method,
-								message: `Request timed out after ${e.timeoutMs}ms`,
-							}),
-						),
-					),
-				)
-				const response = yield* parseResponse(text, method)
-				if (response.error) {
-					return yield* Effect.fail(
-						new ForkRpcError({
-							method,
-							message: `RPC error ${response.error.code}: ${response.error.message}`,
-						}),
-					)
-				}
-				return response.result
-			}),
+	return Layer.effect(
+		HttpTransportService,
+		Effect.gen(function* () {
+			const idCounter = yield* Ref.make(1)
 
-		batchRequest: (calls) =>
-			Effect.gen(function* () {
-				if (calls.length === 0) return []
-				const requests = calls.map((c, i) => ({
-					jsonrpc: "2.0" as const,
-					method: c.method,
-					params: c.params,
-					id: idCounter + i,
-				}))
-				idCounter += calls.length
-
-				const body = JSON.stringify(requests)
-				const text = yield* fetchWithTimeout(config.url, body, timeoutMs).pipe(
-					Effect.retry(retrySchedule),
-					Effect.catchTag("TransportTimeoutError", (e) =>
-						Effect.fail(
-							new ForkRpcError({
-								method: "batch",
-								message: `Batch request timed out after ${e.timeoutMs}ms`,
-							}),
-						),
-					),
-				)
-
-				const responses = yield* parseBatchResponse(text)
-
-				// Sort responses by id to match request order
-				const sorted = [...responses].sort((a, b) => a.id - b.id)
-
-				// Check for errors in any response
-				for (const r of sorted) {
-					if (r.error) {
-						return yield* Effect.fail(
-							new ForkRpcError({
-								method: "batch",
-								message: `RPC error in batch: ${r.error.code}: ${r.error.message}`,
-							}),
+			return {
+				request: (method, params) =>
+					Effect.gen(function* () {
+						const id = yield* Ref.getAndUpdate(idCounter, (n) => n + 1)
+						const body = JSON.stringify({ jsonrpc: "2.0", method, params, id })
+						const text = yield* fetchWithTimeout(config.url, body, timeoutMs).pipe(
+							Effect.retry(retrySchedule),
+							Effect.catchTag("TransportTimeoutError", (e) =>
+								Effect.fail(
+									new ForkRpcError({
+										method,
+										message: `Request timed out after ${e.timeoutMs}ms`,
+									}),
+								),
+							),
 						)
-					}
-				}
+						const response = yield* parseResponse(text, method)
+						if (response.error) {
+							return yield* Effect.fail(
+								new ForkRpcError({
+									method,
+									message: `RPC error ${response.error.code}: ${response.error.message}`,
+								}),
+							)
+						}
+						return response.result
+					}),
 
-				return sorted.map((r) => r.result)
-			}),
-	} satisfies HttpTransportApi)
+				batchRequest: (calls) =>
+					Effect.gen(function* () {
+						if (calls.length === 0) return []
+						const baseId = yield* Ref.getAndUpdate(idCounter, (n) => n + calls.length)
+						const requests = calls.map((c, i) => ({
+							jsonrpc: "2.0" as const,
+							method: c.method,
+							params: c.params,
+							id: baseId + i,
+						}))
+
+						const body = JSON.stringify(requests)
+						const text = yield* fetchWithTimeout(config.url, body, timeoutMs).pipe(
+							Effect.retry(retrySchedule),
+							Effect.catchTag("TransportTimeoutError", (e) =>
+								Effect.fail(
+									new ForkRpcError({
+										method: "batch",
+										message: `Batch request timed out after ${e.timeoutMs}ms`,
+									}),
+								),
+							),
+						)
+
+						const responses = yield* parseBatchResponse(text)
+
+						// Sort responses by id to match request order
+						const sorted = [...responses].sort((a, b) => a.id - b.id)
+
+						// Check for errors in any response
+						for (const r of sorted) {
+							if (r.error) {
+								return yield* Effect.fail(
+									new ForkRpcError({
+										method: "batch",
+										message: `RPC error in batch: ${r.error.code}: ${r.error.message}`,
+									}),
+								)
+							}
+						}
+
+						return sorted.map((r) => r.result)
+					}),
+			} satisfies HttpTransportApi
+		}),
+	)
 }
