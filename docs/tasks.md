@@ -348,19 +348,19 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - RPC test: trace reverted call → trace shows revert point
 
 ### T3.9 Remaining CLI Commands
-- [ ] `chop block <number|tag> -r <url>`
-- [ ] `chop tx <hash> -r <url>`
-- [ ] `chop receipt <hash> -r <url>`
-- [ ] `chop logs --address <addr> --topic <topic> -r <url>`
-- [ ] `chop gas-price -r <url>`
-- [ ] `chop base-fee -r <url>`
-- [ ] `chop send --to <addr> <sig> [args] --private-key <key> -r <url>`
-- [ ] `chop estimate --to <addr> <sig> [args] -r <url>`
-- [ ] `chop resolve-name <name> -r <url>`
-- [ ] `chop lookup-address <addr> -r <url>`
-- [ ] `chop namehash <name>`
-- [ ] `chop rpc <method> [params] -r <url>`
-- [ ] `chop find-block <timestamp> -r <url>`
+- [x] `chop block <number|tag> -r <url>`
+- [x] `chop tx <hash> -r <url>`
+- [x] `chop receipt <hash> -r <url>`
+- [x] `chop logs --address <addr> --topic <topic> -r <url>`
+- [x] `chop gas-price -r <url>`
+- [x] `chop base-fee -r <url>`
+- [x] `chop send --to <addr> <sig> [args] --private-key <key> -r <url>`
+- [x] `chop estimate --to <addr> <sig> [args] -r <url>`
+- [x] `chop resolve-name <name> -r <url>`
+- [x] `chop lookup-address <addr> -r <url>`
+- [x] `chop namehash <name>`
+- [x] `chop rpc <method> [params] -r <url>`
+- [x] `chop find-block <timestamp> -r <url>`
 
 **Validation**:
 - E2E test per command
