@@ -25,6 +25,7 @@ import {
 	anvilSetStorageAt,
 	anvilStopImpersonatingAccount,
 } from "./anvil.js"
+import { debugTraceBlockByHash, debugTraceBlockByNumber, debugTraceCall, debugTraceTransaction } from "./debug.js"
 import { type InternalError, MethodNotFoundError } from "./errors.js"
 import {
 	type Procedure,
@@ -60,7 +61,6 @@ import {
 	ethSign,
 	ethUninstallFilter,
 } from "./eth.js"
-import { debugTraceBlockByHash, debugTraceBlockByNumber, debugTraceCall, debugTraceTransaction } from "./debug.js"
 import {
 	evmIncreaseTime,
 	evmMine,
@@ -157,17 +157,43 @@ const methods: Record<string, (node: TevmNodeShape) => Procedure> = {
 }
 
 // ---------------------------------------------------------------------------
+// Compatibility aliases
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolve compatibility aliases.
+ * hardhat_* and ganache_* prefixes map to anvil_* methods.
+ * Returns the original method name if no alias match is found.
+ */
+const resolveMethodAlias = (method: string): string => {
+	if (method.startsWith("hardhat_")) {
+		const suffix = method.slice(8) // Remove "hardhat_"
+		const anvilMethod = `anvil_${suffix}`
+		if (anvilMethod in methods) return anvilMethod
+	}
+	if (method.startsWith("ganache_")) {
+		const suffix = method.slice(8) // Remove "ganache_"
+		const anvilMethod = `anvil_${suffix}`
+		if (anvilMethod in methods) return anvilMethod
+	}
+	return method
+}
+
+// ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
 
 /**
  * Route a JSON-RPC method name + params to the appropriate procedure.
  * Returns the procedure result (hex string) or fails with MethodNotFoundError.
+ *
+ * Supports hardhat_* and ganache_* compatibility aliases for all anvil_* methods.
  */
 export const methodRouter =
 	(node: TevmNodeShape) =>
 	(method: string, params: readonly unknown[]): Effect.Effect<ProcedureResult, MethodNotFoundError | InternalError> => {
-		const factory = methods[method]
+		const resolved = resolveMethodAlias(method)
+		const factory = methods[resolved]
 		if (!factory) {
 			return Effect.fail(new MethodNotFoundError({ method }))
 		}

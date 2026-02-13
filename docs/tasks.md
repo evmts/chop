@@ -366,8 +366,8 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - E2E test per command
 
 ### T3.10 Compatibility Aliases
-- [ ] All `anvil_*` methods available as `hardhat_*`
-- [ ] All `anvil_*` methods available as `ganache_*`
+- [x] All `anvil_*` methods available as `hardhat_*`
+- [x] All `anvil_*` methods available as `ganache_*`
 
 **Validation**:
 - RPC test: `hardhat_setBalance` → same as `anvil_setBalance`
