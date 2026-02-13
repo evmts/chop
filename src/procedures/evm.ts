@@ -1,6 +1,6 @@
 // EVM-specific JSON-RPC procedures (evm_* methods).
 
-import { Effect } from "effect"
+import { Effect, Ref } from "effect"
 import { mineHandler, setAutomineHandler, setIntervalMiningHandler } from "../handlers/mine.js"
 import { revertHandler, snapshotHandler } from "../handlers/snapshot.js"
 import type { TevmNodeShape } from "../node/index.js"
@@ -86,5 +86,43 @@ export const evmRevert =
 				const snapshotId = Number(params[0] as string)
 				const result = yield* revertHandler(node)(snapshotId)
 				return result
+			}),
+		)
+
+// ---------------------------------------------------------------------------
+// Time manipulation
+// ---------------------------------------------------------------------------
+
+/**
+ * evm_increaseTime → advance block timestamp by N seconds.
+ * Params: [seconds: hex string or number]
+ * Returns: hex string of total time offset.
+ */
+export const evmIncreaseTime =
+	(node: TevmNodeShape): Procedure =>
+	(params) =>
+		wrapErrors(
+			Effect.gen(function* () {
+				const seconds = BigInt(Number(params[0]))
+				const current = yield* Ref.get(node.nodeConfig.timeOffset)
+				const newOffset = current + seconds
+				yield* Ref.set(node.nodeConfig.timeOffset, newOffset)
+				return bigintToHex(newOffset)
+			}),
+		)
+
+/**
+ * evm_setNextBlockTimestamp → set exact timestamp for next mined block.
+ * Params: [timestamp: hex string or number]
+ * Returns: hex string of the set timestamp.
+ */
+export const evmSetNextBlockTimestamp =
+	(node: TevmNodeShape): Procedure =>
+	(params) =>
+		wrapErrors(
+			Effect.gen(function* () {
+				const timestamp = BigInt(Number(params[0]))
+				yield* Ref.set(node.nodeConfig.nextBlockTimestamp, timestamp)
+				return bigintToHex(timestamp)
 			}),
 		)
