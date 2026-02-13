@@ -10,8 +10,10 @@ import { Console } from "effect"
 import { abiCommands } from "./commands/abi.js"
 import { addressCommands } from "./commands/address.js"
 import { bytecodeCommands } from "./commands/bytecode.js"
+import { chainCommands } from "./commands/chain.js"
 import { convertCommands } from "./commands/convert.js"
 import { cryptoCommands } from "./commands/crypto.js"
+import { ensCommands } from "./commands/ens.js"
 import { nodeCommands } from "./commands/node.js"
 import { rpcCommands } from "./commands/rpc.js"
 import { jsonOption, rpcUrlOption } from "./shared.js"
@@ -44,8 +46,10 @@ export const root = Command.make(
 		...abiCommands,
 		...addressCommands,
 		...bytecodeCommands,
+		...chainCommands,
 		...convertCommands,
 		...cryptoCommands,
+		...ensCommands,
 		...rpcCommands,
 		...nodeCommands,
 	]),
