@@ -47,6 +47,8 @@ export { estimateGasHandler } from "./estimateGas.js"
 export type { EstimateGasParams } from "./estimateGas.js"
 export { getLogsHandler } from "./getLogs.js"
 export type { GetLogsParams } from "./getLogs.js"
+export { traceCallHandler } from "./traceCall.js"
+export type { TraceCallParams } from "./traceCall.js"
 export {
 	InsufficientBalanceError,
 	IntrinsicGasTooLowError,
