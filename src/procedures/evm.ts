@@ -13,6 +13,7 @@ import { type Procedure, bigintToHex } from "./eth.js"
 
 /**
  * evm_mine → mine one block.
+ * Reads nodeConfig overrides and passes them to the mining service.
  * Params: [timestamp?]
  * Returns: "0x0" on success (matches Anvil).
  */
@@ -21,7 +22,32 @@ export const evmMine =
 	(_params) =>
 		wrapErrors(
 			Effect.gen(function* () {
-				yield* mineHandler(node)({ blockCount: 1 })
+				// Read nodeConfig overrides
+				const baseFeePerGas = yield* Ref.get(node.nodeConfig.nextBlockBaseFeePerGas)
+				const gasLimit = yield* Ref.get(node.nodeConfig.blockGasLimit)
+				const nextBlockTimestamp = yield* Ref.get(node.nodeConfig.nextBlockTimestamp)
+				const timeOffset = yield* Ref.get(node.nodeConfig.timeOffset)
+				const blockTimestampInterval = yield* Ref.get(node.nodeConfig.blockTimestampInterval)
+
+				yield* mineHandler(node)({
+					blockCount: 1,
+					options: {
+						...(baseFeePerGas !== undefined ? { baseFeePerGas } : {}),
+						...(gasLimit !== undefined ? { gasLimit } : {}),
+						...(nextBlockTimestamp !== undefined ? { nextBlockTimestamp } : {}),
+						...(timeOffset !== 0n ? { timeOffset } : {}),
+						...(blockTimestampInterval !== undefined ? { blockTimestampInterval } : {}),
+					},
+				})
+
+				// Consume one-shot overrides
+				if (baseFeePerGas !== undefined) {
+					yield* Ref.set(node.nodeConfig.nextBlockBaseFeePerGas, undefined)
+				}
+				if (nextBlockTimestamp !== undefined) {
+					yield* Ref.set(node.nodeConfig.nextBlockTimestamp, undefined)
+				}
+
 				return "0x0"
 			}),
 		)
