@@ -332,7 +332,7 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - [x] anvil_dropTransaction, anvil_dropAllTransactions
 - [x] anvil_enableTraces, anvil_nodeInfo
 - [x] evm_increaseTime, evm_setNextBlockTimestamp
-- [ ] evm_setAutomine
+- [x] evm_setAutomine
 
 **Validation**:
 - RPC test per method
