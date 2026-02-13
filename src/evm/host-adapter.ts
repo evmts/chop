@@ -1,7 +1,7 @@
 import { Context, Effect, Layer } from "effect"
 import type { Account } from "../state/account.js"
 import type { InvalidSnapshotError, MissingAccountError } from "../state/errors.js"
-import type { WorldStateSnapshot } from "../state/world-state.js"
+import type { WorldStateDump, WorldStateSnapshot } from "../state/world-state.js"
 import { WorldStateService, WorldStateTest } from "../state/world-state.js"
 import { bigintToBytes32, bytesToHex } from "./conversions.js"
 import { WasmExecutionError } from "./errors.js"
@@ -41,6 +41,13 @@ export interface HostAdapterShape {
 	readonly restore: (snap: WorldStateSnapshot) => Effect.Effect<void, InvalidSnapshotError>
 	/** Commit snapshot — keep changes. Delegates to WorldState. */
 	readonly commit: (snap: WorldStateSnapshot) => Effect.Effect<void, InvalidSnapshotError>
+
+	/** Dump all world state as serializable JSON. */
+	readonly dumpState: () => Effect.Effect<WorldStateDump>
+	/** Load serialized state into the world state. */
+	readonly loadState: (dump: WorldStateDump) => Effect.Effect<void>
+	/** Clear all accounts and storage. */
+	readonly clearState: () => Effect.Effect<void>
 }
 
 // ---------------------------------------------------------------------------
@@ -99,6 +106,12 @@ export const HostAdapterLive: Layer.Layer<HostAdapterService, never, WorldStateS
 			restore: (snap) => worldState.restore(snap),
 
 			commit: (snap) => worldState.commit(snap),
+
+			dumpState: () => worldState.dumpState(),
+
+			loadState: (dump) => worldState.loadState(dump),
+
+			clearState: () => worldState.clearState(),
 		} satisfies HostAdapterShape
 	}),
 )

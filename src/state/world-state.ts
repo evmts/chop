@@ -1,5 +1,6 @@
 import { Context, Effect, Layer } from "effect"
-import { type Account, EMPTY_ACCOUNT } from "./account.js"
+import { bytesToHex, hexToBytes } from "../evm/conversions.js"
+import { type Account, EMPTY_CODE_HASH, EMPTY_ACCOUNT } from "./account.js"
 import { type InvalidSnapshotError, MissingAccountError } from "./errors.js"
 import { type JournalEntry, JournalLive, JournalService } from "./journal.js"
 
@@ -9,6 +10,17 @@ import { type JournalEntry, JournalLive, JournalService } from "./journal.js"
 
 /** Opaque snapshot handle — delegates to JournalSnapshot. */
 export type WorldStateSnapshot = number
+
+/** Serialized account for state dump/load. */
+export interface SerializedAccount {
+	readonly nonce: string // hex
+	readonly balance: string // hex
+	readonly code: string // hex
+	readonly storage: Record<string, string> // slot → value (hex)
+}
+
+/** Serialized world state for anvil_dumpState / anvil_loadState. */
+export type WorldStateDump = Record<string, SerializedAccount>
 
 /** Shape of the WorldState service API. */
 export interface WorldStateApi {
@@ -28,6 +40,12 @@ export interface WorldStateApi {
 	readonly restore: (snapshot: WorldStateSnapshot) => Effect.Effect<void, InvalidSnapshotError>
 	/** Commit snapshot — keep changes but discard the snapshot marker. */
 	readonly commit: (snapshot: WorldStateSnapshot) => Effect.Effect<void, InvalidSnapshotError>
+	/** Dump all account and storage state as serializable JSON. */
+	readonly dumpState: () => Effect.Effect<WorldStateDump>
+	/** Load serialized state into the world state (merges with existing). */
+	readonly loadState: (dump: WorldStateDump) => Effect.Effect<void>
+	/** Clear all accounts and storage. */
+	readonly clearState: () => Effect.Effect<void>
 }
 
 // ---------------------------------------------------------------------------
@@ -128,6 +146,54 @@ export const WorldStateLive: Layer.Layer<WorldStateService, never, JournalServic
 			restore: (snap) => journal.restore(snap, revertEntry),
 
 			commit: (snap) => journal.commit(snap),
+
+			dumpState: () =>
+				Effect.sync(() => {
+					const dump: WorldStateDump = {}
+					for (const [address, account] of accounts) {
+						const acctStorage: Record<string, string> = {}
+						const addrStorage = storage.get(address)
+						if (addrStorage) {
+							for (const [slot, value] of addrStorage) {
+								acctStorage[slot] = `0x${value.toString(16)}`
+							}
+						}
+						dump[address] = {
+							nonce: `0x${account.nonce.toString(16)}`,
+							balance: `0x${account.balance.toString(16)}`,
+							code: bytesToHex(account.code),
+							storage: acctStorage,
+						}
+					}
+					return dump
+				}),
+
+			loadState: (dump) =>
+				Effect.sync(() => {
+					for (const [address, serialized] of Object.entries(dump)) {
+						const code = hexToBytes(serialized.code)
+						const account: Account = {
+							nonce: BigInt(serialized.nonce),
+							balance: BigInt(serialized.balance),
+							code,
+							codeHash: code.length === 0 ? EMPTY_CODE_HASH : EMPTY_CODE_HASH,
+						}
+						accounts.set(address, account)
+						if (serialized.storage && Object.keys(serialized.storage).length > 0) {
+							const addrStorage = storage.get(address) ?? new Map<string, bigint>()
+							for (const [slot, value] of Object.entries(serialized.storage)) {
+								addrStorage.set(slot, BigInt(value))
+							}
+							storage.set(address, addrStorage)
+						}
+					}
+				}),
+
+			clearState: () =>
+				Effect.sync(() => {
+					accounts.clear()
+					storage.clear()
+				}),
 		} satisfies WorldStateApi
 	}),
 )

@@ -12,10 +12,11 @@
  */
 
 import { Effect, Layer } from "effect"
+import { bytesToHex, hexToBytes } from "../../evm/conversions.js"
 import { type Account, EMPTY_ACCOUNT, EMPTY_CODE_HASH } from "../../state/account.js"
 import { MissingAccountError } from "../../state/errors.js"
 import { type JournalEntry, JournalLive, JournalService } from "../../state/journal.js"
-import { type WorldStateApi, WorldStateService } from "../../state/world-state.js"
+import { type WorldStateApi, type WorldStateDump, WorldStateService } from "../../state/world-state.js"
 import { ForkDataError } from "./errors.js"
 import { makeForkCache } from "./fork-cache.js"
 import { type HttpTransportApi, HttpTransportService } from "./http-transport.js"
@@ -325,6 +326,57 @@ export const ForkWorldStateLive = (
 				restore: (snap) => journal.restore(snap, revertEntry),
 
 				commit: (snap) => journal.commit(snap),
+
+				dumpState: () =>
+					Effect.sync(() => {
+						const dump: WorldStateDump = {}
+						for (const [address, account] of localAccounts) {
+							if (localDeleted.has(address)) continue
+							const acctStorage: Record<string, string> = {}
+							const addrStorage = localStorage.get(address)
+							if (addrStorage) {
+								for (const [slot, value] of addrStorage) {
+									acctStorage[slot] = `0x${value.toString(16)}`
+								}
+							}
+							dump[address] = {
+								nonce: `0x${account.nonce.toString(16)}`,
+								balance: `0x${account.balance.toString(16)}`,
+								code: bytesToHex(account.code),
+								storage: acctStorage,
+							}
+						}
+						return dump
+					}),
+
+				loadState: (dump) =>
+					Effect.sync(() => {
+						for (const [address, serialized] of Object.entries(dump)) {
+							const code = hexToBytes(serialized.code)
+							const account: Account = {
+								nonce: BigInt(serialized.nonce),
+								balance: BigInt(serialized.balance),
+								code,
+								codeHash: code.length === 0 ? EMPTY_CODE_HASH : EMPTY_CODE_HASH,
+							}
+							localAccounts.set(address, account)
+							localDeleted.delete(address)
+							if (serialized.storage && Object.keys(serialized.storage).length > 0) {
+								const addrStorage = localStorage.get(address) ?? new Map<string, bigint>()
+								for (const [slot, value] of Object.entries(serialized.storage)) {
+									addrStorage.set(slot, BigInt(value))
+								}
+								localStorage.set(address, addrStorage)
+							}
+						}
+					}),
+
+				clearState: () =>
+					Effect.sync(() => {
+						localAccounts.clear()
+						localStorage.clear()
+						localDeleted.clear()
+					}),
 			} satisfies WorldStateApi
 		}),
 	)
