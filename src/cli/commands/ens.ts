@@ -15,6 +15,7 @@ import { FetchHttpClient, type HttpClient } from "@effect/platform"
 import { hashHex, hashString } from "@tevm/voltaire/Keccak256"
 import { Console, Data, Effect } from "effect"
 import { Hex } from "voltaire-effect"
+import { hexToBytes } from "../../evm/conversions.js"
 import { type RpcClientError, rpcCall } from "../../rpc/client.js"
 import { handleCommandErrors, jsonOption, rpcUrlOption } from "../shared.js"
 
@@ -50,18 +51,6 @@ const NAME_SELECTOR = "691f3431"
 // ============================================================================
 // Helpers
 // ============================================================================
-
-/**
- * Convert hex string to Uint8Array.
- */
-const hexToBytes = (hex: string): Uint8Array => {
-	const clean = hex.startsWith("0x") ? hex.slice(2) : hex
-	const bytes = new Uint8Array(clean.length / 2)
-	for (let i = 0; i < bytes.length; i++) {
-		bytes[i] = Number.parseInt(clean.slice(i * 2, i * 2 + 2), 16)
-	}
-	return bytes
-}
 
 /**
  * Concatenate two Uint8Arrays.
@@ -207,7 +196,7 @@ export const lookupAddressHandler = (
 			// Skip first 32 bytes (offset), read next 32 bytes as length
 			const length = Number(BigInt(`0x${nameHex.slice(66, 130)}`))
 			const nameBytes = data.slice(64, 64 + length)
-			return Buffer.from(nameBytes).toString("utf-8")
+			return new TextDecoder().decode(nameBytes)
 		} catch {
 			return yield* Effect.fail(new EnsError({ message: `Failed to decode name for address: ${address}` }))
 		}

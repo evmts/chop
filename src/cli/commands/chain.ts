@@ -17,7 +17,7 @@ import { Args, Command, Options } from "@effect/cli"
 import { FetchHttpClient, type HttpClient } from "@effect/platform"
 import { Console, Data, Effect } from "effect"
 import { type RpcClientError, rpcCall } from "../../rpc/client.js"
-import { handleCommandErrors, jsonOption, rpcUrlOption } from "../shared.js"
+import { handleCommandErrors, hexToDecimal, jsonOption, rpcUrlOption } from "../shared.js"
 
 // ============================================================================
 // Error Types
@@ -25,6 +25,16 @@ import { handleCommandErrors, jsonOption, rpcUrlOption } from "../shared.js"
 
 /** Error for invalid block ID (not a number, tag, or hash). */
 export class InvalidBlockIdError extends Data.TaggedError("InvalidBlockIdError")<{
+	readonly message: string
+}> {}
+
+/** Error for transaction not found. */
+export class TransactionNotFoundError extends Data.TaggedError("TransactionNotFoundError")<{
+	readonly message: string
+}> {}
+
+/** Error for receipt not found. */
+export class ReceiptNotFoundError extends Data.TaggedError("ReceiptNotFoundError")<{
 	readonly message: string
 }> {}
 
@@ -36,12 +46,6 @@ export class InvalidTimestampError extends Data.TaggedError("InvalidTimestampErr
 // ============================================================================
 // Helpers
 // ============================================================================
-
-/** Parse hex string to decimal string. */
-const hexToDecimal = (hex: unknown): string => {
-	if (typeof hex !== "string") return String(hex)
-	return BigInt(hex).toString()
-}
 
 /**
  * Parse a block ID string into an RPC method + params pair.
@@ -68,9 +72,13 @@ export const parseBlockId = (id: string): Effect.Effect<{ method: string; params
 		}
 	}
 	// Decimal number
-	const num = Number(id)
-	if (Number.isInteger(num) && num >= 0) {
-		return Effect.succeed({ method: "eth_getBlockByNumber", params: [`0x${num.toString(16)}`, true] })
+	try {
+		const num = BigInt(id)
+		if (num >= 0n) {
+			return Effect.succeed({ method: "eth_getBlockByNumber", params: [`0x${num.toString(16)}`, true] })
+		}
+	} catch {
+		// Not a valid decimal number, fall through to error
 	}
 	return Effect.fail(
 		new InvalidBlockIdError({
@@ -181,11 +189,11 @@ export const blockHandler = (
 export const txHandler = (
 	rpcUrl: string,
 	hash: string,
-): Effect.Effect<Record<string, unknown>, RpcClientError | InvalidBlockIdError, HttpClient.HttpClient> =>
+): Effect.Effect<Record<string, unknown>, RpcClientError | TransactionNotFoundError, HttpClient.HttpClient> =>
 	Effect.gen(function* () {
 		const result = yield* rpcCall(rpcUrl, "eth_getTransactionByHash", [hash])
 		if (result === null || result === undefined) {
-			return yield* Effect.fail(new InvalidBlockIdError({ message: `Transaction not found: ${hash}` }))
+			return yield* Effect.fail(new TransactionNotFoundError({ message: `Transaction not found: ${hash}` }))
 		}
 		return result as Record<string, unknown>
 	})
@@ -196,11 +204,11 @@ export const txHandler = (
 export const receiptHandler = (
 	rpcUrl: string,
 	hash: string,
-): Effect.Effect<Record<string, unknown>, RpcClientError | InvalidBlockIdError, HttpClient.HttpClient> =>
+): Effect.Effect<Record<string, unknown>, RpcClientError | ReceiptNotFoundError, HttpClient.HttpClient> =>
 	Effect.gen(function* () {
 		const result = yield* rpcCall(rpcUrl, "eth_getTransactionReceipt", [hash])
 		if (result === null || result === undefined) {
-			return yield* Effect.fail(new InvalidBlockIdError({ message: `Receipt not found: ${hash}` }))
+			return yield* Effect.fail(new ReceiptNotFoundError({ message: `Receipt not found: ${hash}` }))
 		}
 		return result as Record<string, unknown>
 	})

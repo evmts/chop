@@ -12,9 +12,8 @@ import {
 	gasPriceHandler,
 	logsHandler,
 	parseBlockId,
-	receiptHandler,
-	txHandler,
 } from "./chain.js"
+import { sendHandler } from "./rpc.js"
 
 // ============================================================================
 // Handler tests — parseBlockId
@@ -357,5 +356,65 @@ describe("CLI E2E — chain commands success", () => {
 	it("chop find-block with invalid timestamp exits non-zero", () => {
 		const result = runCli(`find-block abc -r http://127.0.0.1:${server.port}`)
 		expect(result.exitCode).not.toBe(0)
+	})
+
+	it("chop tx returns transaction data after sending", () => {
+		const from = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+		// First send a transaction to create one
+		const sendResult = runCli(
+			`send --to 0x0000000000000000000000000000000000000000 --from ${from} -r http://127.0.0.1:${server.port} --json`,
+		)
+		expect(sendResult.exitCode).toBe(0)
+		const { txHash } = JSON.parse(sendResult.stdout.trim())
+
+		// Now query the transaction
+		const result = runCli(`tx ${txHash} -r http://127.0.0.1:${server.port}`)
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout).toContain("Hash:")
+		expect(result.stdout).toContain("From:")
+	})
+
+	it("chop tx --json outputs structured JSON", () => {
+		const from = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+		const sendResult = runCli(
+			`send --to 0x0000000000000000000000000000000000000000 --from ${from} -r http://127.0.0.1:${server.port} --json`,
+		)
+		expect(sendResult.exitCode).toBe(0)
+		const { txHash } = JSON.parse(sendResult.stdout.trim())
+
+		const result = runCli(`tx ${txHash} -r http://127.0.0.1:${server.port} --json`)
+		expect(result.exitCode).toBe(0)
+		const json = JSON.parse(result.stdout.trim())
+		expect(json).toHaveProperty("hash")
+		expect(json).toHaveProperty("from")
+	})
+
+	it("chop receipt returns receipt data after sending", () => {
+		const from = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+		const sendResult = runCli(
+			`send --to 0x0000000000000000000000000000000000000000 --from ${from} -r http://127.0.0.1:${server.port} --json`,
+		)
+		expect(sendResult.exitCode).toBe(0)
+		const { txHash } = JSON.parse(sendResult.stdout.trim())
+
+		const result = runCli(`receipt ${txHash} -r http://127.0.0.1:${server.port}`)
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout).toContain("Tx Hash:")
+		expect(result.stdout).toContain("Status:")
+	})
+
+	it("chop receipt --json outputs structured JSON", () => {
+		const from = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+		const sendResult = runCli(
+			`send --to 0x0000000000000000000000000000000000000000 --from ${from} -r http://127.0.0.1:${server.port} --json`,
+		)
+		expect(sendResult.exitCode).toBe(0)
+		const { txHash } = JSON.parse(sendResult.stdout.trim())
+
+		const result = runCli(`receipt ${txHash} -r http://127.0.0.1:${server.port} --json`)
+		expect(result.exitCode).toBe(0)
+		const json = JSON.parse(result.stdout.trim())
+		expect(json).toHaveProperty("transactionHash")
+		expect(json).toHaveProperty("status")
 	})
 })

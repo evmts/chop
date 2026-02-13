@@ -57,6 +57,16 @@ export const validateHexData = <E>(
 	})
 
 // ============================================================================
+// Shared Helpers
+// ============================================================================
+
+/** Parse hex string to decimal string. */
+export const hexToDecimal = (hex: unknown): string => {
+	if (typeof hex !== "string") return String(hex)
+	return BigInt(hex).toString()
+}
+
+// ============================================================================
 // Shared Error Handler
 // ============================================================================
 

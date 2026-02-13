@@ -20,7 +20,7 @@ import { Args, Command, Options } from "@effect/cli"
 import { FetchHttpClient, type HttpClient } from "@effect/platform"
 import { Console, Data, Effect } from "effect"
 import { type RpcClientError, rpcCall } from "../../rpc/client.js"
-import { handleCommandErrors, jsonOption, rpcUrlOption } from "../shared.js"
+import { handleCommandErrors, hexToDecimal, jsonOption, rpcUrlOption } from "../shared.js"
 import {
 	type AbiError,
 	type ArgumentCountError,
@@ -39,16 +39,6 @@ import {
 const addressArg = Args.text({ name: "address" }).pipe(
 	Args.withDescription("Ethereum address (0x-prefixed, 40 hex chars)"),
 )
-
-// ============================================================================
-// Helpers
-// ============================================================================
-
-/** Parse hex string to decimal string */
-const hexToDecimal = (hex: unknown): string => {
-	if (typeof hex !== "string") return String(hex)
-	return BigInt(hex).toString()
-}
 
 // ============================================================================
 // Handler functions (testable, separated from CLI wiring)
@@ -435,11 +425,7 @@ export const sendCommand = Command.make(
 	"send",
 	{
 		to: Options.text("to").pipe(Options.withDescription("Target address")),
-		from: Options.text("from").pipe(Options.withDescription("Sender address")),
-		privateKey: Options.text("private-key").pipe(
-			Options.withDescription("Private key for signing (stored for future use)"),
-			Options.optional,
-		),
+		from: Options.text("from").pipe(Options.withDescription("Sender address (devnet auto-signing)")),
 		value: Options.text("value").pipe(Options.withDescription("Value to send in wei"), Options.optional),
 		sig: Args.text({ name: "sig" }).pipe(
 			Args.withDescription("Function signature, e.g. 'transfer(address,uint256)'"),

@@ -523,6 +523,46 @@ describe("sendHandler", () => {
 			}
 		}).pipe(Effect.provide(TevmNode.LocalTest()), Effect.provide(FetchHttpClient.layer)),
 	)
+
+	it.effect("sends a transaction with value parameter", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+			try {
+				const result = yield* sendHandler(
+					`http://127.0.0.1:${server.port}`,
+					"0x0000000000000000000000000000000000000000",
+					"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+					undefined,
+					[],
+					"1000", // value in wei (decimal)
+				)
+				expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			} finally {
+				yield* server.close()
+			}
+		}).pipe(Effect.provide(TevmNode.LocalTest()), Effect.provide(FetchHttpClient.layer)),
+	)
+
+	it.effect("sends a transaction with hex value parameter", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+			try {
+				const result = yield* sendHandler(
+					`http://127.0.0.1:${server.port}`,
+					"0x0000000000000000000000000000000000000000",
+					"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+					undefined,
+					[],
+					"0x3e8", // value in wei (hex, 1000 decimal)
+				)
+				expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			} finally {
+				yield* server.close()
+			}
+		}).pipe(Effect.provide(TevmNode.LocalTest()), Effect.provide(FetchHttpClient.layer)),
+	)
 })
 
 // ============================================================================

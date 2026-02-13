@@ -2,6 +2,9 @@ import { FetchHttpClient } from "@effect/platform"
 import { describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { expect } from "vitest"
+import { hexToBytes } from "../../evm/conversions.js"
+import { TevmNode, TevmNodeService } from "../../node/index.js"
+import { startRpcServer } from "../../rpc/server.js"
 import { runCli } from "../test-helpers.js"
 import { lookupAddressHandler, namehashHandler, resolveNameHandler } from "./ens.js"
 
@@ -61,10 +64,38 @@ describe("resolveNameHandler", () => {
 			expect(error._tag).toBe("EnsError")
 		}).pipe(Effect.provide(FetchHttpClient.layer)),
 	)
+
+	it.effect("fails with 'No resolver found' when registry returns zero address", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+
+			// Deploy a contract at ENS registry that returns 32 zero bytes
+			// PUSH1 0x20, PUSH1 0x00, RETURN → memory is zero-initialized
+			const ensRegistry = "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e"
+			const zeroReturnCode = new Uint8Array([0x60, 0x20, 0x60, 0x00, 0xf3])
+			yield* node.hostAdapter.setAccount(hexToBytes(ensRegistry), {
+				nonce: 0n,
+				balance: 0n,
+				codeHash: new Uint8Array(32),
+				code: zeroReturnCode,
+			})
+
+			try {
+				const error = yield* resolveNameHandler(`http://127.0.0.1:${server.port}`, "nonexistent.eth").pipe(
+					Effect.flip,
+				)
+				expect(error._tag).toBe("EnsError")
+				expect(error.message).toContain("No resolver found")
+			} finally {
+				yield* server.close()
+			}
+		}).pipe(Effect.provide(TevmNode.LocalTest()), Effect.provide(FetchHttpClient.layer)),
+	)
 })
 
 // ============================================================================
-// Handler tests — lookupAddressHandler (error paths)
+// Handler tests — lookupAddressHandler
 // ============================================================================
 
 describe("lookupAddressHandler", () => {
@@ -76,6 +107,70 @@ describe("lookupAddressHandler", () => {
 			).pipe(Effect.flip)
 			expect(error._tag).toBe("EnsError")
 		}).pipe(Effect.provide(FetchHttpClient.layer)),
+	)
+
+	it.effect("returns name when resolver returns ABI-encoded string", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+
+			// Deploy ENS registry mock that returns resolver address 0x00...0042
+			// PUSH1 0x42, PUSH1 0x00, MSTORE, PUSH1 0x20, PUSH1 0x00, RETURN
+			const ensRegistry = "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e"
+			const registryCode = new Uint8Array([0x60, 0x42, 0x60, 0x00, 0x52, 0x60, 0x20, 0x60, 0x00, 0xf3])
+			yield* node.hostAdapter.setAccount(hexToBytes(ensRegistry), {
+				nonce: 0n,
+				balance: 0n,
+				codeHash: new Uint8Array(32),
+				code: registryCode,
+			})
+
+			// Deploy resolver mock at 0x00...0042
+			// Returns ABI-encoded string "test.eth" using overlapping MSTOREs.
+			// MSTORE stores 32 bytes; PUSH1 value is right-aligned (byte at pos offset+31).
+			// Write chars RIGHT-TO-LEFT so later MSTOREs don't clobber earlier chars.
+			const resolverAddr = `0x${"00".repeat(19)}42`
+			const resolverCode = new Uint8Array([
+				// 'h'=0x68 at mem[71]: MSTORE at 40 → writes [40..71], pos 71=0x68
+				0x60, 0x68, 0x60, 0x28, 0x52,
+				// 't'=0x74 at mem[70]: MSTORE at 39 → writes [39..70]
+				0x60, 0x74, 0x60, 0x27, 0x52,
+				// 'e'=0x65 at mem[69]: MSTORE at 38
+				0x60, 0x65, 0x60, 0x26, 0x52,
+				// '.'=0x2e at mem[68]: MSTORE at 37
+				0x60, 0x2e, 0x60, 0x25, 0x52,
+				// 't'=0x74 at mem[67]: MSTORE at 36
+				0x60, 0x74, 0x60, 0x24, 0x52,
+				// 's'=0x73 at mem[66]: MSTORE at 35
+				0x60, 0x73, 0x60, 0x23, 0x52,
+				// 'e'=0x65 at mem[65]: MSTORE at 34
+				0x60, 0x65, 0x60, 0x22, 0x52,
+				// 't'=0x74 at mem[64]: MSTORE at 33
+				0x60, 0x74, 0x60, 0x21, 0x52,
+				// length=8: PUSH1 0x08, PUSH1 0x20, MSTORE → mem[32..63], pos 63=0x08
+				0x60, 0x08, 0x60, 0x20, 0x52,
+				// offset=32: PUSH1 0x20, PUSH1 0x00, MSTORE → mem[0..31], pos 31=0x20
+				0x60, 0x20, 0x60, 0x00, 0x52,
+				// RETURN 96 bytes from memory[0]
+				0x60, 0x60, 0x60, 0x00, 0xf3,
+			])
+			yield* node.hostAdapter.setAccount(hexToBytes(resolverAddr), {
+				nonce: 0n,
+				balance: 0n,
+				codeHash: new Uint8Array(32),
+				code: resolverCode,
+			})
+
+			try {
+				const result = yield* lookupAddressHandler(
+					`http://127.0.0.1:${server.port}`,
+					"0x1234567890abcdef1234567890abcdef12345678",
+				)
+				expect(result).toBe("test.eth")
+			} finally {
+				yield* server.close()
+			}
+		}).pipe(Effect.provide(TevmNode.LocalTest()), Effect.provide(FetchHttpClient.layer)),
 	)
 })
 
