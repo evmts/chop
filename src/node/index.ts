@@ -16,6 +16,7 @@ import { WorldStateLive } from "../state/world-state.js"
 import { type TestAccount, fundAccounts, getTestAccounts } from "./accounts.js"
 import { MiningService, MiningServiceLive } from "./mining.js"
 import type { MiningServiceApi } from "./mining.js"
+import { type ImpersonationManagerApi, makeImpersonationManager } from "./impersonation-manager.js"
 import { type SnapshotManagerApi, makeSnapshotManager } from "./snapshot-manager.js"
 import { TxPoolLive, TxPoolService } from "./tx-pool.js"
 import type { TxPoolApi } from "./tx-pool.js"
@@ -40,6 +41,8 @@ export interface TevmNodeShape {
 	readonly mining: MiningServiceApi
 	/** Snapshot manager for evm_snapshot / evm_revert RPC methods. */
 	readonly snapshotManager: SnapshotManagerApi
+	/** Impersonation manager for anvil_impersonateAccount / anvil_stopImpersonatingAccount. */
+	readonly impersonationManager: ImpersonationManagerApi
 	/** Chain ID (default: 31337 for local devnet). */
 	readonly chainId: bigint
 	/** Pre-funded test accounts (deterministic Hardhat/Anvil defaults). */
@@ -105,6 +108,9 @@ const TevmNodeLive = (
 			// Create snapshot manager
 			const snapshotManager = makeSnapshotManager(hostAdapter)
 
+			// Create impersonation manager
+			const impersonationManager = makeImpersonationManager()
+
 			// Create and fund deterministic test accounts
 			const accounts = getTestAccounts(options.accounts ?? 10)
 			yield* fundAccounts(hostAdapter, accounts)
@@ -117,6 +123,7 @@ const TevmNodeLive = (
 				txPool,
 				mining,
 				snapshotManager,
+				impersonationManager,
 				chainId,
 				accounts,
 			} satisfies TevmNodeShape
@@ -168,6 +175,7 @@ export const TevmNode = {
 // ---------------------------------------------------------------------------
 
 export { NodeInitError } from "./errors.js"
+export type { ImpersonationManagerApi } from "./impersonation-manager.js"
 export { MiningService, MiningServiceLive } from "./mining.js"
 export type { MiningMode, MiningServiceApi } from "./mining.js"
 export { UnknownSnapshotError } from "./snapshot-manager.js"
