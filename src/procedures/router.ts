@@ -2,11 +2,26 @@ import { Effect } from "effect"
 import type { TevmNodeShape } from "../node/index.js"
 import {
 	anvilAutoImpersonateAccount,
+	anvilDropAllTransactions,
+	anvilDropTransaction,
+	anvilDumpState,
+	anvilEnableTraces,
 	anvilImpersonateAccount,
+	anvilLoadState,
 	anvilMine,
+	anvilNodeInfo,
+	anvilRemoveBlockTimestampInterval,
+	anvilReset,
 	anvilSetBalance,
+	anvilSetBlockGasLimit,
+	anvilSetBlockTimestampInterval,
+	anvilSetChainId,
 	anvilSetCode,
+	anvilSetCoinbase,
+	anvilSetMinGasPrice,
+	anvilSetNextBlockBaseFeePerGas,
 	anvilSetNonce,
+	anvilSetRpcUrl,
 	anvilSetStorageAt,
 	anvilStopImpersonatingAccount,
 } from "./anvil.js"
@@ -45,7 +60,15 @@ import {
 	ethSign,
 	ethUninstallFilter,
 } from "./eth.js"
-import { evmMine, evmRevert, evmSetAutomine, evmSetIntervalMining, evmSnapshot } from "./evm.js"
+import {
+	evmIncreaseTime,
+	evmMine,
+	evmRevert,
+	evmSetAutomine,
+	evmSetIntervalMining,
+	evmSetNextBlockTimestamp,
+	evmSnapshot,
+} from "./evm.js"
 import { netListening, netPeerCount, netVersion } from "./net.js"
 import { web3ClientVersion, web3Sha3 } from "./web3.js"
 
@@ -102,12 +125,29 @@ const methods: Record<string, (node: TevmNodeShape) => Procedure> = {
 	anvil_impersonateAccount: anvilImpersonateAccount,
 	anvil_stopImpersonatingAccount: anvilStopImpersonatingAccount,
 	anvil_autoImpersonateAccount: anvilAutoImpersonateAccount,
+	anvil_dumpState: anvilDumpState,
+	anvil_loadState: anvilLoadState,
+	anvil_reset: anvilReset,
+	anvil_setMinGasPrice: anvilSetMinGasPrice,
+	anvil_setNextBlockBaseFeePerGas: anvilSetNextBlockBaseFeePerGas,
+	anvil_setCoinbase: anvilSetCoinbase,
+	anvil_setBlockGasLimit: anvilSetBlockGasLimit,
+	anvil_setBlockTimestampInterval: anvilSetBlockTimestampInterval,
+	anvil_removeBlockTimestampInterval: anvilRemoveBlockTimestampInterval,
+	anvil_setChainId: anvilSetChainId,
+	anvil_setRpcUrl: anvilSetRpcUrl,
+	anvil_dropTransaction: anvilDropTransaction,
+	anvil_dropAllTransactions: anvilDropAllTransactions,
+	anvil_enableTraces: anvilEnableTraces,
+	anvil_nodeInfo: anvilNodeInfo,
 	// EVM methods
 	evm_mine: evmMine,
 	evm_setAutomine: evmSetAutomine,
 	evm_setIntervalMining: evmSetIntervalMining,
 	evm_snapshot: evmSnapshot,
 	evm_revert: evmRevert,
+	evm_increaseTime: evmIncreaseTime,
+	evm_setNextBlockTimestamp: evmSetNextBlockTimestamp,
 }
 
 // ---------------------------------------------------------------------------
