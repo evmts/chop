@@ -41,5 +41,6 @@ export {
 	IntrinsicGasTooLowError,
 	MaxFeePerGasTooLowError,
 	NonceTooLowError,
+	NotImpersonatedError,
 	TransactionNotFoundError,
 } from "./errors.js"

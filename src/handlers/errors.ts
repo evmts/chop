@@ -57,3 +57,8 @@ export class MaxFeePerGasTooLowError extends Data.TaggedError("MaxFeePerGasTooLo
 export class TransactionNotFoundError extends Data.TaggedError("TransactionNotFoundError")<{
 	readonly hash: string
 }> {}
+
+/** Sender is not a known account and not impersonated. */
+export class NotImpersonatedError extends Data.TaggedError("NotImpersonatedError")<{
+	readonly address: string
+}> {}

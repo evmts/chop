@@ -8,6 +8,7 @@ import {
 	IntrinsicGasTooLowError,
 	MaxFeePerGasTooLowError,
 	NonceTooLowError,
+	NotImpersonatedError,
 } from "./errors.js"
 
 // ---------------------------------------------------------------------------
@@ -122,10 +123,24 @@ export const sendTransactionHandler =
 		params: SendTransactionParams,
 	): Effect.Effect<
 		SendTransactionResult,
-		InsufficientBalanceError | NonceTooLowError | IntrinsicGasTooLowError | MaxFeePerGasTooLowError | ConversionError
+		| InsufficientBalanceError
+		| NonceTooLowError
+		| IntrinsicGasTooLowError
+		| MaxFeePerGasTooLowError
+		| ConversionError
+		| NotImpersonatedError
 	> =>
 		Effect.gen(function* () {
 			const fromBytes = yield* safeHexToBytes(params.from)
+
+			// 0. Validate sender is authorized (known account or impersonated)
+			const fromLower = params.from.toLowerCase()
+			const isKnownAccount = node.accounts.some((a) => a.address.toLowerCase() === fromLower)
+			const isImpersonated = node.impersonationManager.isImpersonated(fromLower)
+			if (!isKnownAccount && !isImpersonated) {
+				return yield* Effect.fail(new NotImpersonatedError({ address: params.from }))
+			}
+
 			const value = params.value ?? 0n
 			const gasLimit = params.gas ?? DEFAULT_GAS
 			const calldataBytes = params.data ? yield* safeHexToBytes(params.data) : new Uint8Array(0)

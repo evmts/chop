@@ -41,6 +41,7 @@ describe("sendTransactionHandler — legacy gasPrice path", () => {
 
 			// Create account with just enough for gasPrice but not enough for higher baseFee
 			const testAddr = `0x${"aa".repeat(20)}`
+			yield* node.impersonationManager.impersonate(testAddr)
 			// gasPrice = 2 gwei, gas = 21000 → cost = 42_000_000_000_000
 			const justEnough = 42_000_000_000_000n
 			yield* node.hostAdapter.setAccount(hexToBytes(testAddr), {
@@ -67,6 +68,7 @@ describe("sendTransactionHandler — legacy gasPrice path", () => {
 			const node = yield* TevmNodeService
 
 			const testAddr = `0x${"ab".repeat(20)}`
+			yield* node.impersonationManager.impersonate(testAddr)
 			// Not enough: gasPrice = 2 gwei, gas = 21000 → need 42_000_000_000_000
 			yield* node.hostAdapter.setAccount(hexToBytes(testAddr), {
 				nonce: 0n,

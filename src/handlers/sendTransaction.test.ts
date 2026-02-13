@@ -135,8 +135,9 @@ describe("sendTransactionHandler", () => {
 		Effect.gen(function* () {
 			const node = yield* TevmNodeService
 
-			// Use an address with no balance
+			// Use an address with no balance — must impersonate since it's not a known account
 			const poorAddr = `0x${"99".repeat(20)}`
+			yield* node.impersonationManager.impersonate(poorAddr)
 			yield* node.hostAdapter.setAccount(hexToBytes(poorAddr), {
 				nonce: 0n,
 				balance: 0n,
@@ -355,6 +356,7 @@ describe("sendTransactionHandler", () => {
 			// Give account a precise balance: just enough for value + gas * effectiveGasPrice
 			// but NOT enough for value + gas * maxFeePerGas
 			const testAddr = `0x${"bb".repeat(20)}`
+			yield* node.impersonationManager.impersonate(testAddr)
 			// baseFee = 1_000_000_000n (1 gwei), maxFeePerGas = 10_000_000_000n (10 gwei)
 			// effectiveGasPrice = min(10 gwei, 1 gwei + 0) = 1 gwei
 			// With gas=21000: effective cost = 21000 * 1 gwei = 21_000_000_000_000

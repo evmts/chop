@@ -722,8 +722,9 @@ describe("RPC Server — Transaction Processing (T3.1)", () => {
 			const node = yield* TevmNodeService
 			const server = yield* startRpcServer({ port: 0 }, node)
 
-			// Use an address with no balance
+			// Use an address with no balance — must impersonate since it's not a known account
 			const poorAddr = `0x${"99".repeat(20)}`
+			yield* node.impersonationManager.impersonate(poorAddr)
 			yield* node.hostAdapter.setAccount(hexToBytes(poorAddr), {
 				nonce: 0n,
 				balance: 0n,
