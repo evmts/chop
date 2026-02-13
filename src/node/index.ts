@@ -22,6 +22,8 @@ import { type FilterManagerApi, makeFilterManager } from "./filter-manager.js"
 import { type ImpersonationManagerApi, makeImpersonationManager } from "./impersonation-manager.js"
 import { MiningService, MiningServiceLive } from "./mining.js"
 import type { MiningServiceApi } from "./mining.js"
+import type { NodeConfig } from "./node-config.js"
+import { makeNodeConfig } from "./node-config.js"
 import { type SnapshotManagerApi, makeSnapshotManager } from "./snapshot-manager.js"
 import { TxPoolLive, TxPoolService } from "./tx-pool.js"
 import type { TxPoolApi } from "./tx-pool.js"
@@ -54,6 +56,8 @@ export interface TevmNodeShape {
 	readonly chainId: bigint
 	/** Pre-funded test accounts (deterministic Hardhat/Anvil defaults). */
 	readonly accounts: readonly TestAccount[]
+	/** Mutable node configuration (gas, coinbase, timestamps, etc.). */
+	readonly nodeConfig: NodeConfig
 }
 
 /** Options for creating a local-mode TevmNode. */
@@ -133,6 +137,9 @@ const TevmNodeLive = (
 			// Create filter manager
 			const filterManager = makeFilterManager()
 
+			// Create mutable node configuration
+			const nodeConfig = yield* makeNodeConfig({ chainId })
+
 			// Create and fund deterministic test accounts
 			const accounts = getTestAccounts(options.accounts ?? 10)
 			yield* fundAccounts(hostAdapter, accounts)
@@ -149,6 +156,7 @@ const TevmNodeLive = (
 				filterManager,
 				chainId,
 				accounts,
+				nodeConfig,
 			} satisfies TevmNodeShape
 		}),
 	)
@@ -308,6 +316,8 @@ export const TevmNode = {
 // ---------------------------------------------------------------------------
 
 export { NodeInitError } from "./errors.js"
+export type { NodeConfig } from "./node-config.js"
+export { makeNodeConfig } from "./node-config.js"
 export type { FilterManagerApi } from "./filter-manager.js"
 export type { ImpersonationManagerApi } from "./impersonation-manager.js"
 export { MiningService, MiningServiceLive } from "./mining.js"
