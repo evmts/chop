@@ -1,63 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { Effect } from "effect"
 import { expect } from "vitest"
-import { TevmNode, TevmNodeService } from "../node/index.js"
-import { resolveBlockTag, serializeBlock, serializeLog, serializeTransaction } from "./helpers.js"
-
-describe("resolveBlockTag", () => {
-	it.effect("resolves 'latest' to head block", () =>
-		Effect.gen(function* () {
-			const node = yield* TevmNodeService
-			const block = yield* resolveBlockTag(node.blockchain, "latest")
-			expect(block).not.toBeNull()
-			expect(block!.number).toBe(0n) // genesis
-		}).pipe(Effect.provide(TevmNode.LocalTest())),
-	)
-
-	it.effect("resolves 'earliest' to genesis block", () =>
-		Effect.gen(function* () {
-			const node = yield* TevmNodeService
-			const block = yield* resolveBlockTag(node.blockchain, "earliest")
-			expect(block).not.toBeNull()
-			expect(block!.number).toBe(0n)
-		}).pipe(Effect.provide(TevmNode.LocalTest())),
-	)
-
-	it.effect("resolves 'pending' to head block", () =>
-		Effect.gen(function* () {
-			const node = yield* TevmNodeService
-			const block = yield* resolveBlockTag(node.blockchain, "pending")
-			expect(block).not.toBeNull()
-			expect(block!.number).toBe(0n)
-		}).pipe(Effect.provide(TevmNode.LocalTest())),
-	)
-
-	it.effect("resolves hex block number", () =>
-		Effect.gen(function* () {
-			const node = yield* TevmNodeService
-			const block = yield* resolveBlockTag(node.blockchain, "0x0")
-			expect(block).not.toBeNull()
-			expect(block!.number).toBe(0n)
-		}).pipe(Effect.provide(TevmNode.LocalTest())),
-	)
-
-	it.effect("returns null for non-existent block number", () =>
-		Effect.gen(function* () {
-			const node = yield* TevmNodeService
-			const block = yield* resolveBlockTag(node.blockchain, "0xff")
-			expect(block).toBeNull()
-		}).pipe(Effect.provide(TevmNode.LocalTest())),
-	)
-
-	it.effect("defaults to 'latest' when undefined", () =>
-		Effect.gen(function* () {
-			const node = yield* TevmNodeService
-			const block = yield* resolveBlockTag(node.blockchain, undefined)
-			expect(block).not.toBeNull()
-			expect(block!.number).toBe(0n)
-		}).pipe(Effect.provide(TevmNode.LocalTest())),
-	)
-})
+import { serializeBlock, serializeLog, serializeTransaction } from "./helpers.js"
 
 describe("serializeBlock", () => {
 	it("serializes block with correct fields", () => {
@@ -81,6 +24,59 @@ describe("serializeBlock", () => {
 		expect(result.baseFeePerGas).toBe("0x3b9aca00")
 		expect(result.transactions).toEqual(["0xabc"])
 		expect(result.uncles).toEqual([])
+	})
+
+	it("serializes block with full transaction objects when includeFullTxs is true", () => {
+		const block = {
+			hash: `0x${"aa".repeat(32)}`,
+			parentHash: `0x${"bb".repeat(32)}`,
+			number: 42n,
+			timestamp: 1000000n,
+			gasLimit: 30_000_000n,
+			gasUsed: 21000n,
+			baseFeePerGas: 1_000_000_000n,
+			transactionHashes: ["0xabc"],
+		}
+		const fullTxs = [
+			{
+				hash: "0xabc",
+				from: "0x1234",
+				to: "0x5678",
+				value: 1000n,
+				gas: 21000n,
+				gasPrice: 1_000_000_000n,
+				nonce: 0n,
+				data: "0x",
+				blockHash: block.hash,
+				blockNumber: 42n,
+				transactionIndex: 0,
+				type: 2,
+			},
+		]
+		const result = serializeBlock(block, true, fullTxs)
+		expect(result.transactions).toEqual([
+			expect.objectContaining({
+				hash: "0xabc",
+				from: "0x1234",
+				to: "0x5678",
+				value: "0x3e8",
+			}),
+		])
+	})
+
+	it("falls back to hashes when includeFullTxs is true but no fullTxs provided", () => {
+		const block = {
+			hash: `0x${"aa".repeat(32)}`,
+			parentHash: `0x${"bb".repeat(32)}`,
+			number: 42n,
+			timestamp: 1000000n,
+			gasLimit: 30_000_000n,
+			gasUsed: 21000n,
+			baseFeePerGas: 1_000_000_000n,
+			transactionHashes: ["0xabc"],
+		}
+		const result = serializeBlock(block, true)
+		expect(result.transactions).toEqual(["0xabc"])
 	})
 
 	it("handles missing transactionHashes", () => {

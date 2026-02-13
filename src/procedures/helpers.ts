@@ -1,53 +1,8 @@
-// Shared helpers for JSON-RPC procedures — block tag resolution and serialization.
+// Shared helpers for JSON-RPC procedures — block serialization.
 
-import { Effect } from "effect"
 import type { Block } from "../blockchain/block-store.js"
-import type { BlockchainApi } from "../blockchain/index.js"
 import type { PoolTransaction, ReceiptLog } from "../node/tx-pool.js"
 import { bigintToHex } from "./eth.js"
-
-// ---------------------------------------------------------------------------
-// Block tag resolution
-// ---------------------------------------------------------------------------
-
-/**
- * Resolve a JSON-RPC block tag to a Block.
- *
- * Supports: "latest", "earliest", "pending" (treated as latest), "safe", "finalized",
- * or a hex-encoded block number (e.g. "0x0", "0x1a").
- *
- * Returns null if the block is not found (for hex numbers).
- */
-export const resolveBlockTag = (
-	blockchain: BlockchainApi,
-	tag: string | undefined,
-): Effect.Effect<Block | null> =>
-	Effect.gen(function* () {
-		const resolved = tag ?? "latest"
-
-		switch (resolved) {
-			case "latest":
-			case "pending":
-			case "safe":
-			case "finalized":
-				return yield* blockchain.getHead().pipe(
-					Effect.catchTag("GenesisError", () => Effect.succeed(null as Block | null)),
-				)
-
-			case "earliest":
-				return yield* blockchain.getBlockByNumber(0n).pipe(
-					Effect.catchTag("BlockNotFoundError", () => Effect.succeed(null as Block | null)),
-				)
-
-			default: {
-				// Hex-encoded block number
-				const blockNumber = BigInt(resolved)
-				return yield* blockchain.getBlockByNumber(blockNumber).pipe(
-					Effect.catchTag("BlockNotFoundError", () => Effect.succeed(null as Block | null)),
-				)
-			}
-		}
-	})
 
 // ---------------------------------------------------------------------------
 // Block serialization
@@ -63,11 +18,14 @@ const ZERO_ADDRESS = `0x${"00".repeat(20)}`
  * Convert a Block to JSON-RPC block object format.
  *
  * When includeFullTxs is false, transactions is an array of hashes.
- * When true, transactions would be full tx objects (not implemented yet — returns hashes).
+ * When true, transactions is an array of full transaction objects.
+ *
+ * @param fullTxs - When includeFullTxs is true, provide pre-resolved PoolTransaction[] here.
  */
 export const serializeBlock = (
 	block: Block,
 	includeFullTxs: boolean,
+	fullTxs?: readonly PoolTransaction[],
 ): Record<string, unknown> => ({
 	number: bigintToHex(block.number),
 	hash: block.hash,
@@ -86,8 +44,8 @@ export const serializeBlock = (
 	gasLimit: bigintToHex(block.gasLimit),
 	gasUsed: bigintToHex(block.gasUsed),
 	timestamp: bigintToHex(block.timestamp),
-	transactions: includeFullTxs
-		? (block.transactionHashes ?? [])
+	transactions: includeFullTxs && fullTxs
+		? fullTxs.map(serializeTransaction)
 		: (block.transactionHashes ?? []),
 	uncles: [],
 	baseFeePerGas: bigintToHex(block.baseFeePerGas),

@@ -1,5 +1,5 @@
 import { Effect } from "effect"
-import { bytesToHex } from "../evm/conversions.js"
+import { bytesToHex, hexToBytes } from "../evm/conversions.js"
 import {
 	blockNumberHandler,
 	callHandler,
@@ -37,7 +37,13 @@ export const bigintToHex32 = (n: bigint): string => `0x${n.toString(16).padStart
 // ---------------------------------------------------------------------------
 
 /** A JSON-RPC procedure: takes params array, returns a JSON-serializable result. */
-export type ProcedureResult = string | boolean | readonly string[] | Record<string, unknown> | null
+export type ProcedureResult =
+	| string
+	| boolean
+	| readonly string[]
+	| readonly Record<string, unknown>[]
+	| Record<string, unknown>
+	| null
 export type Procedure = (params: readonly unknown[]) => Effect.Effect<ProcedureResult, InternalError>
 
 // ---------------------------------------------------------------------------
@@ -205,7 +211,18 @@ export const ethGetBlockByNumber =
 				const includeFullTxs = (params[1] as boolean) ?? false
 				const block = yield* getBlockByNumberHandler(node)({ blockTag, includeFullTxs })
 				if (!block) return null
-				return serializeBlock(block, includeFullTxs)
+
+				// Resolve full transactions when requested
+				let fullTxs: import("../node/tx-pool.js").PoolTransaction[] | undefined
+				if (includeFullTxs && block.transactionHashes) {
+					fullTxs = []
+					for (const txHash of block.transactionHashes) {
+						const tx = yield* getTransactionByHashHandler(node)({ hash: txHash })
+						if (tx) fullTxs.push(tx)
+					}
+				}
+
+				return serializeBlock(block, includeFullTxs, fullTxs)
 			}),
 		)
 
@@ -219,7 +236,18 @@ export const ethGetBlockByHash =
 				const includeFullTxs = (params[1] as boolean) ?? false
 				const block = yield* getBlockByHashHandler(node)({ hash, includeFullTxs })
 				if (!block) return null
-				return serializeBlock(block, includeFullTxs)
+
+				// Resolve full transactions when requested
+				let fullTxs: import("../node/tx-pool.js").PoolTransaction[] | undefined
+				if (includeFullTxs && block.transactionHashes) {
+					fullTxs = []
+					for (const txHash of block.transactionHashes) {
+						const tx = yield* getTransactionByHashHandler(node)({ hash: txHash })
+						if (tx) fullTxs.push(tx)
+					}
+				}
+
+				return serializeBlock(block, includeFullTxs, fullTxs)
 			}),
 		)
 
@@ -339,7 +367,7 @@ export const ethGetLogs =
 						: {}),
 					...(typeof filterObj.blockHash === "string" ? { blockHash: filterObj.blockHash } : {}),
 				})
-				return logs.map(serializeLog) as unknown as Record<string, unknown>
+				return logs.map(serializeLog)
 			}),
 		)
 
@@ -353,19 +381,21 @@ export const ethSign =
 	(_params) =>
 		Effect.fail(new InternalError({ message: "eth_sign is not supported — use eth_sendTransaction instead" }))
 
-/** eth_getProof → stub proof structure with empty values. */
+/** eth_getProof → proof structure with actual account state (proofs are stubs). */
 export const ethGetProof =
-	(_node: TevmNodeShape): Procedure =>
+	(node: TevmNodeShape): Procedure =>
 	(params) =>
 		wrapErrors(
 			Effect.gen(function* () {
 				const address = params[0] as string
+				const addrBytes = hexToBytes(address)
+				const account = yield* node.hostAdapter.getAccount(addrBytes)
 				return {
 					address,
 					accountProof: [],
-					balance: "0x0",
-					codeHash: `0x${"00".repeat(32)}`,
-					nonce: "0x0",
+					balance: bigintToHex(account.balance),
+					codeHash: bytesToHex(account.codeHash),
+					nonce: bigintToHex(account.nonce),
 					storageHash: `0x${"00".repeat(32)}`,
 					storageProof: [],
 				} satisfies Record<string, unknown>
@@ -441,14 +471,14 @@ export const ethGetFilterChanges =
 						if (block) hashes.push(block.hash)
 					}
 					node.filterManager.updateLastPolled(filterId, head.number)
-					return hashes as unknown as Record<string, unknown>
+					return hashes
 				}
 
 				if (filter.type === "pendingTransaction") {
 					// Return pending tx hashes
 					const pending = yield* node.txPool.getPendingHashes()
 					node.filterManager.updateLastPolled(filterId, head.number)
-					return pending as unknown as Record<string, unknown>
+					return pending
 				}
 
 				// Log filter: return logs since last poll
@@ -459,7 +489,7 @@ export const ethGetFilterChanges =
 					...(filter.criteria?.topics !== undefined ? { topics: filter.criteria.topics } : {}),
 				})
 				node.filterManager.updateLastPolled(filterId, head.number)
-				return logs.map(serializeLog) as unknown as Record<string, unknown>
+				return logs.map(serializeLog)
 			}),
 		)
 

@@ -1,6 +1,7 @@
 import { Effect } from "effect"
 import type { Block } from "../blockchain/block-store.js"
 import type { TevmNodeShape } from "../node/index.js"
+import { HandlerError } from "./errors.js"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -28,7 +29,7 @@ export interface GetBlockByNumberParams {
  */
 export const getBlockByNumberHandler =
 	(node: TevmNodeShape) =>
-	(params: GetBlockByNumberParams): Effect.Effect<Block | null> =>
+	(params: GetBlockByNumberParams): Effect.Effect<Block | null, HandlerError> =>
 		Effect.gen(function* () {
 			const { blockTag } = params
 
@@ -47,7 +48,10 @@ export const getBlockByNumberHandler =
 					)
 
 				default: {
-					const blockNumber = BigInt(blockTag)
+					const blockNumber = yield* Effect.try({
+						try: () => BigInt(blockTag),
+						catch: () => new HandlerError({ message: `Invalid block tag: ${blockTag}` }),
+					})
 					return yield* node.blockchain.getBlockByNumber(blockNumber).pipe(
 						Effect.catchTag("BlockNotFoundError", () => Effect.succeed(null as Block | null)),
 					)

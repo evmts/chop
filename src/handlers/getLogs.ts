@@ -71,7 +71,17 @@ export const getLogsHandler =
 		Effect.gen(function* () {
 			// Resolve block range
 			const head = yield* node.blockchain.getHead().pipe(
-				Effect.catchTag("GenesisError", () => Effect.succeed({ number: 0n } as { number: bigint })),
+				Effect.catchTag("GenesisError", () =>
+					Effect.succeed({
+						hash: `0x${"00".repeat(32)}`,
+						parentHash: `0x${"00".repeat(32)}`,
+						number: 0n,
+						timestamp: 0n,
+						gasLimit: 30_000_000n,
+						gasUsed: 0n,
+						baseFeePerGas: 1_000_000_000n,
+					} satisfies import("../blockchain/block-store.js").Block),
+				),
 			)
 
 			let fromBlockNum: bigint
