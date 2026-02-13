@@ -302,22 +302,22 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - Integration test: fork → call contract → correct return
 
 ### T3.6 Remaining eth_* Methods
-- [ ] eth_getBlockByNumber, eth_getBlockByHash
-- [ ] eth_getTransactionByHash
-- [ ] eth_getTransactionReceipt
-- [ ] eth_getLogs
-- [ ] eth_gasPrice, eth_maxPriorityFeePerGas
-- [ ] eth_estimateGas
-- [ ] eth_feeHistory
-- [ ] eth_accounts, eth_sign
-- [ ] eth_getProof
-- [ ] eth_newFilter, eth_getFilterChanges, eth_uninstallFilter
-- [ ] eth_newBlockFilter, eth_newPendingTransactionFilter
-- [ ] eth_sendRawTransaction
-- [ ] net_version, net_listening, net_peerCount
-- [ ] web3_clientVersion, web3_sha3
-- [ ] eth_getBlockTransactionCountByHash/Number
-- [ ] eth_getTransactionByBlockHashAndIndex/NumberAndIndex
+- [x] eth_getBlockByNumber, eth_getBlockByHash
+- [x] eth_getTransactionByHash
+- [x] eth_getTransactionReceipt
+- [x] eth_getLogs
+- [x] eth_gasPrice, eth_maxPriorityFeePerGas
+- [x] eth_estimateGas
+- [x] eth_feeHistory
+- [x] eth_accounts, eth_sign
+- [x] eth_getProof
+- [x] eth_newFilter, eth_getFilterChanges, eth_uninstallFilter
+- [x] eth_newBlockFilter, eth_newPendingTransactionFilter
+- [x] eth_sendRawTransaction
+- [x] net_version, net_listening, net_peerCount
+- [x] web3_clientVersion, web3_sha3
+- [x] eth_getBlockTransactionCountByHash/Number
+- [x] eth_getTransactionByBlockHashAndIndex/NumberAndIndex
 
 **Validation**:
 - RPC test per method with known inputs and expected outputs
