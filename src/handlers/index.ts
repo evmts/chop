@@ -23,6 +23,19 @@ export type { MineParams, MineResult } from "./mine.js"
 export { getTransactionReceiptHandler } from "./getTransactionReceipt.js"
 export type { GetTransactionReceiptParams } from "./getTransactionReceipt.js"
 export { snapshotHandler, revertHandler } from "./snapshot.js"
+export { setBalanceHandler } from "./setBalance.js"
+export type { SetBalanceParams } from "./setBalance.js"
+export { setCodeHandler } from "./setCode.js"
+export type { SetCodeParams } from "./setCode.js"
+export { setNonceHandler } from "./setNonce.js"
+export type { SetNonceParams } from "./setNonce.js"
+export { setStorageAtHandler } from "./setStorageAt.js"
+export type { SetStorageAtParams } from "./setStorageAt.js"
+export {
+	impersonateAccountHandler,
+	stopImpersonatingAccountHandler,
+	autoImpersonateAccountHandler,
+} from "./impersonate.js"
 export {
 	InsufficientBalanceError,
 	IntrinsicGasTooLowError,
