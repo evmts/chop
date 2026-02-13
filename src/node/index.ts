@@ -16,6 +16,7 @@ import { WorldStateLive } from "../state/world-state.js"
 import { type TestAccount, fundAccounts, getTestAccounts } from "./accounts.js"
 import { MiningService, MiningServiceLive } from "./mining.js"
 import type { MiningServiceApi } from "./mining.js"
+import { type SnapshotManagerApi, makeSnapshotManager } from "./snapshot-manager.js"
 import { TxPoolLive, TxPoolService } from "./tx-pool.js"
 import type { TxPoolApi } from "./tx-pool.js"
 
@@ -37,6 +38,8 @@ export interface TevmNodeShape {
 	readonly txPool: TxPoolApi
 	/** Mining service (auto/manual/interval modes, block building). */
 	readonly mining: MiningServiceApi
+	/** Snapshot manager for evm_snapshot / evm_revert RPC methods. */
+	readonly snapshotManager: SnapshotManagerApi
 	/** Chain ID (default: 31337 for local devnet). */
 	readonly chainId: bigint
 	/** Pre-funded test accounts (deterministic Hardhat/Anvil defaults). */
@@ -99,11 +102,24 @@ const TevmNodeLive = (
 				Effect.catchTag("GenesisError", (e) => Effect.die(e)), // Should never fail on fresh node
 			)
 
+			// Create snapshot manager
+			const snapshotManager = makeSnapshotManager(hostAdapter)
+
 			// Create and fund deterministic test accounts
 			const accounts = getTestAccounts(options.accounts ?? 10)
 			yield* fundAccounts(hostAdapter, accounts)
 
-			return { evm, hostAdapter, blockchain, releaseSpec, txPool, mining, chainId, accounts } satisfies TevmNodeShape
+			return {
+				evm,
+				hostAdapter,
+				blockchain,
+				releaseSpec,
+				txPool,
+				mining,
+				snapshotManager,
+				chainId,
+				accounts,
+			} satisfies TevmNodeShape
 		}),
 	)
 
@@ -154,3 +170,5 @@ export const TevmNode = {
 export { NodeInitError } from "./errors.js"
 export { MiningService, MiningServiceLive } from "./mining.js"
 export type { MiningMode, MiningServiceApi } from "./mining.js"
+export { UnknownSnapshotError } from "./snapshot-manager.js"
+export type { SnapshotManagerApi } from "./snapshot-manager.js"
