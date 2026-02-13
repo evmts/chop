@@ -3,6 +3,7 @@
 import { Effect } from "effect"
 import type { Block } from "../blockchain/block-store.js"
 import type { TevmNodeShape } from "../node/index.js"
+import type { BlockBuildOptions } from "../node/mining.js"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -12,6 +13,8 @@ import type { TevmNodeShape } from "../node/index.js"
 export interface MineParams {
 	/** Number of blocks to mine. Defaults to 1. */
 	readonly blockCount?: number
+	/** Options for overriding block properties from nodeConfig. */
+	readonly options?: BlockBuildOptions
 }
 
 /** Result of a mine operation. */
@@ -28,7 +31,7 @@ export type MineResult = readonly Block[]
 export const mineHandler =
 	(node: TevmNodeShape) =>
 	(params: MineParams = {}): Effect.Effect<MineResult> =>
-		node.mining.mine(params.blockCount ?? 1)
+		node.mining.mine(params.blockCount ?? 1, params.options)
 
 /**
  * Handler for evm_setAutomine.

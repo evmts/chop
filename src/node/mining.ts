@@ -14,6 +14,20 @@ import { TxPoolService } from "./tx-pool.js"
 /** Mining mode: auto (mine after each tx), manual (explicit mine), or interval (periodic). */
 export type MiningMode = "auto" | "manual" | "interval"
 
+/** Options passed to mine() for overriding block properties from nodeConfig. */
+export interface BlockBuildOptions {
+	/** Override the base fee per gas for mined blocks. Consumed after first block. */
+	readonly baseFeePerGas?: bigint
+	/** Override the gas limit for mined blocks. Persists across all mined blocks. */
+	readonly gasLimit?: bigint
+	/** Exact timestamp override (one-shot — used for first block only). */
+	readonly nextBlockTimestamp?: bigint
+	/** Time offset in seconds, added to wall-clock time. */
+	readonly timeOffset?: bigint
+	/** Fixed seconds between blocks (overrides wall-clock spacing). */
+	readonly blockTimestampInterval?: bigint
+}
+
 /** Shape of the MiningService API. */
 export interface MiningServiceApi {
 	/** Get the current mining mode. */
@@ -25,7 +39,7 @@ export interface MiningServiceApi {
 	/** Get the current interval in ms (0 if not in interval mode). */
 	readonly getInterval: () => Effect.Effect<number>
 	/** Mine one or more blocks. Returns the created blocks. */
-	readonly mine: (blockCount?: number) => Effect.Effect<readonly Block[]>
+	readonly mine: (blockCount?: number, options?: BlockBuildOptions) => Effect.Effect<readonly Block[]>
 }
 
 // ---------------------------------------------------------------------------
@@ -39,12 +53,37 @@ export class MiningService extends Context.Tag("Mining")<MiningService, MiningSe
 // Block builder — sorts txs by fee, accumulates gas, creates block + receipts
 // ---------------------------------------------------------------------------
 
+/** Compute block timestamp based on options and parent. */
+const computeTimestamp = (parent: Block, options: BlockBuildOptions, isFirstBlock: boolean): bigint => {
+	// 1. Exact timestamp override (one-shot, first block only)
+	if (isFirstBlock && options.nextBlockTimestamp !== undefined) {
+		return options.nextBlockTimestamp
+	}
+
+	// 2. Fixed interval between blocks
+	if (options.blockTimestampInterval !== undefined) {
+		return parent.timestamp + options.blockTimestampInterval
+	}
+
+	// 3. Wall-clock time + offset
+	const wallClock = BigInt(Math.floor(Date.now() / 1000))
+	const offset = options.timeOffset ?? 0n
+	const adjusted = wallClock + offset
+	// Ensure timestamp is strictly increasing
+	return adjusted > parent.timestamp ? adjusted : parent.timestamp + 1n
+}
+
 /** Build a single block from pending transactions. */
 const buildBlock = (
 	parent: Block,
 	pendingTxs: readonly PoolTransaction[],
 	blockNumber: bigint,
+	options: BlockBuildOptions = {},
+	isFirstBlock = true,
 ): { block: Block; includedTxs: readonly PoolTransaction[]; cumulativeGasUsed: bigint } => {
+	// Resolve gas limit: option > parent
+	const effectiveGasLimit = options.gasLimit ?? parent.gasLimit
+
 	// 1. Sort by gasPrice descending (highest fee first)
 	const sorted = [...pendingTxs].sort((a, b) => {
 		const priceA = a.effectiveGasPrice ?? a.gasPrice
@@ -57,23 +96,28 @@ const buildBlock = (
 	const includedTxs: PoolTransaction[] = []
 	for (const tx of sorted) {
 		const txGas = tx.gasUsed ?? tx.gas
-		if (cumulativeGasUsed + txGas > parent.gasLimit) continue
+		if (cumulativeGasUsed + txGas > effectiveGasLimit) continue
 		cumulativeGasUsed += txGas
 		includedTxs.push(tx)
 	}
 
-	// 3. Create block
+	// 3. Resolve base fee: option (first block only) > parent
+	const effectiveBaseFee =
+		isFirstBlock && options.baseFeePerGas !== undefined ? options.baseFeePerGas : parent.baseFeePerGas
+
+	// 4. Compute timestamp
+	const blockTimestamp = computeTimestamp(parent, options, isFirstBlock)
+
+	// 5. Create block
 	const blockHash = `0x${blockNumber.toString(16).padStart(64, "0")}`
-	const timestamp = BigInt(Math.floor(Date.now() / 1000))
-	const blockTimestamp = timestamp > parent.timestamp ? timestamp : parent.timestamp + 1n
 	const block: Block = {
 		hash: blockHash,
 		parentHash: parent.hash,
 		number: blockNumber,
 		timestamp: blockTimestamp,
-		gasLimit: parent.gasLimit,
+		gasLimit: effectiveGasLimit,
 		gasUsed: cumulativeGasUsed,
-		baseFeePerGas: parent.baseFeePerGas,
+		baseFeePerGas: effectiveBaseFee,
 		transactionHashes: includedTxs.map((tx) => tx.hash),
 	}
 
@@ -112,20 +156,19 @@ export const MiningServiceLive: Layer.Layer<MiningService, never, BlockchainServ
 
 			getInterval: () => Ref.get(intervalRef),
 
-			mine: (blockCount = 1) =>
+			mine: (blockCount = 1, options: BlockBuildOptions = {}) =>
 				Effect.gen(function* () {
 					const blocks: Block[] = []
 
 					for (let i = 0; i < blockCount; i++) {
-						const parent = yield* blockchain
-							.getHead()
-							.pipe(Effect.catchTag("GenesisError", (e) => Effect.die(e)))
+						const parent = yield* blockchain.getHead().pipe(Effect.catchTag("GenesisError", (e) => Effect.die(e)))
 
 						// Only include pending txs in the first block
 						const pendingTxs = i === 0 ? yield* txPool.getPendingTransactions() : []
 
 						const blockNumber = parent.number + 1n
-						const { block, includedTxs } = buildBlock(parent, pendingTxs, blockNumber)
+						const isFirstBlock = i === 0
+						const { block, includedTxs } = buildBlock(parent, pendingTxs, blockNumber, options, isFirstBlock)
 
 						// Store block in blockchain
 						yield* blockchain.putBlock(block)
