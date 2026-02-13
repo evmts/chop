@@ -12,7 +12,10 @@ import {
 	callHandler,
 	chainIdHandler,
 	codeHandler,
+	estimateHandler,
 	nonceHandler,
+	rpcGenericHandler,
+	sendHandler,
 	storageHandler,
 } from "./rpc.js"
 
@@ -367,12 +370,7 @@ describe("callHandler — with function signature", () => {
 
 			try {
 				// Call with a signature that has output types → decodes the result
-				const result = yield* callHandler(
-					`http://127.0.0.1:${server.port}`,
-					contractAddr,
-					"getValue()(uint256)",
-					[],
-				)
+				const result = yield* callHandler(`http://127.0.0.1:${server.port}`, contractAddr, "getValue()(uint256)", [])
 				// Should decode the uint256 output
 				expect(result).toContain("66") // 0x42 = 66 decimal
 			} finally {
@@ -397,12 +395,7 @@ describe("callHandler — with function signature", () => {
 
 			try {
 				// Call with a signature that has NO output types → returns raw hex
-				const result = yield* callHandler(
-					`http://127.0.0.1:${server.port}`,
-					contractAddr,
-					"getValue()",
-					[],
-				)
+				const result = yield* callHandler(`http://127.0.0.1:${server.port}`, contractAddr, "getValue()", [])
 				// Should return raw hex since no output types
 				expect(result).toContain("42")
 			} finally {
@@ -480,5 +473,189 @@ describe("CLI E2E — RPC JSON output for all commands", () => {
 		const json = JSON.parse(result.stdout.trim())
 		expect(json.address).toBe(contractAddr)
 		expect(json.code).toContain("604260005260206000f3")
+	})
+})
+
+// ============================================================================
+// Handler tests — estimateHandler
+// ============================================================================
+
+describe("estimateHandler", () => {
+	it.effect("estimates gas for a simple call", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+			try {
+				const result = yield* estimateHandler(
+					`http://127.0.0.1:${server.port}`,
+					"0x0000000000000000000000000000000000000000",
+					undefined,
+					[],
+				)
+				expect(Number(result)).toBeGreaterThan(0)
+			} finally {
+				yield* server.close()
+			}
+		}).pipe(Effect.provide(TevmNode.LocalTest()), Effect.provide(FetchHttpClient.layer)),
+	)
+})
+
+// ============================================================================
+// Handler tests — sendHandler
+// ============================================================================
+
+describe("sendHandler", () => {
+	it.effect("sends a transaction and returns tx hash", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+			try {
+				const result = yield* sendHandler(
+					`http://127.0.0.1:${server.port}`,
+					"0x0000000000000000000000000000000000000000",
+					"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", // funded test account
+					undefined,
+					[],
+				)
+				expect(result).toMatch(/^0x[0-9a-f]{64}$/)
+			} finally {
+				yield* server.close()
+			}
+		}).pipe(Effect.provide(TevmNode.LocalTest()), Effect.provide(FetchHttpClient.layer)),
+	)
+})
+
+// ============================================================================
+// Handler tests — rpcGenericHandler
+// ============================================================================
+
+describe("rpcGenericHandler", () => {
+	it.effect("executes a raw JSON-RPC call", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+			try {
+				const result = yield* rpcGenericHandler(`http://127.0.0.1:${server.port}`, "eth_chainId", [])
+				expect(result).toBe("0x7a69")
+			} finally {
+				yield* server.close()
+			}
+		}).pipe(Effect.provide(TevmNode.LocalTest()), Effect.provide(FetchHttpClient.layer)),
+	)
+
+	it.effect("passes JSON-parsed params correctly", () =>
+		Effect.gen(function* () {
+			const node = yield* TevmNodeService
+			const server = yield* startRpcServer({ port: 0 }, node)
+			try {
+				const result = yield* rpcGenericHandler(
+					`http://127.0.0.1:${server.port}`,
+					"eth_getBalance",
+					['"0x0000000000000000000000000000000000000000"', '"latest"'],
+				)
+				expect(result).toBe("0x0")
+			} finally {
+				yield* server.close()
+			}
+		}).pipe(Effect.provide(TevmNode.LocalTest()), Effect.provide(FetchHttpClient.layer)),
+	)
+})
+
+// ============================================================================
+// CLI E2E — new RPC commands error handling
+// ============================================================================
+
+describe("CLI E2E — new RPC commands error handling", () => {
+	it("estimate with invalid URL exits non-zero", () => {
+		const result = runCli("estimate --to 0x0000000000000000000000000000000000000000 -r http://127.0.0.1:1")
+		expect(result.exitCode).not.toBe(0)
+	})
+
+	it("send with invalid URL exits non-zero", () => {
+		const result = runCli(
+			"send --to 0x0000000000000000000000000000000000000000 --from 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 -r http://127.0.0.1:1",
+		)
+		expect(result.exitCode).not.toBe(0)
+	})
+
+	it("rpc with invalid URL exits non-zero", () => {
+		const result = runCli("rpc eth_chainId -r http://127.0.0.1:1")
+		expect(result.exitCode).not.toBe(0)
+	})
+})
+
+// ============================================================================
+// CLI E2E — new RPC commands success
+// ============================================================================
+
+describe("CLI E2E — new RPC commands success", () => {
+	let server: TestServer
+
+	beforeAll(async () => {
+		server = await startTestServer()
+	}, 15_000)
+
+	afterAll(() => {
+		server?.kill()
+	})
+
+	it("chop estimate returns a gas value", () => {
+		const result = runCli(
+			`estimate --to 0x0000000000000000000000000000000000000000 -r http://127.0.0.1:${server.port}`,
+		)
+		expect(result.exitCode).toBe(0)
+		expect(Number(result.stdout.trim())).toBeGreaterThan(0)
+	})
+
+	it("chop estimate --json outputs structured JSON", () => {
+		const result = runCli(
+			`estimate --to 0x0000000000000000000000000000000000000000 -r http://127.0.0.1:${server.port} --json`,
+		)
+		expect(result.exitCode).toBe(0)
+		const json = JSON.parse(result.stdout.trim())
+		expect(json).toHaveProperty("gas")
+		expect(Number(json.gas)).toBeGreaterThan(0)
+	})
+
+	it("chop send returns a tx hash", () => {
+		const from = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+		const result = runCli(
+			`send --to 0x0000000000000000000000000000000000000000 --from ${from} -r http://127.0.0.1:${server.port}`,
+		)
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout.trim()).toMatch(/^0x[0-9a-f]{64}$/)
+	})
+
+	it("chop send --json outputs structured JSON", () => {
+		const from = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+		const result = runCli(
+			`send --to 0x0000000000000000000000000000000000000000 --from ${from} -r http://127.0.0.1:${server.port} --json`,
+		)
+		expect(result.exitCode).toBe(0)
+		const json = JSON.parse(result.stdout.trim())
+		expect(json).toHaveProperty("txHash")
+		expect(json.txHash).toMatch(/^0x[0-9a-f]{64}$/)
+	})
+
+	it("chop rpc eth_chainId returns result", () => {
+		const result = runCli(`rpc eth_chainId -r http://127.0.0.1:${server.port}`)
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout.trim()).toBe("0x7a69")
+	})
+
+	it("chop rpc --json outputs structured JSON", () => {
+		const result = runCli(`rpc eth_chainId -r http://127.0.0.1:${server.port} --json`)
+		expect(result.exitCode).toBe(0)
+		const json = JSON.parse(result.stdout.trim())
+		expect(json).toHaveProperty("method", "eth_chainId")
+		expect(json).toHaveProperty("result", "0x7a69")
+	})
+
+	it("chop rpc with params works", () => {
+		const result = runCli(
+			`rpc eth_getBalance '"0x0000000000000000000000000000000000000000"' '"latest"' -r http://127.0.0.1:${server.port}`,
+		)
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout.trim()).toBe("0x0")
 	})
 })

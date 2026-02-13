@@ -9,13 +9,16 @@
  * - code: Get account bytecode
  * - storage: Get storage value at slot
  * - call: Execute eth_call
+ * - estimate: Estimate gas for a transaction
+ * - send: Send a transaction
+ * - rpc: Execute a raw JSON-RPC call
  *
  * All commands require --rpc-url / -r and support --json / -j for structured output.
  */
 
 import { Args, Command, Options } from "@effect/cli"
 import { FetchHttpClient, type HttpClient } from "@effect/platform"
-import { Console, Effect } from "effect"
+import { Console, Data, Effect } from "effect"
 import { type RpcClientError, rpcCall } from "../../rpc/client.js"
 import { handleCommandErrors, jsonOption, rpcUrlOption } from "../shared.js"
 import {
@@ -290,6 +293,208 @@ export const callCommand = Command.make(
 ).pipe(Command.withDescription("Execute an eth_call against a contract"))
 
 // ============================================================================
+// New Error Types
+// ============================================================================
+
+/** Error for send transaction failures. */
+export class SendTransactionError extends Data.TaggedError("SendTransactionError")<{
+	readonly message: string
+	readonly cause?: unknown
+}> {}
+
+/** Error for invalid RPC params. */
+export class InvalidRpcParamsError extends Data.TaggedError("InvalidRpcParamsError")<{
+	readonly message: string
+}> {}
+
+// ============================================================================
+// New Handler functions
+// ============================================================================
+
+/**
+ * Estimate gas for a transaction via eth_estimateGas.
+ *
+ * If `sig` is provided, encodes calldata from signature + args.
+ */
+export const estimateHandler = (
+	rpcUrl: string,
+	to: string,
+	sig: string | undefined,
+	args: readonly string[],
+): Effect.Effect<
+	string,
+	RpcClientError | InvalidSignatureError | ArgumentCountError | AbiError | HexDecodeError,
+	HttpClient.HttpClient
+> =>
+	Effect.gen(function* () {
+		let data = "0x"
+		if (sig) {
+			data = yield* calldataHandler(sig, [...args])
+		}
+		const result = yield* rpcCall(rpcUrl, "eth_estimateGas", [{ to, data }])
+		return hexToDecimal(result)
+	})
+
+/**
+ * Send a transaction via eth_sendTransaction (devnet compatible).
+ *
+ * Uses the `from` address directly with eth_sendTransaction.
+ * On a devnet, accounts are auto-signed.
+ */
+export const sendHandler = (
+	rpcUrl: string,
+	to: string,
+	from: string,
+	sig: string | undefined,
+	args: readonly string[],
+	value?: string,
+): Effect.Effect<
+	string,
+	RpcClientError | SendTransactionError | InvalidSignatureError | ArgumentCountError | AbiError | HexDecodeError,
+	HttpClient.HttpClient
+> =>
+	Effect.gen(function* () {
+		let data = "0x"
+		if (sig) {
+			data = yield* calldataHandler(sig, [...args])
+		}
+
+		const txParams: Record<string, unknown> = { from, to, data }
+		if (value) {
+			txParams["value"] = value.startsWith("0x") ? value : `0x${BigInt(value).toString(16)}`
+		}
+
+		const result = yield* rpcCall(rpcUrl, "eth_sendTransaction", [txParams])
+		return String(result)
+	})
+
+/**
+ * Execute a raw JSON-RPC call.
+ *
+ * Params are parsed as JSON if they look like JSON, otherwise passed as strings.
+ */
+export const rpcGenericHandler = (
+	rpcUrl: string,
+	method: string,
+	params: readonly string[],
+): Effect.Effect<unknown, RpcClientError | InvalidRpcParamsError, HttpClient.HttpClient> =>
+	Effect.gen(function* () {
+		// Parse params: try JSON for each, fall back to string
+		const parsedParams: unknown[] = []
+		for (const p of params) {
+			try {
+				parsedParams.push(JSON.parse(p))
+			} catch {
+				parsedParams.push(p)
+			}
+		}
+		return yield* rpcCall(rpcUrl, method, parsedParams)
+	})
+
+// ============================================================================
+// New Command definitions
+// ============================================================================
+
+/**
+ * `chop estimate --to <addr> [sig] [args...] -r <url>`
+ *
+ * Estimate gas for a transaction.
+ */
+export const estimateCommand = Command.make(
+	"estimate",
+	{
+		to: Options.text("to").pipe(Options.withDescription("Target contract address")),
+		sig: Args.text({ name: "sig" }).pipe(
+			Args.withDescription("Function signature, e.g. 'transfer(address,uint256)'"),
+			Args.optional,
+		),
+		args: Args.text({ name: "args" }).pipe(Args.withDescription("Function arguments"), Args.repeated),
+		rpcUrl: rpcUrlOption,
+		json: jsonOption,
+	},
+	({ to, sig, args, rpcUrl, json }) =>
+		Effect.gen(function* () {
+			const sigValue = sig._tag === "Some" ? sig.value : undefined
+			const result = yield* estimateHandler(rpcUrl, to, sigValue, [...args])
+			if (json) {
+				yield* Console.log(JSON.stringify({ gas: result }))
+			} else {
+				yield* Console.log(result)
+			}
+		}).pipe(Effect.provide(FetchHttpClient.layer), handleCommandErrors),
+).pipe(Command.withDescription("Estimate gas for a transaction"))
+
+/**
+ * `chop send --to <addr> --from <addr> [sig] [args...] -r <url>`
+ *
+ * Send a transaction. Uses --from address with eth_sendTransaction.
+ * On devnets, accounts are auto-signed.
+ * --private-key can be provided for future local signing support.
+ */
+export const sendCommand = Command.make(
+	"send",
+	{
+		to: Options.text("to").pipe(Options.withDescription("Target address")),
+		from: Options.text("from").pipe(Options.withDescription("Sender address")),
+		privateKey: Options.text("private-key").pipe(
+			Options.withDescription("Private key for signing (stored for future use)"),
+			Options.optional,
+		),
+		value: Options.text("value").pipe(
+			Options.withDescription("Value to send in wei"),
+			Options.optional,
+		),
+		sig: Args.text({ name: "sig" }).pipe(
+			Args.withDescription("Function signature, e.g. 'transfer(address,uint256)'"),
+			Args.optional,
+		),
+		args: Args.text({ name: "args" }).pipe(Args.withDescription("Function arguments"), Args.repeated),
+		rpcUrl: rpcUrlOption,
+		json: jsonOption,
+	},
+	({ to, from, value, sig, args, rpcUrl, json }) =>
+		Effect.gen(function* () {
+			const sigValue = sig._tag === "Some" ? sig.value : undefined
+			const valueStr = value._tag === "Some" ? value.value : undefined
+			const result = yield* sendHandler(rpcUrl, to, from, sigValue, [...args], valueStr)
+			if (json) {
+				yield* Console.log(JSON.stringify({ txHash: result }))
+			} else {
+				yield* Console.log(result)
+			}
+		}).pipe(Effect.provide(FetchHttpClient.layer), handleCommandErrors),
+).pipe(Command.withDescription("Send a transaction"))
+
+/**
+ * `chop rpc <method> [params...] -r <url>`
+ *
+ * Execute a raw JSON-RPC call. Params are parsed as JSON if possible.
+ */
+export const rpcGenericCommand = Command.make(
+	"rpc",
+	{
+		method: Args.text({ name: "method" }).pipe(
+			Args.withDescription("JSON-RPC method name (e.g. 'eth_chainId')"),
+		),
+		params: Args.text({ name: "params" }).pipe(
+			Args.withDescription("Method parameters (JSON values or strings)"),
+			Args.repeated,
+		),
+		rpcUrl: rpcUrlOption,
+		json: jsonOption,
+	},
+	({ method, params, rpcUrl, json }) =>
+		Effect.gen(function* () {
+			const result = yield* rpcGenericHandler(rpcUrl, method, [...params])
+			if (json) {
+				yield* Console.log(JSON.stringify({ method, result }))
+			} else {
+				yield* Console.log(typeof result === "string" ? result : JSON.stringify(result, null, 2))
+			}
+		}).pipe(Effect.provide(FetchHttpClient.layer), handleCommandErrors),
+).pipe(Command.withDescription("Execute a raw JSON-RPC call"))
+
+// ============================================================================
 // Exports
 // ============================================================================
 
@@ -302,4 +507,7 @@ export const rpcCommands = [
 	codeCommand,
 	storageCommand,
 	callCommand,
+	estimateCommand,
+	sendCommand,
+	rpcGenericCommand,
 ] as const
