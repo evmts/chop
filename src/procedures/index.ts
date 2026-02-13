@@ -29,6 +29,8 @@ export type { Procedure } from "./eth.js"
 
 export { anvilMine } from "./anvil.js"
 
+export { debugTraceCall, debugTraceTransaction, debugTraceBlockByNumber, debugTraceBlockByHash } from "./debug.js"
+
 export { evmMine, evmRevert, evmSetAutomine, evmSetIntervalMining, evmSnapshot } from "./evm.js"
 
 export { methodRouter } from "./router.js"

@@ -60,6 +60,7 @@ import {
 	ethSign,
 	ethUninstallFilter,
 } from "./eth.js"
+import { debugTraceBlockByHash, debugTraceBlockByNumber, debugTraceCall, debugTraceTransaction } from "./debug.js"
 import {
 	evmIncreaseTime,
 	evmMine,
@@ -140,6 +141,11 @@ const methods: Record<string, (node: TevmNodeShape) => Procedure> = {
 	anvil_dropAllTransactions: anvilDropAllTransactions,
 	anvil_enableTraces: anvilEnableTraces,
 	anvil_nodeInfo: anvilNodeInfo,
+	// debug_* methods
+	debug_traceCall: debugTraceCall,
+	debug_traceTransaction: debugTraceTransaction,
+	debug_traceBlockByNumber: debugTraceBlockByNumber,
+	debug_traceBlockByHash: debugTraceBlockByHash,
 	// EVM methods
 	evm_mine: evmMine,
 	evm_setAutomine: evmSetAutomine,
