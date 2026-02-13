@@ -323,15 +323,15 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - RPC test per method with known inputs and expected outputs
 
 ### T3.7 Remaining anvil_* / evm_* Methods
-- [ ] anvil_dumpState, anvil_loadState
-- [ ] anvil_reset
-- [ ] anvil_setMinGasPrice, anvil_setNextBlockBaseFeePerGas
-- [ ] anvil_setCoinbase, anvil_setBlockGasLimit
-- [ ] anvil_setBlockTimestampInterval, anvil_removeBlockTimestampInterval
-- [ ] anvil_setChainId, anvil_setRpcUrl
-- [ ] anvil_dropTransaction, anvil_dropAllTransactions
-- [ ] anvil_enableTraces, anvil_nodeInfo
-- [ ] evm_increaseTime, evm_setNextBlockTimestamp
+- [x] anvil_dumpState, anvil_loadState
+- [x] anvil_reset
+- [x] anvil_setMinGasPrice, anvil_setNextBlockBaseFeePerGas
+- [x] anvil_setCoinbase, anvil_setBlockGasLimit
+- [x] anvil_setBlockTimestampInterval, anvil_removeBlockTimestampInterval
+- [x] anvil_setChainId, anvil_setRpcUrl
+- [x] anvil_dropTransaction, anvil_dropAllTransactions
+- [x] anvil_enableTraces, anvil_nodeInfo
+- [x] evm_increaseTime, evm_setNextBlockTimestamp
 - [ ] evm_setAutomine
 
 **Validation**:
