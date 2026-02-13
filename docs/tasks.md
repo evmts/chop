@@ -264,10 +264,10 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - RPC test: block has correct tx count and gas used
 
 ### T3.3 Snapshot / Revert
-- [ ] `evm_snapshot` returns snapshot ID
-- [ ] `evm_revert` restores to snapshot
-- [ ] Multiple snapshot levels
-- [ ] Revert invalidates later snapshots
+- [x] `evm_snapshot` returns snapshot ID
+- [x] `evm_revert` restores to snapshot
+- [x] Multiple snapshot levels
+- [x] Revert invalidates later snapshots
 
 **Validation**:
 - RPC test: set balance → snapshot → change balance → revert → original balance
