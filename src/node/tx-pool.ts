@@ -110,6 +110,10 @@ export interface TxPoolApi {
 		blockNumber: bigint,
 		transactionIndex: number,
 	) => Effect.Effect<void, TransactionNotFoundError>
+	/** Remove a pending transaction by hash. Fails with TransactionNotFoundError if not pending. */
+	readonly dropTransaction: (hash: string) => Effect.Effect<boolean, TransactionNotFoundError>
+	/** Remove all pending (unmined) transactions from the pool. */
+	readonly dropAllTransactions: () => Effect.Effect<void>
 }
 
 // ---------------------------------------------------------------------------
@@ -181,5 +185,25 @@ export const TxPoolLive = (): Layer.Layer<TxPoolService> =>
 						return Effect.void
 					}),
 				),
+
+			dropTransaction: (hash) =>
+				Effect.sync(() => pending.has(hash)).pipe(
+					Effect.flatMap((isPending) => {
+						if (!isPending) {
+							return Effect.fail(new TransactionNotFoundError({ hash }))
+						}
+						pending.delete(hash)
+						transactions.delete(hash)
+						return Effect.succeed(true as boolean)
+					}),
+				),
+
+			dropAllTransactions: () =>
+				Effect.sync(() => {
+					for (const hash of pending) {
+						transactions.delete(hash)
+					}
+					pending.clear()
+				}),
 		} satisfies TxPoolApi
 	})
