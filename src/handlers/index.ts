@@ -22,6 +22,7 @@ export { mineHandler, setAutomineHandler, setIntervalMiningHandler } from "./min
 export type { MineParams, MineResult } from "./mine.js"
 export { getTransactionReceiptHandler } from "./getTransactionReceipt.js"
 export type { GetTransactionReceiptParams } from "./getTransactionReceipt.js"
+export { snapshotHandler, revertHandler } from "./snapshot.js"
 export {
 	InsufficientBalanceError,
 	IntrinsicGasTooLowError,
