@@ -1,6 +1,7 @@
 import { Context, Effect, Layer, type Scope } from "effect"
 import { bigintToBytes32, bytesToBigint } from "./conversions.js"
 import { WasmExecutionError, WasmLoadError } from "./errors.js"
+import { OPCODE_GAS_COSTS, OPCODE_NAMES, type StructLog } from "./trace-types.js"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -32,6 +33,12 @@ export interface ExecuteResult {
 	readonly gasUsed: bigint
 }
 
+/** Result of EVM execution with tracing. Extends ExecuteResult with structLogs. */
+export interface ExecuteTraceResult extends ExecuteResult {
+	/** Step-by-step execution trace entries. */
+	readonly structLogs: readonly StructLog[]
+}
+
 /** Host callbacks for async EVM execution. */
 export interface HostCallbacks {
 	/** Called when EVM needs a storage value. Returns 32-byte value. */
@@ -53,6 +60,11 @@ export interface EvmWasmShape {
 		params: ExecuteParams,
 		callbacks: HostCallbacks,
 	) => Effect.Effect<ExecuteResult, WasmExecutionError>
+	/** Async execution with tracing — collects structLog entries during execution. */
+	readonly executeWithTrace: (
+		params: ExecuteParams,
+		callbacks: HostCallbacks,
+	) => Effect.Effect<ExecuteTraceResult, WasmExecutionError>
 }
 
 /** Service tag for the EVM WASM integration. */
@@ -141,6 +153,7 @@ const readFromWasm = (memory: WasmMemoryLike, offset: number, length: number): U
  * @param wasmPath - Path to guillotine_mini.wasm file.
  * @param hardfork - Hardfork name (default: "cancun").
  */
+/* v8 ignore start -- WASM FFI boundary requires real binary */
 export const EvmWasmLive = (
 	wasmPath = "wasm/guillotine_mini.wasm",
 	hardfork = "cancun",
@@ -374,8 +387,17 @@ const makeEvmWasmLive = (wasmPath: string, hardfork: string): Effect.Effect<EvmW
 				}
 			})
 
-		return { execute, executeAsync } satisfies EvmWasmShape
+		// Stub tracing: real WASM tracing via js_opcode_callback is future work.
+		// For now, execute normally and return empty structLogs.
+		const executeWithTrace = (
+			params: ExecuteParams,
+			callbacks: HostCallbacks,
+		): Effect.Effect<ExecuteTraceResult, WasmExecutionError> =>
+			executeAsync(params, callbacks).pipe(Effect.map((r) => ({ ...r, structLogs: [] })))
+
+		return { execute, executeAsync, executeWithTrace } satisfies EvmWasmShape
 	})
+/* v8 ignore stop */
 
 // ---------------------------------------------------------------------------
 // Mini EVM interpreter — pure TypeScript test double
@@ -392,6 +414,9 @@ const bigintToAddress = (n: bigint): Uint8Array => {
 	return bytes
 }
 
+/** Format a bigint as a 64-char zero-padded hex string (no 0x prefix). */
+const formatStackEntry = (n: bigint): string => n.toString(16).padStart(64, "0")
+
 /**
  * Minimal EVM interpreter supporting a subset of opcodes.
  * Used as a test double for EvmWasmService when the real WASM binary
@@ -405,6 +430,7 @@ const bigintToAddress = (n: bigint): Uint8Array => {
  * - 0x54 SLOAD (async only)
  * - 0x60 PUSH1
  * - 0xf3 RETURN
+ * - 0xfd REVERT
  */
 const runMiniEvm = (
 	params: ExecuteParams,
@@ -518,6 +544,19 @@ const runMiniEvm = (
 					return { success: true, output, gasUsed }
 				}
 
+				case 0xfd: {
+					// REVERT — same as RETURN but success=false
+					const revOffset = stack.pop()
+					const revSize = stack.pop()
+					if (revOffset === undefined || revSize === undefined) {
+						return yield* Effect.fail(new WasmExecutionError({ message: "REVERT: stack underflow" }))
+					}
+					const revStart = Number(revOffset)
+					const revEnd = revStart + Number(revSize)
+					const revOutput = new Uint8Array(memory.buffer.slice(revStart, revEnd))
+					return { success: false, output: revOutput, gasUsed }
+				}
+
 				default:
 					return yield* Effect.fail(
 						new WasmExecutionError({ message: `Unsupported opcode: 0x${opcode.toString(16).padStart(2, "0")}` }),
@@ -530,13 +569,180 @@ const runMiniEvm = (
 	})
 
 // ---------------------------------------------------------------------------
+// Mini EVM interpreter with tracing — collects StructLog entries
+// ---------------------------------------------------------------------------
+
+/**
+ * Same as runMiniEvm but records a StructLog entry before each opcode.
+ * Used to implement executeWithTrace in the test double.
+ */
+const runMiniEvmWithTrace = (
+	params: ExecuteParams,
+	callbacks?: HostCallbacks,
+): Effect.Effect<ExecuteTraceResult, WasmExecutionError> =>
+	Effect.gen(function* () {
+		const { bytecode } = params
+		const stack: bigint[] = []
+		const memory = new Uint8Array(4096)
+		const structLogs: StructLog[] = []
+		let pc = 0
+		let gasUsed = 0n
+		const gasLimit = params.gas ?? 10_000_000n
+
+		/** Snapshot the current stack as 64-char padded hex strings. */
+		const snapshotStack = (): readonly string[] => stack.map(formatStackEntry)
+
+		/** Record a StructLog entry for the current opcode before executing it. */
+		const recordLog = (opcode: number): void => {
+			const gasCost = OPCODE_GAS_COSTS[opcode] ?? 0n
+			structLogs.push({
+				pc,
+				op: OPCODE_NAMES[opcode] ?? `UNKNOWN(0x${opcode.toString(16)})`,
+				gas: gasLimit - gasUsed,
+				gasCost,
+				depth: 1,
+				stack: snapshotStack(),
+				memory: [],
+				storage: {},
+			})
+		}
+
+		while (pc < bytecode.length) {
+			const opcode = bytecode[pc]
+
+			if (opcode === undefined) break
+
+			// Record trace entry BEFORE executing the opcode
+			recordLog(opcode)
+
+			switch (opcode) {
+				case 0x00: {
+					// STOP
+					return { success: true, output: new Uint8Array(0), gasUsed, structLogs }
+				}
+
+				case 0x31: {
+					// BALANCE
+					const addr = stack.pop()
+					if (addr === undefined) {
+						return yield* Effect.fail(new WasmExecutionError({ message: "BALANCE: stack underflow" }))
+					}
+					const addrBytes = bigintToAddress(addr)
+					if (callbacks?.onBalanceRead) {
+						const balanceBytes = yield* callbacks.onBalanceRead(addrBytes)
+						stack.push(bytesToBigint(balanceBytes))
+					} else {
+						stack.push(0n)
+					}
+					pc++
+					gasUsed += 100n
+					break
+				}
+
+				case 0x51: {
+					// MLOAD
+					const mloadOffset = stack.pop()
+					if (mloadOffset === undefined) {
+						return yield* Effect.fail(new WasmExecutionError({ message: "MLOAD: stack underflow" }))
+					}
+					const off = Number(mloadOffset)
+					const word = new Uint8Array(memory.buffer.slice(off, off + 32))
+					stack.push(bytesToBigint(word))
+					pc++
+					gasUsed += 3n
+					break
+				}
+
+				case 0x52: {
+					// MSTORE
+					const mstoreOffset = stack.pop()
+					const mstoreValue = stack.pop()
+					if (mstoreOffset === undefined || mstoreValue === undefined) {
+						return yield* Effect.fail(new WasmExecutionError({ message: "MSTORE: stack underflow" }))
+					}
+					const valueBytes = bigintToBytes32(mstoreValue)
+					memory.set(valueBytes, Number(mstoreOffset))
+					pc++
+					gasUsed += 3n
+					break
+				}
+
+				case 0x54: {
+					// SLOAD
+					const slot = stack.pop()
+					if (slot === undefined) {
+						return yield* Effect.fail(new WasmExecutionError({ message: "SLOAD: stack underflow" }))
+					}
+					const slotBytes = bigintToBytes32(slot)
+					if (callbacks?.onStorageRead) {
+						const storageValue = yield* callbacks.onStorageRead(params.address ?? new Uint8Array(20), slotBytes)
+						stack.push(bytesToBigint(storageValue))
+					} else {
+						stack.push(0n)
+					}
+					pc++
+					gasUsed += 2100n
+					break
+				}
+
+				case 0x60: {
+					// PUSH1
+					pc++
+					const val = bytecode[pc]
+					if (val === undefined) {
+						return yield* Effect.fail(new WasmExecutionError({ message: "PUSH1: unexpected end of bytecode" }))
+					}
+					stack.push(BigInt(val))
+					pc++
+					gasUsed += 3n
+					break
+				}
+
+				case 0xf3: {
+					// RETURN
+					const retOffset = stack.pop()
+					const retSize = stack.pop()
+					if (retOffset === undefined || retSize === undefined) {
+						return yield* Effect.fail(new WasmExecutionError({ message: "RETURN: stack underflow" }))
+					}
+					const start = Number(retOffset)
+					const end = start + Number(retSize)
+					const output = new Uint8Array(memory.buffer.slice(start, end))
+					return { success: true, output, gasUsed, structLogs }
+				}
+
+				case 0xfd: {
+					// REVERT — same as RETURN but success=false
+					const revOffset = stack.pop()
+					const revSize = stack.pop()
+					if (revOffset === undefined || revSize === undefined) {
+						return yield* Effect.fail(new WasmExecutionError({ message: "REVERT: stack underflow" }))
+					}
+					const revStart = Number(revOffset)
+					const revEnd = revStart + Number(revSize)
+					const revOutput = new Uint8Array(memory.buffer.slice(revStart, revEnd))
+					return { success: false, output: revOutput, gasUsed, structLogs }
+				}
+
+				default:
+					return yield* Effect.fail(
+						new WasmExecutionError({ message: `Unsupported opcode: 0x${opcode.toString(16).padStart(2, "0")}` }),
+					)
+			}
+		}
+
+		// Fell off end of bytecode — implicit STOP
+		return { success: true, output: new Uint8Array(0), gasUsed, structLogs }
+	})
+
+// ---------------------------------------------------------------------------
 // EvmWasmTest — mini interpreter Layer for testing
 // ---------------------------------------------------------------------------
 
 /**
  * Test layer using a pure TypeScript mini EVM interpreter.
  * No WASM binary required. Supports PUSH1, MSTORE, MLOAD, RETURN,
- * STOP, SLOAD (async), and BALANCE (async).
+ * STOP, SLOAD (async), BALANCE (async), and REVERT.
  */
 export const EvmWasmTest: Layer.Layer<EvmWasmService, never, never> = Layer.scoped(
 	EvmWasmService,
@@ -546,6 +752,7 @@ export const EvmWasmTest: Layer.Layer<EvmWasmService, never, never> = Layer.scop
 		return {
 			execute: (params) => runMiniEvm(params),
 			executeAsync: (params, callbacks) => runMiniEvm(params, callbacks),
+			executeWithTrace: (params, callbacks) => runMiniEvmWithTrace(params, callbacks),
 		} satisfies EvmWasmShape
 	}),
 )
@@ -569,6 +776,7 @@ export const makeEvmWasmTestWithCleanup = (tracker: {
 			return {
 				execute: (params) => runMiniEvm(params),
 				executeAsync: (params, callbacks) => runMiniEvm(params, callbacks),
+				executeWithTrace: (params, callbacks) => runMiniEvmWithTrace(params, callbacks),
 			} satisfies EvmWasmShape
 		}),
 	)
