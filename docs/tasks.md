@@ -396,8 +396,8 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - TUI test: press `q` → exits
 
 ### T4.2 Dashboard View
-- [ ] 2x2 grid: Chain Info, Recent Blocks, Recent Transactions, Accounts
-- [ ] Auto-updates when blocks are mined
+- [x] 2x2 grid: Chain Info, Recent Blocks, Recent Transactions, Accounts
+- [x] Auto-updates when blocks are mined
 
 **Validation**:
 - TUI test: dashboard shows chain ID, block number
