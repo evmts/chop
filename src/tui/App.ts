@@ -9,6 +9,7 @@ import type { CliRenderer } from "@opentui/core"
 import { createHelpOverlay } from "./components/HelpOverlay.js"
 import { createStatusBar } from "./components/StatusBar.js"
 import { createTabBar } from "./components/TabBar.js"
+import { getOpenTui } from "./opentui.js"
 import { type TuiState, initialState, keyToAction, reduce } from "./state.js"
 import { TABS } from "./tabs.js"
 import { DRACULA } from "./theme.js"
@@ -33,7 +34,7 @@ export interface AppHandle {
  * @returns AppHandle with `waitForQuit` promise
  */
 export const createApp = (renderer: CliRenderer): AppHandle => {
-	const { BoxRenderable: Box, TextRenderable: Text } = require("@opentui/core") as typeof import("@opentui/core")
+	const { BoxRenderable: Box, TextRenderable: Text } = getOpenTui()
 
 	// -------------------------------------------------------------------------
 	// State
@@ -93,12 +94,14 @@ export const createApp = (renderer: CliRenderer): AppHandle => {
 		quitResolve = resolve
 	})
 
-	// KeyHandler extends EventEmitter<KeyHandlerEventMap> — cast needed due to
-	// Node.js typed-emitter generics not resolving in this TS config.
-	const keyInput = renderer.keyInput as unknown as {
-		on: (event: "keypress", cb: (key: { name: string; sequence: string }) => void) => void
+	// KeyHandler extends EventEmitter<KeyHandlerEventMap> — runtime check guards
+	// against unexpected renderer.keyInput shapes before subscribing.
+	const keyInput: unknown = renderer.keyInput
+	if (!keyInput || typeof (keyInput as { on?: unknown }).on !== "function") {
+		throw new Error("renderer.keyInput does not expose an .on() method")
 	}
-	keyInput.on("keypress", (key) => {
+	const emitter = keyInput as { on: (event: "keypress", cb: (key: { name: string; sequence: string }) => void) => void }
+	emitter.on("keypress", (key) => {
 		const keyName = key.name ?? key.sequence
 		const action = keyToAction(keyName)
 		if (!action) return

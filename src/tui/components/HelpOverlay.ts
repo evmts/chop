@@ -6,6 +6,7 @@
  */
 
 import type { BoxRenderable } from "@opentui/core"
+import { getOpenTui } from "../opentui.js"
 import { DRACULA } from "../theme.js"
 
 /** Handle returned by createHelpOverlay. */
@@ -54,7 +55,7 @@ const HELP_TEXT = [
  * @returns A handle with `setVisible()` and `container` for composition.
  */
 export const createHelpOverlay = (renderer: import("@opentui/core").CliRenderer): HelpOverlayHandle => {
-	const { BoxRenderable: Box, TextRenderable: Text } = require("@opentui/core") as typeof import("@opentui/core")
+	const { BoxRenderable: Box, TextRenderable: Text } = getOpenTui()
 
 	// Full-screen semi-transparent backdrop
 	const container = new Box(renderer, {

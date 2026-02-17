@@ -7,6 +7,7 @@
  */
 
 import type { BoxRenderable, TextRenderable } from "@opentui/core"
+import { getOpenTui } from "../opentui.js"
 import { TABS } from "../tabs.js"
 import { DRACULA } from "../theme.js"
 
@@ -25,9 +26,7 @@ export interface TabBarHandle {
  * @returns A handle with `update(activeTab)` and `container` for composition.
  */
 export const createTabBar = (renderer: import("@opentui/core").CliRenderer): TabBarHandle => {
-	// Lazy-require to avoid loading at import time in tests
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const { BoxRenderable: Box, TextRenderable: Text } = require("@opentui/core") as typeof import("@opentui/core")
+	const { BoxRenderable: Box, TextRenderable: Text } = getOpenTui()
 
 	const container = new Box(renderer, {
 		width: "100%",

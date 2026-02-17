@@ -6,6 +6,7 @@
  */
 
 import type { BoxRenderable } from "@opentui/core"
+import { getOpenTui } from "../opentui.js"
 import { DRACULA } from "../theme.js"
 
 /** Handle returned by createStatusBar. */
@@ -23,7 +24,7 @@ export interface StatusBarHandle {
  * @returns A handle with `container` for composition.
  */
 export const createStatusBar = (renderer: import("@opentui/core").CliRenderer): StatusBarHandle => {
-	const { BoxRenderable: Box, TextRenderable: Text } = require("@opentui/core") as typeof import("@opentui/core")
+	const { BoxRenderable: Box, TextRenderable: Text } = getOpenTui()
 
 	const container = new Box(renderer, {
 		width: "100%",
