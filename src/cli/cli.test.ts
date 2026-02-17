@@ -33,10 +33,11 @@ describe("chop CLI", () => {
 	})
 
 	describe("no arguments", () => {
-		it("exits 0 and prints TUI stub message", () => {
+		it("exits 0 and prints TTY fallback message (non-interactive)", () => {
 			const result = runCli("")
 			expect(result.exitCode).toBe(0)
-			expect(result.stdout).toContain("TUI not yet implemented")
+			// When run via execSync (piped stdout), isTTY is false → fallback message
+			expect(result.stdout).toContain("TUI requires an interactive terminal")
 		})
 	})
 
