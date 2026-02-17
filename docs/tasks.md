@@ -383,11 +383,11 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 ## Phase 4: TUI
 
 ### T4.1 TUI Framework Setup
-- [ ] OpenTUI initializes with Dracula theme
-- [ ] App component with tab bar and status bar
-- [ ] Tab switching via number keys
-- [ ] Quit via `q` or `Ctrl+C`
-- [ ] Help overlay via `?`
+- [x] OpenTUI initializes with Dracula theme
+- [x] App component with tab bar and status bar
+- [x] Tab switching via number keys
+- [x] Quit via `q` or `Ctrl+C`
+- [x] Help overlay via `?`
 
 **Validation**:
 - TUI test: launch → tab bar visible with 8 tabs
