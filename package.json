@@ -31,6 +31,7 @@
 		"@effect/cli": "^0.73.0",
 		"@effect/platform": "^0.94.0",
 		"@effect/platform-node": "^0.104.0",
+		"@opentui/core": "^0.1.80",
 		"effect": "^3.19.0",
 		"voltaire-effect": "^0.3.0"
 	},
