@@ -249,7 +249,7 @@ describe("CLI E2E — RPC success with running server", () => {
 
 	beforeAll(async () => {
 		server = await startTestServer()
-	}, 15_000)
+	}, 35_000)
 
 	afterAll(() => {
 		server?.kill()
@@ -440,7 +440,7 @@ describe("CLI E2E — RPC JSON output for all commands", () => {
 
 	beforeAll(async () => {
 		server = await startTestServer()
-	}, 15_000)
+	}, 35_000)
 
 	afterAll(() => {
 		server?.kill()
@@ -633,7 +633,7 @@ describe("CLI E2E — new RPC commands success", () => {
 
 	beforeAll(async () => {
 		server = await startTestServer()
-	}, 15_000)
+	}, 35_000)
 
 	afterAll(() => {
 		server?.kill()

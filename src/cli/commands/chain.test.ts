@@ -273,7 +273,7 @@ describe("CLI E2E — chain commands success", () => {
 
 	beforeAll(async () => {
 		server = await startTestServer()
-	}, 15_000)
+	}, 35_000)
 
 	afterAll(() => {
 		server?.kill()

@@ -373,10 +373,10 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - RPC test: `hardhat_setBalance` → same as `anvil_setBalance`
 
 ### T3.11 Phase 3 Gate
-- [ ] All T3.1-T3.10 tasks complete
-- [ ] Full RPC compatibility test suite passes
-- [ ] `bun run test:coverage` ≥ 80% overall
-- [ ] Fork mode works against mainnet/testnet RPCs
+- [x] All T3.1-T3.10 tasks complete
+- [x] Full RPC compatibility test suite passes
+- [x] `bun run test:coverage` ≥ 80% overall
+- [x] Fork mode works against mainnet/testnet RPCs
 
 ---
 

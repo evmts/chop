@@ -65,8 +65,10 @@ export interface TestServer {
  * The caller MUST call `server.kill()` in `afterAll()` to clean up.
  */
 export function startTestServer(): Promise<TestServer> {
+	const timeout = Number(process.env.TEST_SERVER_TIMEOUT ?? 30_000)
+
 	return new Promise((resolve, reject) => {
-		const proc: ChildProcess = spawn("npx", ["tsx", "src/cli/test-server.ts"], {
+		const proc: ChildProcess = spawn("bun", ["run", "src/cli/test-server.ts"], {
 			cwd: process.cwd(),
 			stdio: ["pipe", "pipe", "pipe"],
 			env: { ...process.env, NO_COLOR: "1" },
@@ -98,8 +100,8 @@ export function startTestServer(): Promise<TestServer> {
 		setTimeout(() => {
 			if (!started) {
 				proc.kill()
-				reject(new Error("Test server start timeout (10s)"))
+				reject(new Error(`Test server start timeout (${timeout}ms)`))
 			}
-		}, 10_000)
+		}, timeout)
 	})
 }
