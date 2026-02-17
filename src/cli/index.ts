@@ -61,7 +61,7 @@ export const root = Command.make(
 				return
 			}
 
-			yield* tuiModule.startTui.pipe(Effect.catchTag("TuiError", (e) => Console.error(`TUI error: ${e.message}`)))
+			yield* tuiModule.startTui().pipe(Effect.catchTag("TuiError", (e) => Console.error(`TUI error: ${e.message}`)))
 		}),
 ).pipe(
 	Command.withDescription("Ethereum Swiss Army knife"),

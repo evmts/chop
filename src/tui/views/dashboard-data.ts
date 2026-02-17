@@ -8,6 +8,14 @@
 import { Effect } from "effect"
 import type { TevmNodeShape } from "../../node/index.js"
 import { hexToBytes } from "../../evm/conversions.js"
+import { VERSION } from "../../cli/version.js"
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+/** Client version string shown in the dashboard Chain Info panel. */
+const CLIENT_VERSION = `chop/${VERSION}`
 
 // ---------------------------------------------------------------------------
 // Types
@@ -71,7 +79,7 @@ export const getChainInfo = (node: TevmNodeShape): Effect.Effect<ChainInfoData> 
 			blockNumber: head.number,
 			gasPrice: head.baseFeePerGas,
 			baseFee: head.baseFeePerGas,
-			clientVersion: "chop/0.1.0",
+			clientVersion: CLIENT_VERSION,
 			miningMode,
 		}
 	}).pipe(Effect.catchAll(() => Effect.succeed({
@@ -79,7 +87,7 @@ export const getChainInfo = (node: TevmNodeShape): Effect.Effect<ChainInfoData> 
 		blockNumber: 0n,
 		gasPrice: 0n,
 		baseFee: 0n,
-		clientVersion: "chop/0.1.0",
+		clientVersion: CLIENT_VERSION,
 		miningMode: "unknown",
 	})))
 
@@ -177,4 +185,4 @@ export const getDashboardData = (node: TevmNodeShape): Effect.Effect<DashboardDa
 		recentBlocks: getRecentBlocks(node),
 		recentTxs: getRecentTransactions(node),
 		accounts: getAccountSummaries(node),
-	})
+	}, { concurrency: "unbounded" })

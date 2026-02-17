@@ -119,7 +119,7 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 		// Effect.runPromise at the application edge — acceptable per project rules
 		Effect.runPromise(getDashboardData(node)).then(
 			(data) => dashboard.update(data),
-			() => {}, // Silently ignore errors — dashboard shows stale data
+			(err) => { console.error("[chop] dashboard refresh failed:", err) },
 		)
 	}
 

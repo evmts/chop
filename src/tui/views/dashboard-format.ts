@@ -27,6 +27,21 @@ export const truncateHash = (hash: string): string => {
 }
 
 // ---------------------------------------------------------------------------
+// Number formatting (locale-independent)
+// ---------------------------------------------------------------------------
+
+/** Add commas as thousands separators (locale-independent). */
+const addCommas = (n: bigint): string => {
+	const s = n.toString()
+	const chars: string[] = []
+	for (let i = 0; i < s.length; i++) {
+		if (i > 0 && (s.length - i) % 3 === 0) chars.push(",")
+		chars.push(s[i]!)
+	}
+	return chars.join("")
+}
+
+// ---------------------------------------------------------------------------
 // Value formatting
 // ---------------------------------------------------------------------------
 
@@ -41,19 +56,18 @@ export const formatWei = (wei: bigint): string => {
 	if (wei >= ETH / 100n) {
 		const whole = wei / ETH
 		const fractional = ((wei % ETH) * 100n) / ETH
-		const formatted = whole.toLocaleString("en-US")
-		return `${formatted}.${fractional.toString().padStart(2, "0")} ETH`
+		return `${addCommas(whole)}.${fractional.toString().padStart(2, "0")} ETH`
 	}
 
 	// Gwei range (>= 1 gwei)
 	if (wei >= GWEI) {
 		const whole = wei / GWEI
 		const fractional = ((wei % GWEI) * 100n) / GWEI
-		return `${whole.toLocaleString("en-US")}.${fractional.toString().padStart(2, "0")} gwei`
+		return `${addCommas(whole)}.${fractional.toString().padStart(2, "0")} gwei`
 	}
 
 	// Wei
-	return `${wei.toLocaleString("en-US")} wei`
+	return `${addCommas(wei)} wei`
 }
 
 // ---------------------------------------------------------------------------

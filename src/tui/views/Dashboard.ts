@@ -136,47 +136,47 @@ export const createDashboard = (renderer: CliRenderer): DashboardHandle => {
 	const update = (data: DashboardData): void => {
 		// --- Chain Info panel ---
 		const ci = data.chainInfo
-		setLine(chainInfo.lines, 0, `Chain ID:  ${ci.chainId}`, DRACULA.comment, SEMANTIC.primary)
-		setLine(chainInfo.lines, 1, `Block:     #${ci.blockNumber}`, DRACULA.comment, DRACULA.purple)
-		setLine(chainInfo.lines, 2, `Gas Price: ${formatWei(ci.gasPrice)}`, DRACULA.comment, SEMANTIC.gas)
-		setLine(chainInfo.lines, 3, `Base Fee:  ${formatWei(ci.baseFee)}`, DRACULA.comment, SEMANTIC.gas)
-		setLine(chainInfo.lines, 4, `Client:    ${ci.clientVersion}`, DRACULA.comment, DRACULA.foreground)
-		setLine(chainInfo.lines, 5, `Mining:    ${ci.miningMode}`, DRACULA.comment, DRACULA.green)
+		setLine(chainInfo.lines, 0, `Chain ID:  ${ci.chainId}`, SEMANTIC.primary)
+		setLine(chainInfo.lines, 1, `Block:     #${ci.blockNumber}`, DRACULA.purple)
+		setLine(chainInfo.lines, 2, `Gas Price: ${formatWei(ci.gasPrice)}`, SEMANTIC.gas)
+		setLine(chainInfo.lines, 3, `Base Fee:  ${formatWei(ci.baseFee)}`, SEMANTIC.gas)
+		setLine(chainInfo.lines, 4, `Client:    ${ci.clientVersion}`, DRACULA.foreground)
+		setLine(chainInfo.lines, 5, `Mining:    ${ci.miningMode}`, DRACULA.green)
 
 		// --- Recent Blocks panel ---
-		setLine(recentBlocks.lines, 0, " Block    Time       Txs   Gas Used", DRACULA.comment, DRACULA.comment)
+		setLine(recentBlocks.lines, 0, " Block    Time       Txs   Gas Used", DRACULA.comment)
 		for (let i = 0; i < 5; i++) {
 			const block = data.recentBlocks[i]
 			if (block) {
 				const line = ` #${block.number.toString().padEnd(6)} ${formatTimestamp(block.timestamp).padEnd(10)} ${block.txCount.toString().padEnd(5)} ${formatGas(block.gasUsed)}`
-				setLine(recentBlocks.lines, i + 1, line, DRACULA.foreground, DRACULA.foreground)
+				setLine(recentBlocks.lines, i + 1, line, DRACULA.foreground)
 			} else {
-				setLine(recentBlocks.lines, i + 1, "", DRACULA.comment, DRACULA.comment)
+				setLine(recentBlocks.lines, i + 1, "", DRACULA.comment)
 			}
 		}
 
 		// --- Recent Transactions panel ---
-		setLine(recentTxs.lines, 0, " Hash          From          To            Value", DRACULA.comment, DRACULA.comment)
+		setLine(recentTxs.lines, 0, " Hash          From          To            Value", DRACULA.comment)
 		for (let i = 0; i < 10; i++) {
 			const tx = data.recentTxs[i]
 			if (tx) {
 				const to = tx.to ? truncateAddress(tx.to) : "CREATE"
 				const line = ` ${truncateHash(tx.hash)}  ${truncateAddress(tx.from)}  ${to.padEnd(13)} ${formatWei(tx.value)}`
-				setLine(recentTxs.lines, i + 1, line, DRACULA.foreground, DRACULA.foreground)
+				setLine(recentTxs.lines, i + 1, line, DRACULA.foreground)
 			} else {
-				setLine(recentTxs.lines, i + 1, "", DRACULA.comment, DRACULA.comment)
+				setLine(recentTxs.lines, i + 1, "", DRACULA.comment)
 			}
 		}
 
 		// --- Accounts panel ---
-		setLine(accounts.lines, 0, " Address        Balance", DRACULA.comment, DRACULA.comment)
+		setLine(accounts.lines, 0, " Address        Balance", DRACULA.comment)
 		for (let i = 0; i < 10; i++) {
 			const acct = data.accounts[i]
 			if (acct) {
 				const line = ` ${truncateAddress(acct.address)}  ${formatWei(acct.balance)}`
-				setLine(accounts.lines, i + 1, line, SEMANTIC.address, SEMANTIC.address)
+				setLine(accounts.lines, i + 1, line, SEMANTIC.address)
 			} else {
-				setLine(accounts.lines, i + 1, "", DRACULA.comment, DRACULA.comment)
+				setLine(accounts.lines, i + 1, "", DRACULA.comment)
 			}
 		}
 	}
@@ -194,7 +194,6 @@ const setLine = (
 	index: number,
 	content: string,
 	fg: string,
-	_valueFg: string,
 ): void => {
 	const line = lines[index]
 	if (!line) return
