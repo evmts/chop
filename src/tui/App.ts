@@ -7,6 +7,7 @@
  * When a TevmNodeShape is provided, the Dashboard view (tab 0) shows live
  * chain data that auto-updates after state changes.
  * The Call History view (tab 1) shows a scrollable table of past EVM calls.
+ * The Accounts view (tab 3) shows devnet accounts with fund/impersonate.
  */
 
 import { Effect } from "effect"
@@ -19,8 +20,10 @@ import { getOpenTui } from "./opentui.js"
 import { type TuiState, initialState, keyToAction, reduce } from "./state.js"
 import { TABS } from "./tabs.js"
 import { DRACULA } from "./theme.js"
+import { createAccounts } from "./views/Accounts.js"
 import { createCallHistory } from "./views/CallHistory.js"
 import { createDashboard } from "./views/Dashboard.js"
+import { getAccountDetails, fundAccount, impersonateAccount } from "./views/accounts-data.js"
 import { getCallHistory } from "./views/call-history-data.js"
 import { getDashboardData } from "./views/dashboard-data.js"
 
@@ -62,6 +65,10 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 	const helpOverlay = createHelpOverlay(renderer)
 	const dashboard = createDashboard(renderer)
 	const callHistory = createCallHistory(renderer)
+	const accounts = createAccounts(renderer)
+
+	// Pass node reference to accounts view for fund/impersonate side effects
+	if (node) accounts.setNode(node)
 
 	// Content area — holds Dashboard or placeholder per tab
 	const contentArea = new Box(renderer, {
@@ -93,7 +100,7 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 	// View switching
 	// -------------------------------------------------------------------------
 
-	let currentView: "dashboard" | "callHistory" | "placeholder" = "dashboard"
+	let currentView: "dashboard" | "callHistory" | "accounts" | "placeholder" = "dashboard"
 
 	/** Remove whatever is currently in the content area. */
 	const removeCurrentView = (): void => {
@@ -103,6 +110,9 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 				break
 			case "callHistory":
 				contentArea.remove(callHistory.container.id)
+				break
+			case "accounts":
+				contentArea.remove(accounts.container.id)
 				break
 			case "placeholder":
 				contentArea.remove(placeholderBox.id)
@@ -119,13 +129,17 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 			removeCurrentView()
 			contentArea.add(callHistory.container)
 			currentView = "callHistory"
-		} else if (tab > 1 && currentView !== "placeholder") {
+		} else if (tab === 3 && currentView !== "accounts") {
+			removeCurrentView()
+			contentArea.add(accounts.container)
+			currentView = "accounts"
+		} else if (tab !== 0 && tab !== 1 && tab !== 3 && currentView !== "placeholder") {
 			removeCurrentView()
 			contentArea.add(placeholderBox)
 			currentView = "placeholder"
 		}
 
-		if (tab > 1) {
+		if (tab !== 0 && tab !== 1 && tab !== 3) {
 			const tabDef = TABS[tab]
 			if (tabDef) {
 				placeholderText.content = `[ ${tabDef.name} ]`
@@ -152,6 +166,15 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 		Effect.runPromise(getCallHistory(node)).then(
 			(records) => callHistory.update(records),
 			(err) => { console.error("[chop] call history refresh failed:", err) },
+		)
+	}
+
+	const refreshAccounts = (): void => {
+		if (!node || state.activeTab !== 3) return
+		// Effect.runPromise at the application edge — acceptable per project rules
+		Effect.runPromise(getAccountDetails(node)).then(
+			(data) => accounts.update(data.accounts),
+			(err) => { console.error("[chop] accounts refresh failed:", err) },
 		)
 	}
 
@@ -196,8 +219,10 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 	emitter.on("keypress", (key) => {
 		const keyName = key.name ?? key.sequence
 
-		// Check if active view is in input mode (e.g. filter text entry)
-		const isInputMode = state.activeTab === 1 && callHistory.getState().filterActive
+		// Check if active view is in input mode (e.g. filter text entry, fund prompt)
+		const isInputMode =
+			(state.activeTab === 1 && callHistory.getState().filterActive) ||
+			(state.activeTab === 3 && accounts.getState().inputActive)
 		const action = keyToAction(keyName, isInputMode)
 		if (!action) return
 
@@ -210,6 +235,37 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 		if (action._tag === "ViewKey") {
 			if (state.activeTab === 1) {
 				callHistory.handleKey(action.key)
+			} else if (state.activeTab === 3) {
+				// Check for fund/impersonate signals before handling key
+				const prevState = accounts.getState()
+				accounts.handleKey(action.key)
+				const nextState = accounts.getState()
+
+				// Handle fund side effect — triggered when fundConfirmed was set then cleared
+				if (prevState.viewMode === "fundPrompt" && prevState.inputActive && action.key === "return" && prevState.fundAmount !== "") {
+					const addr = prevState.accounts[prevState.selectedIndex]?.address
+					if (addr && node) {
+						const ethAmount = Number.parseFloat(prevState.fundAmount)
+						if (!Number.isNaN(ethAmount) && ethAmount > 0) {
+							const weiAmount = BigInt(Math.floor(ethAmount * 1e18))
+							Effect.runPromise(fundAccount(node, addr, weiAmount)).then(
+								() => refreshAccounts(),
+								(err) => { console.error("[chop] fund failed:", err) },
+							)
+						}
+					}
+				}
+
+				// Handle impersonate side effect
+				if (nextState.impersonatedAddresses.size !== prevState.impersonatedAddresses.size && node) {
+					const addr = prevState.accounts[prevState.selectedIndex]?.address
+					if (addr) {
+						Effect.runPromise(impersonateAccount(node, addr)).then(
+							() => {},
+							(err) => { console.error("[chop] impersonate failed:", err) },
+						)
+					}
+				}
 			}
 			return
 		}
@@ -224,6 +280,7 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 		// Refresh active view data
 		refreshDashboard()
 		refreshCallHistory()
+		refreshAccounts()
 	})
 
 	// -------------------------------------------------------------------------
