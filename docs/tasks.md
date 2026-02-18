@@ -433,9 +433,9 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - TUI test: press `f` → fund prompt → balance updates
 
 ### T4.6 Blocks View
-- [ ] Block table with number, hash, timestamp, tx count, gas
-- [ ] Mine via `m` (devnet only)
-- [ ] Block detail on Enter
+- [x] Block table with number, hash, timestamp, tx count, gas
+- [x] Mine via `m` (devnet only)
+- [x] Block detail on Enter
 
 **Validation**:
 - TUI test: press `m` → new block appears
