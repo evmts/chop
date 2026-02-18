@@ -404,9 +404,9 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - TUI test: mine block → dashboard updates
 
 ### T4.3 Call History View
-- [ ] Scrollable table of calls
-- [ ] Detail pane on Enter (calldata, return data, logs, gas)
-- [ ] Filter via `/`
+- [x] Scrollable table of calls
+- [x] Detail pane on Enter (calldata, return data, logs, gas)
+- [x] Filter via `/`
 
 **Validation**:
 - TUI test: make call → appears in history
