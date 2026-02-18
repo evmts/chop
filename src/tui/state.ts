@@ -62,7 +62,7 @@ export const reduce = (state: TuiState, action: TuiAction): TuiState => {
 // ---------------------------------------------------------------------------
 
 /** Keys that map to ViewKey actions (dispatched to the active view). */
-const VIEW_KEYS = new Set(["j", "k", "return", "escape", "/", "f", "i"])
+const VIEW_KEYS = new Set(["j", "k", "return", "escape", "/", "f", "i", "m"])
 
 /**
  * Maps a key name (from keyboard event) to a TuiAction, or `null` if unmapped.
