@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { expect } from "vitest"
-import { formatBlockNumber, formatTxCount, formatGasUsage, formatTimestampAbsolute } from "./blocks-format.js"
+import { formatBlockNumber, formatGasUsage, formatTimestampAbsolute, formatTxCount } from "./blocks-format.js"
 
 describe("blocks-format", () => {
 	describe("formatBlockNumber", () => {

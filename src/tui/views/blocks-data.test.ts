@@ -34,7 +34,7 @@ describe("blocks-data", () => {
 				expect(data.blocks[2]?.number).toBe(1n)
 				// Verify non-increasing order invariant
 				for (let i = 1; i < data.blocks.length; i++) {
-					expect(data.blocks[i]!.number).toBeLessThanOrEqual(data.blocks[i - 1]!.number)
+					expect(data.blocks[i]?.number).toBeLessThanOrEqual(data.blocks[i - 1]?.number as bigint)
 				}
 			}).pipe(Effect.provide(TevmNode.LocalTest())),
 		)
@@ -43,15 +43,16 @@ describe("blocks-data", () => {
 			Effect.gen(function* () {
 				const node = yield* TevmNodeService
 				const data = yield* getBlocksData(node)
-				const block = data.blocks[0]!
-				expect(typeof block.hash).toBe("string")
-				expect(typeof block.parentHash).toBe("string")
-				expect(typeof block.number).toBe("bigint")
-				expect(typeof block.timestamp).toBe("bigint")
-				expect(typeof block.gasLimit).toBe("bigint")
-				expect(typeof block.gasUsed).toBe("bigint")
-				expect(typeof block.baseFeePerGas).toBe("bigint")
-				expect(Array.isArray(block.transactionHashes)).toBe(true)
+				const block = data.blocks[0]
+				expect(block).toBeDefined()
+				expect(typeof block?.hash).toBe("string")
+				expect(typeof block?.parentHash).toBe("string")
+				expect(typeof block?.number).toBe("bigint")
+				expect(typeof block?.timestamp).toBe("bigint")
+				expect(typeof block?.gasLimit).toBe("bigint")
+				expect(typeof block?.gasUsed).toBe("bigint")
+				expect(typeof block?.baseFeePerGas).toBe("bigint")
+				expect(Array.isArray(block?.transactionHashes)).toBe(true)
 			}).pipe(Effect.provide(TevmNode.LocalTest())),
 		)
 
@@ -59,8 +60,9 @@ describe("blocks-data", () => {
 			Effect.gen(function* () {
 				const node = yield* TevmNodeService
 				const data = yield* getBlocksData(node)
-				const genesis = data.blocks[data.blocks.length - 1]!
-				expect(genesis.baseFeePerGas).toBe(1_000_000_000n)
+				const genesis = data.blocks[data.blocks.length - 1]
+				expect(genesis).toBeDefined()
+				expect(genesis?.baseFeePerGas).toBe(1_000_000_000n)
 			}).pipe(Effect.provide(TevmNode.LocalTest())),
 		)
 

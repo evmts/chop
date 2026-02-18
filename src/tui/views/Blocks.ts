@@ -7,18 +7,18 @@
  */
 
 import type { BoxRenderable, CliRenderer, TextRenderable } from "@opentui/core"
-import type { BlockDetail } from "./blocks-data.js"
 import { getOpenTui } from "../opentui.js"
 import { DRACULA, SEMANTIC } from "../theme.js"
+import type { BlockDetail } from "./blocks-data.js"
 import {
 	formatBlockNumber,
-	formatTxCount,
-	formatGasUsage,
-	formatTimestampAbsolute,
-	truncateHash,
-	formatTimestamp,
 	formatGas,
+	formatGasUsage,
+	formatTimestamp,
+	formatTimestampAbsolute,
+	formatTxCount,
 	formatWei,
+	truncateHash,
 } from "./blocks-format.js"
 
 // ---------------------------------------------------------------------------
@@ -340,7 +340,7 @@ export const createBlocks = (renderer: CliRenderer): BlocksHandle => {
 		// Footer
 		setLine(DETAIL_LINES - 1, " [m] Mine  [Esc] Back", DRACULA.comment)
 
-		detailTitle.content = ` Block Detail (Esc to go back) `
+		detailTitle.content = " Block Detail (Esc to go back) "
 	}
 
 	const render = (): void => {
