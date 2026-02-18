@@ -195,7 +195,10 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 	const emitter = keyInput as { on: (event: "keypress", cb: (key: { name: string; sequence: string }) => void) => void }
 	emitter.on("keypress", (key) => {
 		const keyName = key.name ?? key.sequence
-		const action = keyToAction(keyName)
+
+		// Check if active view is in input mode (e.g. filter text entry)
+		const isInputMode = state.activeTab === 1 && callHistory.getState().filterActive
+		const action = keyToAction(keyName, isInputMode)
 		if (!action) return
 
 		if (action._tag === "Quit") {

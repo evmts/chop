@@ -71,8 +71,17 @@ const VIEW_KEYS = new Set(["j", "k", "return", "escape", "/"])
  * - "?"               → ToggleHelp
  * - "q"               → Quit
  * - "j","k","return","escape","/" → ViewKey (dispatched to active view)
+ *
+ * When `inputMode` is true (active view is capturing text input, e.g. filter),
+ * **all** keys are forwarded as ViewKey — overriding Quit, ToggleHelp, and
+ * SetTab so the view can receive typed characters, backspace, etc.
  */
-export const keyToAction = (keyName: string): TuiAction | null => {
+export const keyToAction = (keyName: string, inputMode = false): TuiAction | null => {
+	// Input mode: forward all keys to the active view
+	if (inputMode) {
+		return { _tag: "ViewKey", key: keyName }
+	}
+
 	if (keyName === "?") return { _tag: "ToggleHelp" }
 	if (keyName === "q") return { _tag: "Quit" }
 

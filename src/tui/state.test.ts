@@ -163,6 +163,59 @@ describe("TUI state", () => {
 		)
 	})
 
+	describe("keyToAction inputMode", () => {
+		it.effect("inputMode forwards 'q' as ViewKey instead of Quit", () =>
+			Effect.sync(() => {
+				const action = keyToAction("q", true)
+				expect(action).toEqual({ _tag: "ViewKey", key: "q" })
+			}),
+		)
+
+		it.effect("inputMode forwards '?' as ViewKey instead of ToggleHelp", () =>
+			Effect.sync(() => {
+				const action = keyToAction("?", true)
+				expect(action).toEqual({ _tag: "ViewKey", key: "?" })
+			}),
+		)
+
+		it.effect("inputMode forwards number keys as ViewKey instead of SetTab", () =>
+			Effect.sync(() => {
+				const action = keyToAction("1", true)
+				expect(action).toEqual({ _tag: "ViewKey", key: "1" })
+			}),
+		)
+
+		it.effect("inputMode forwards arbitrary chars as ViewKey", () =>
+			Effect.sync(() => {
+				expect(keyToAction("a", true)).toEqual({ _tag: "ViewKey", key: "a" })
+				expect(keyToAction("z", true)).toEqual({ _tag: "ViewKey", key: "z" })
+				expect(keyToAction("0", true)).toEqual({ _tag: "ViewKey", key: "0" })
+			}),
+		)
+
+		it.effect("inputMode forwards backspace as ViewKey", () =>
+			Effect.sync(() => {
+				const action = keyToAction("backspace", true)
+				expect(action).toEqual({ _tag: "ViewKey", key: "backspace" })
+			}),
+		)
+
+		it.effect("inputMode forwards escape as ViewKey (view handles exit)", () =>
+			Effect.sync(() => {
+				const action = keyToAction("escape", true)
+				expect(action).toEqual({ _tag: "ViewKey", key: "escape" })
+			}),
+		)
+
+		it.effect("inputMode=false preserves normal behavior", () =>
+			Effect.sync(() => {
+				expect(keyToAction("q", false)).toEqual({ _tag: "Quit" })
+				expect(keyToAction("?", false)).toEqual({ _tag: "ToggleHelp" })
+				expect(keyToAction("1", false)).toEqual({ _tag: "SetTab", tab: 0 })
+			}),
+		)
+	})
+
 	describe("ViewKey reducer", () => {
 		it.effect("ViewKey returns state unchanged (pass-through)", () =>
 			Effect.sync(() => {

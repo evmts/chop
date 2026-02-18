@@ -7,12 +7,13 @@
 
 import { DRACULA, SEMANTIC } from "../theme.js"
 import type { CallType } from "../services/call-history-store.js"
+import { addCommas } from "./dashboard-format.js"
 
 // ---------------------------------------------------------------------------
 // Re-exports from dashboard-format for convenience
 // ---------------------------------------------------------------------------
 
-export { truncateAddress, truncateHash, formatWei, formatGas, formatTimestamp } from "./dashboard-format.js"
+export { addCommas, truncateAddress, truncateHash, formatWei, formatGas, formatTimestamp } from "./dashboard-format.js"
 
 // ---------------------------------------------------------------------------
 // Call type formatting
@@ -59,17 +60,6 @@ export const formatStatus = (success: boolean): FormattedField =>
 // ---------------------------------------------------------------------------
 // Gas breakdown
 // ---------------------------------------------------------------------------
-
-/** Add commas as thousands separators (locale-independent). */
-const addCommas = (n: bigint): string => {
-	const s = n.toString()
-	const chars: string[] = []
-	for (let i = 0; i < s.length; i++) {
-		if (i > 0 && (s.length - i) % 3 === 0) chars.push(",")
-		chars.push(s[i]!)
-	}
-	return chars.join("")
-}
 
 /**
  * Format gas used vs gas limit with commas and percentage.

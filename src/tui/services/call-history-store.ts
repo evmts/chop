@@ -54,71 +54,30 @@ export interface CallRecord {
 }
 
 // ---------------------------------------------------------------------------
-// Store
+// Filtering
 // ---------------------------------------------------------------------------
 
 /**
- * In-memory store for call history records.
+ * Filter records by case-insensitive substring match across all fields.
  *
- * Designed for the TUI call history view — stores records and supports
- * filtering via case-insensitive substring matching.
+ * Matches against: type, from, to, txHash, status text ("success"/"fail"),
+ * calldata, and block number.
+ * Empty query returns the input unchanged.
  */
-export class CallHistoryStore {
-	private readonly records: CallRecord[] = []
+export const filterCallRecords = (records: readonly CallRecord[], query: string): readonly CallRecord[] => {
+	if (query === "") return records
 
-	/** Get all stored records (insertion order). */
-	getAll(): readonly CallRecord[] {
-		return this.records
-	}
-
-	/** Get the number of stored records. */
-	count(): number {
-		return this.records.length
-	}
-
-	/** Add a single record. */
-	add(record: CallRecord): void {
-		this.records.push(record)
-	}
-
-	/** Add multiple records at once. */
-	addAll(records: readonly CallRecord[]): void {
-		for (const r of records) {
-			this.records.push(r)
-		}
-	}
-
-	/** Get a record by its ID, or undefined if not found. */
-	getById(id: number): CallRecord | undefined {
-		return this.records.find((r) => r.id === id)
-	}
-
-	/** Remove all records. */
-	clear(): void {
-		this.records.length = 0
-	}
-
-	/**
-	 * Filter records by case-insensitive substring match across all fields.
-	 *
-	 * Matches against: type, from, to, txHash, and status text ("success"/"fail").
-	 * Empty query returns all records.
-	 */
-	filter(query: string): readonly CallRecord[] {
-		if (query === "") return this.records
-
-		const q = query.toLowerCase()
-		return this.records.filter((r) => {
-			const searchable = [
-				r.type,
-				r.from,
-				r.to,
-				r.txHash,
-				r.success ? "success" : "fail",
-				r.calldata,
-				r.blockNumber.toString(),
-			]
-			return searchable.some((field) => field.toLowerCase().includes(q))
-		})
-	}
+	const q = query.toLowerCase()
+	return records.filter((r) => {
+		const searchable = [
+			r.type,
+			r.from,
+			r.to,
+			r.txHash,
+			r.success ? "success" : "fail",
+			r.calldata,
+			r.blockNumber.toString(),
+		]
+		return searchable.some((field) => field.toLowerCase().includes(q))
+	})
 }

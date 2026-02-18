@@ -31,7 +31,7 @@ export const truncateHash = (hash: string): string => {
 // ---------------------------------------------------------------------------
 
 /** Add commas as thousands separators (locale-independent). */
-const addCommas = (n: bigint): string => {
+export const addCommas = (n: bigint): string => {
 	const s = n.toString()
 	const chars: string[] = []
 	for (let i = 0; i < s.length; i++) {

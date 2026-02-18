@@ -7,7 +7,7 @@
  */
 
 import type { BoxRenderable, CliRenderer, TextRenderable } from "@opentui/core"
-import type { CallRecord } from "../services/call-history-store.js"
+import { type CallRecord, filterCallRecords } from "../services/call-history-store.js"
 import { getOpenTui } from "../opentui.js"
 import { DRACULA, SEMANTIC } from "../theme.js"
 import {
@@ -298,8 +298,12 @@ export const createCallHistory = (renderer: CliRenderer): CallHistoryHandle => {
 	// Render functions
 	// -------------------------------------------------------------------------
 
+	/** Get the active record list (filtered when a query is set). */
+	const getFilteredRecords = (): readonly CallRecord[] =>
+		viewState.filterQuery ? filterCallRecords(viewState.records, viewState.filterQuery) : viewState.records
+
 	const renderList = (): void => {
-		const records = viewState.records
+		const records = getFilteredRecords()
 		const scrollOffset = Math.max(0, viewState.selectedIndex - VISIBLE_ROWS + 1)
 
 		for (let i = 0; i < VISIBLE_ROWS; i++) {
@@ -347,7 +351,8 @@ export const createCallHistory = (renderer: CliRenderer): CallHistoryHandle => {
 	}
 
 	const renderDetail = (): void => {
-		const record = viewState.records[viewState.selectedIndex]
+		const records = getFilteredRecords()
+		const record = records[viewState.selectedIndex]
 		if (!record) return
 
 		const ct = formatCallType(record.type)
@@ -417,6 +422,11 @@ export const createCallHistory = (renderer: CliRenderer): CallHistoryHandle => {
 
 	const handleKey = (key: string): void => {
 		viewState = callHistoryReduce(viewState, key)
+		// Clamp selectedIndex to the filtered record count
+		const filtered = getFilteredRecords()
+		if (filtered.length > 0 && viewState.selectedIndex >= filtered.length) {
+			viewState = { ...viewState, selectedIndex: filtered.length - 1 }
+		}
 		render()
 	}
 

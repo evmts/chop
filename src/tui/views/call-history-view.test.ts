@@ -1,7 +1,8 @@
 import { describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { expect } from "vitest"
-import type { CallRecord } from "../services/call-history-store.js"
+import { type CallRecord, filterCallRecords } from "../services/call-history-store.js"
+import { keyToAction } from "../state.js"
 import { type CallHistoryViewState, callHistoryReduce, initialCallHistoryState } from "./CallHistory.js"
 
 /** Helper to create a minimal CallRecord. */
@@ -215,6 +216,82 @@ describe("CallHistory view reducer", () => {
 				// The selected record should be records[1]
 				const selectedRecord = state.records[state.selectedIndex]
 				expect(selectedRecord?.calldata).toBe("0xbbb")
+			}),
+		)
+	})
+
+	describe("filter + key routing integration", () => {
+		it.effect("keyToAction with inputMode forwards typed chars to the view reducer", () =>
+			Effect.sync(() => {
+				// Simulate: user activates filter, then types "cr"
+				let state = stateWithRecords(3, {
+					records: [
+						makeRecord({ id: 1, type: "CALL" }),
+						makeRecord({ id: 2, type: "CREATE" }),
+						makeRecord({ id: 3, type: "STATICCALL" }),
+					],
+				})
+
+				// Press "/" to activate filter — this key is in VIEW_KEYS
+				const slashAction = keyToAction("/")
+				expect(slashAction).toEqual({ _tag: "ViewKey", key: "/" })
+				state = callHistoryReduce(state, "/")
+				expect(state.filterActive).toBe(true)
+
+				// Now in input mode — "c" would normally be unmapped, but inputMode forwards it
+				const cAction = keyToAction("c", state.filterActive)
+				expect(cAction).toEqual({ _tag: "ViewKey", key: "c" })
+				state = callHistoryReduce(state, "c")
+				expect(state.filterQuery).toBe("c")
+
+				// "r" also forwarded
+				const rAction = keyToAction("r", state.filterActive)
+				expect(rAction).toEqual({ _tag: "ViewKey", key: "r" })
+				state = callHistoryReduce(state, "r")
+				expect(state.filterQuery).toBe("cr")
+
+				// Verify filter actually applies to records
+				const filtered = filterCallRecords(state.records, state.filterQuery)
+				expect(filtered.length).toBe(1)
+				expect(filtered[0]?.type).toBe("CREATE")
+			}),
+		)
+
+		it.effect("pressing 'q' during filter mode does NOT quit (inputMode passthrough)", () =>
+			Effect.sync(() => {
+				const state: CallHistoryViewState = {
+					...initialCallHistoryState,
+					records: [makeRecord({ id: 1 })],
+					filterActive: true,
+					filterQuery: "",
+				}
+
+				// With inputMode=true, 'q' becomes ViewKey, not Quit
+				const action = keyToAction("q", state.filterActive)
+				expect(action?._tag).toBe("ViewKey")
+
+				// Reducer appends 'q' to filter
+				const next = callHistoryReduce(state, "q")
+				expect(next.filterQuery).toBe("q")
+				expect(next.filterActive).toBe(true)
+			}),
+		)
+
+		it.effect("backspace during filter mode removes last char (inputMode passthrough)", () =>
+			Effect.sync(() => {
+				const state: CallHistoryViewState = {
+					...initialCallHistoryState,
+					records: [makeRecord({ id: 1 })],
+					filterActive: true,
+					filterQuery: "abc",
+				}
+
+				// With inputMode=true, 'backspace' is forwarded
+				const action = keyToAction("backspace", state.filterActive)
+				expect(action).toEqual({ _tag: "ViewKey", key: "backspace" })
+
+				const next = callHistoryReduce(state, "backspace")
+				expect(next.filterQuery).toBe("ab")
 			}),
 		)
 	})
