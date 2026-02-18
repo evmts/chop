@@ -6,6 +6,7 @@
  *
  * When a TevmNodeShape is provided, the Dashboard view (tab 0) shows live
  * chain data that auto-updates after state changes.
+ * The Call History view (tab 1) shows a scrollable table of past EVM calls.
  */
 
 import { Effect } from "effect"
@@ -18,7 +19,9 @@ import { getOpenTui } from "./opentui.js"
 import { type TuiState, initialState, keyToAction, reduce } from "./state.js"
 import { TABS } from "./tabs.js"
 import { DRACULA } from "./theme.js"
+import { createCallHistory } from "./views/CallHistory.js"
 import { createDashboard } from "./views/Dashboard.js"
+import { getCallHistory } from "./views/call-history-data.js"
 import { getDashboardData } from "./views/dashboard-data.js"
 
 /** Handle returned by createApp. */
@@ -58,6 +61,7 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 	const statusBar = createStatusBar(renderer)
 	const helpOverlay = createHelpOverlay(renderer)
 	const dashboard = createDashboard(renderer)
+	const callHistory = createCallHistory(renderer)
 
 	// Content area — holds Dashboard or placeholder per tab
 	const contentArea = new Box(renderer, {
@@ -89,20 +93,39 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 	// View switching
 	// -------------------------------------------------------------------------
 
-	let currentView: "dashboard" | "placeholder" = "dashboard"
+	let currentView: "dashboard" | "callHistory" | "placeholder" = "dashboard"
+
+	/** Remove whatever is currently in the content area. */
+	const removeCurrentView = (): void => {
+		switch (currentView) {
+			case "dashboard":
+				contentArea.remove(dashboard.container.id)
+				break
+			case "callHistory":
+				contentArea.remove(callHistory.container.id)
+				break
+			case "placeholder":
+				contentArea.remove(placeholderBox.id)
+				break
+		}
+	}
 
 	const switchToView = (tab: number): void => {
 		if (tab === 0 && currentView !== "dashboard") {
-			contentArea.remove(placeholderBox.id)
+			removeCurrentView()
 			contentArea.add(dashboard.container)
 			currentView = "dashboard"
-		} else if (tab !== 0 && currentView !== "placeholder") {
-			contentArea.remove(dashboard.container.id)
+		} else if (tab === 1 && currentView !== "callHistory") {
+			removeCurrentView()
+			contentArea.add(callHistory.container)
+			currentView = "callHistory"
+		} else if (tab > 1 && currentView !== "placeholder") {
+			removeCurrentView()
 			contentArea.add(placeholderBox)
 			currentView = "placeholder"
 		}
 
-		if (tab !== 0) {
+		if (tab > 1) {
 			const tabDef = TABS[tab]
 			if (tabDef) {
 				placeholderText.content = `[ ${tabDef.name} ]`
@@ -120,6 +143,15 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 		Effect.runPromise(getDashboardData(node)).then(
 			(data) => dashboard.update(data),
 			(err) => { console.error("[chop] dashboard refresh failed:", err) },
+		)
+	}
+
+	const refreshCallHistory = (): void => {
+		if (!node || state.activeTab !== 1) return
+		// Effect.runPromise at the application edge — acceptable per project rules
+		Effect.runPromise(getCallHistory(node)).then(
+			(records) => callHistory.update(records),
+			(err) => { console.error("[chop] call history refresh failed:", err) },
 		)
 	}
 
@@ -171,6 +203,14 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 			return
 		}
 
+		// Forward ViewKey to active view's handler
+		if (action._tag === "ViewKey") {
+			if (state.activeTab === 1) {
+				callHistory.handleKey(action.key)
+			}
+			return
+		}
+
 		state = reduce(state, action)
 		tabBar.update(state.activeTab)
 		helpOverlay.setVisible(state.helpVisible)
@@ -178,8 +218,9 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 		// Switch view based on active tab
 		switchToView(state.activeTab)
 
-		// Refresh dashboard when tab 0 is active
+		// Refresh active view data
 		refreshDashboard()
+		refreshCallHistory()
 	})
 
 	// -------------------------------------------------------------------------

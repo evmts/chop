@@ -43,8 +43,6 @@ describe("call-history-format", () => {
 
 		it.effect("each type has a unique color", () =>
 			Effect.sync(() => {
-				const types = ["CALL", "CREATE", "STATICCALL", "DELEGATECALL", "CREATE2"] as const
-				const colors = types.map((t) => formatCallType(t).color)
 				// CALL and DELEGATECALL can share colors, but CREATE should differ from CALL
 				expect(formatCallType("CALL").color).not.toBe(formatCallType("CREATE").color)
 			}),

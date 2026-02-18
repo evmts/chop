@@ -18,7 +18,6 @@ import {
 	formatWei,
 	truncateAddress,
 	truncateData,
-	truncateHash,
 } from "./call-history-format.js"
 
 // ---------------------------------------------------------------------------
@@ -354,7 +353,7 @@ export const createCallHistory = (renderer: CliRenderer): CallHistoryHandle => {
 		const ct = formatCallType(record.type)
 		const status = formatStatus(record.success)
 
-		const setDetailLine = (index: number, content: string, fg = DRACULA.foreground): void => {
+		const setDetailLine = (index: number, content: string, fg: string = DRACULA.foreground): void => {
 			const line = detailLines[index]
 			if (!line) return
 			line.content = content
