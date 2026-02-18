@@ -424,9 +424,9 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - TUI test: press `d` → toggles view
 
 ### T4.5 Accounts View
-- [ ] Account table with balance, nonce, type
-- [ ] Fund account via `f` (devnet only)
-- [ ] Impersonate via `i` (devnet only)
+- [x] Account table with balance, nonce, type
+- [x] Fund account via `f` (devnet only)
+- [x] Impersonate via `i` (devnet only)
 
 **Validation**:
 - TUI test: 10 test accounts visible
