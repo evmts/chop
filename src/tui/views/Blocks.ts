@@ -36,8 +36,6 @@ export interface BlocksViewState {
 	readonly viewMode: BlocksViewMode
 	/** Current block details (reverse chronological order). */
 	readonly blocks: readonly BlockDetail[]
-	/** Signal: mine was requested (consumed by App.ts). */
-	readonly mineRequested: boolean
 }
 
 /** Default initial state. */
@@ -45,7 +43,6 @@ export const initialBlocksState: BlocksViewState = {
 	selectedIndex: 0,
 	viewMode: "list",
 	blocks: [],
-	mineRequested: false,
 }
 
 // ---------------------------------------------------------------------------
@@ -59,16 +56,15 @@ export const initialBlocksState: BlocksViewState = {
  * - j/k: move selection down/up
  * - return: enter detail view
  * - escape: back to list
- * - m: request mine block
+ *
+ * Note: `m` (mine) is handled as a side effect in App.ts directly,
+ * not via reducer state — no state change needed.
  */
 export const blocksReduce = (state: BlocksViewState, key: string): BlocksViewState => {
 	// Detail mode
 	if (state.viewMode === "detail") {
 		if (key === "escape") {
 			return { ...state, viewMode: "list" }
-		}
-		if (key === "m") {
-			return { ...state, mineRequested: true }
 		}
 		return state
 	}
@@ -84,8 +80,6 @@ export const blocksReduce = (state: BlocksViewState, key: string): BlocksViewSta
 		case "return":
 			if (state.blocks.length === 0) return state
 			return { ...state, viewMode: "detail" }
-		case "m":
-			return { ...state, mineRequested: true }
 		case "escape":
 			return state
 		default:
@@ -166,7 +160,7 @@ export const createBlocks = (renderer: CliRenderer): BlocksHandle => {
 
 	// Header row
 	const headerLine = new Text(renderer, {
-		content: "  Block      Hash           Timestamp            Txs   Gas Used     Base Fee",
+		content: "  Block      Hash           Timestamp            Txs   Gas Used     Gas Limit      Base Fee",
 		fg: DRACULA.comment,
 		truncate: true,
 	})
@@ -271,7 +265,15 @@ export const createBlocks = (renderer: CliRenderer): BlocksHandle => {
 
 			const isSelected = blockIndex === viewState.selectedIndex
 
-			const line = ` ${formatBlockNumber(block.number).padEnd(10)} ${truncateHash(block.hash).padEnd(14)} ${formatTimestamp(block.timestamp).padEnd(20)} ${formatTxCount(block.transactionHashes).padEnd(5)} ${formatGas(block.gasUsed).padEnd(12)} ${formatWei(block.baseFeePerGas)}`
+			const ts = `${formatTimestamp(block.timestamp)} (${formatTimestampAbsolute(block.timestamp)})`
+			const line =
+				` ${formatBlockNumber(block.number).padEnd(10)}` +
+				` ${truncateHash(block.hash).padEnd(14)}` +
+				` ${ts.padEnd(20)}` +
+				` ${formatTxCount(block.transactionHashes).padEnd(5)}` +
+				` ${formatGas(block.gasUsed).padEnd(12)}` +
+				` ${formatGas(block.gasLimit).padEnd(14)}` +
+				` ${formatWei(block.baseFeePerGas)}`
 
 			rowLine.content = line
 			rowLine.fg = isSelected ? DRACULA.foreground : DRACULA.comment

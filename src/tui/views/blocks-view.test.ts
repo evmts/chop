@@ -34,7 +34,6 @@ describe("Blocks view reducer", () => {
 				expect(initialBlocksState.selectedIndex).toBe(0)
 				expect(initialBlocksState.viewMode).toBe("list")
 				expect(initialBlocksState.blocks).toEqual([])
-				expect(initialBlocksState.mineRequested).toBe(false)
 			}),
 		)
 	})
@@ -130,27 +129,20 @@ describe("Blocks view reducer", () => {
 		)
 	})
 
-	describe("m → mine block", () => {
-		it.effect("m sets mineRequested in list mode", () =>
+	describe("m key (mine handled by App.ts)", () => {
+		it.effect("m does not change state in list mode (mine is side-effected by App.ts)", () =>
 			Effect.sync(() => {
 				const state = stateWithBlocks(3)
 				const next = blocksReduce(state, "m")
-				expect(next.mineRequested).toBe(true)
+				expect(next).toEqual(state)
 			}),
 		)
 
-		it.effect("m sets mineRequested in detail mode", () =>
+		it.effect("m does not change state in detail mode", () =>
 			Effect.sync(() => {
 				const state = stateWithBlocks(3, { viewMode: "detail" })
 				const next = blocksReduce(state, "m")
-				expect(next.mineRequested).toBe(true)
-			}),
-		)
-
-		it.effect("m works even with empty blocks (mine genesis+1)", () =>
-			Effect.sync(() => {
-				const next = blocksReduce(initialBlocksState, "m")
-				expect(next.mineRequested).toBe(true)
+				expect(next).toEqual(state)
 			}),
 		)
 	})
@@ -176,11 +168,8 @@ describe("Blocks view reducer", () => {
 	describe("key routing integration", () => {
 		it.effect("m key is forwarded as ViewKey", () =>
 			Effect.sync(() => {
-				// Note: this test will pass once state.ts adds "m" to VIEW_KEYS
-				// For now, "m" may not be in VIEW_KEYS yet — we test the reducer directly
-				const state = stateWithBlocks(3)
-				const next = blocksReduce(state, "m")
-				expect(next.mineRequested).toBe(true)
+				const mAction = keyToAction("m")
+				expect(mAction).toEqual({ _tag: "ViewKey", key: "m" })
 			}),
 		)
 
