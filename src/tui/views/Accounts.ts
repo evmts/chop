@@ -176,7 +176,6 @@ export const createAccounts = (renderer: CliRenderer): AccountsHandle => {
 	// -------------------------------------------------------------------------
 
 	let viewState: AccountsViewState = { ...initialAccountsState }
-	let nodeRef: unknown = null
 
 	// -------------------------------------------------------------------------
 	// List mode components
@@ -428,9 +427,9 @@ export const createAccounts = (renderer: CliRenderer): AccountsHandle => {
 
 	const getState = (): AccountsViewState => viewState
 
-	const setNode = (node: unknown): void => {
-		nodeRef = node
-	}
+	// setNode is a no-op — fund/impersonate side effects are handled in App.ts
+	// at the application edge via Effect.runPromise.
+	const setNode = (_node: unknown): void => {}
 
 	// Initial render
 	render()

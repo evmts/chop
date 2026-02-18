@@ -231,7 +231,6 @@ describe("Accounts view reducer", () => {
 		it.effect("i toggles impersonation in list mode", () =>
 			Effect.sync(() => {
 				const state = stateWithAccounts(3)
-				const addr = state.accounts[0]!.address
 				const next = accountsReduce(state, "i")
 				expect(next.impersonateRequested).toBe(true)
 			}),
