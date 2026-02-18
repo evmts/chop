@@ -8,6 +8,7 @@
  * chain data that auto-updates after state changes.
  * The Call History view (tab 1) shows a scrollable table of past EVM calls.
  * The Accounts view (tab 3) shows devnet accounts with fund/impersonate.
+ * The Blocks view (tab 4) shows blockchain blocks with mine via m.
  */
 
 import { Effect } from "effect"
@@ -21,9 +22,11 @@ import { type TuiState, initialState, keyToAction, reduce } from "./state.js"
 import { TABS } from "./tabs.js"
 import { DRACULA } from "./theme.js"
 import { createAccounts } from "./views/Accounts.js"
+import { createBlocks } from "./views/Blocks.js"
 import { createCallHistory } from "./views/CallHistory.js"
 import { createDashboard } from "./views/Dashboard.js"
 import { getAccountDetails, fundAccount, impersonateAccount } from "./views/accounts-data.js"
+import { getBlocksData, mineBlock } from "./views/blocks-data.js"
 import { getCallHistory } from "./views/call-history-data.js"
 import { getDashboardData } from "./views/dashboard-data.js"
 
@@ -66,6 +69,7 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 	const dashboard = createDashboard(renderer)
 	const callHistory = createCallHistory(renderer)
 	const accounts = createAccounts(renderer)
+	const blocks = createBlocks(renderer)
 
 	// Pass node reference to accounts view for fund/impersonate side effects
 	if (node) accounts.setNode(node)
@@ -100,7 +104,7 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 	// View switching
 	// -------------------------------------------------------------------------
 
-	let currentView: "dashboard" | "callHistory" | "accounts" | "placeholder" = "dashboard"
+	let currentView: "dashboard" | "callHistory" | "accounts" | "blocks" | "placeholder" = "dashboard"
 
 	/** Remove whatever is currently in the content area. */
 	const removeCurrentView = (): void => {
@@ -113,6 +117,9 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 				break
 			case "accounts":
 				contentArea.remove(accounts.container.id)
+				break
+			case "blocks":
+				contentArea.remove(blocks.container.id)
 				break
 			case "placeholder":
 				contentArea.remove(placeholderBox.id)
@@ -133,13 +140,17 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 			removeCurrentView()
 			contentArea.add(accounts.container)
 			currentView = "accounts"
-		} else if (tab !== 0 && tab !== 1 && tab !== 3 && currentView !== "placeholder") {
+		} else if (tab === 4 && currentView !== "blocks") {
+			removeCurrentView()
+			contentArea.add(blocks.container)
+			currentView = "blocks"
+		} else if (tab !== 0 && tab !== 1 && tab !== 3 && tab !== 4 && currentView !== "placeholder") {
 			removeCurrentView()
 			contentArea.add(placeholderBox)
 			currentView = "placeholder"
 		}
 
-		if (tab !== 0 && tab !== 1 && tab !== 3) {
+		if (tab !== 0 && tab !== 1 && tab !== 3 && tab !== 4) {
 			const tabDef = TABS[tab]
 			if (tabDef) {
 				placeholderText.content = `[ ${tabDef.name} ]`
@@ -175,6 +186,15 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 		Effect.runPromise(getAccountDetails(node)).then(
 			(data) => accounts.update(data.accounts),
 			(err) => { console.error("[chop] accounts refresh failed:", err) },
+		)
+	}
+
+	const refreshBlocks = (): void => {
+		if (!node || state.activeTab !== 4) return
+		// Effect.runPromise at the application edge — acceptable per project rules
+		Effect.runPromise(getBlocksData(node)).then(
+			(data) => blocks.update(data.blocks),
+			(err) => { console.error("[chop] blocks refresh failed:", err) },
 		)
 	}
 
@@ -266,6 +286,16 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 						)
 					}
 				}
+			} else if (state.activeTab === 4) {
+				blocks.handleKey(action.key)
+
+				// Handle mine side effect — m key triggers mine
+				if (action.key === "m" && node) {
+					Effect.runPromise(mineBlock(node)).then(
+						() => { refreshBlocks(); refreshDashboard() },
+						(err) => { console.error("[chop] mine block failed:", err) },
+					)
+				}
 			}
 			return
 		}
@@ -281,6 +311,7 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 		refreshDashboard()
 		refreshCallHistory()
 		refreshAccounts()
+		refreshBlocks()
 	})
 
 	// -------------------------------------------------------------------------
