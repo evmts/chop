@@ -46,16 +46,16 @@ export interface BlocksViewData {
 /** Fetch all blocks from genesis to head in reverse chronological order. */
 export const getBlocksData = (node: TevmNodeShape): Effect.Effect<BlocksViewData> =>
 	Effect.gen(function* () {
-		const headBlockNumber = yield* node.blockchain.getHeadBlockNumber().pipe(
-			Effect.catchTag("GenesisError", () => Effect.succeed(0n)),
-		)
+		const headBlockNumber = yield* node.blockchain
+			.getHeadBlockNumber()
+			.pipe(Effect.catchTag("GenesisError", () => Effect.succeed(0n)))
 
 		const blocks: BlockDetail[] = []
 
 		for (let n = headBlockNumber; n >= 0n; n--) {
-			const block = yield* node.blockchain.getBlockByNumber(n).pipe(
-				Effect.catchTag("BlockNotFoundError", () => Effect.succeed(null)),
-			)
+			const block = yield* node.blockchain
+				.getBlockByNumber(n)
+				.pipe(Effect.catchTag("BlockNotFoundError", () => Effect.succeed(null)))
 			if (block === null) break
 
 			blocks.push({
@@ -82,5 +82,4 @@ export const getBlocksData = (node: TevmNodeShape): Effect.Effect<BlocksViewData
  *
  * @param node - The TevmNode facade.
  */
-export const mineBlock = (node: TevmNodeShape): Effect.Effect<readonly Block[]> =>
-	node.mining.mine(1)
+export const mineBlock = (node: TevmNodeShape): Effect.Effect<readonly Block[]> => node.mining.mine(1)

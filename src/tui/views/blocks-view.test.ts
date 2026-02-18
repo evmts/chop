@@ -2,11 +2,7 @@ import { describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { expect } from "vitest"
 import { keyToAction } from "../state.js"
-import {
-	type BlocksViewState,
-	blocksReduce,
-	initialBlocksState,
-} from "./Blocks.js"
+import { type BlocksViewState, blocksReduce, initialBlocksState } from "./Blocks.js"
 import type { BlockDetail } from "./blocks-data.js"
 
 /** Helper to create a minimal BlockDetail. */

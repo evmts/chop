@@ -167,7 +167,9 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 		// Effect.runPromise at the application edge — acceptable per project rules
 		Effect.runPromise(getDashboardData(node)).then(
 			(data) => dashboard.update(data),
-			(err) => { console.error("[chop] dashboard refresh failed:", err) },
+			(err) => {
+				console.error("[chop] dashboard refresh failed:", err)
+			},
 		)
 	}
 
@@ -176,7 +178,9 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 		// Effect.runPromise at the application edge — acceptable per project rules
 		Effect.runPromise(getCallHistory(node)).then(
 			(records) => callHistory.update(records),
-			(err) => { console.error("[chop] call history refresh failed:", err) },
+			(err) => {
+				console.error("[chop] call history refresh failed:", err)
+			},
 		)
 	}
 
@@ -185,7 +189,9 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 		// Effect.runPromise at the application edge — acceptable per project rules
 		Effect.runPromise(getAccountDetails(node)).then(
 			(data) => accounts.update(data.accounts),
-			(err) => { console.error("[chop] accounts refresh failed:", err) },
+			(err) => {
+				console.error("[chop] accounts refresh failed:", err)
+			},
 		)
 	}
 
@@ -194,7 +200,9 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 		// Effect.runPromise at the application edge — acceptable per project rules
 		Effect.runPromise(getBlocksData(node)).then(
 			(data) => blocks.update(data.blocks),
-			(err) => { console.error("[chop] blocks refresh failed:", err) },
+			(err) => {
+				console.error("[chop] blocks refresh failed:", err)
+			},
 		)
 	}
 
@@ -262,7 +270,12 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 				const nextState = accounts.getState()
 
 				// Handle fund side effect — triggered when fundConfirmed was set then cleared
-				if (prevState.viewMode === "fundPrompt" && prevState.inputActive && action.key === "return" && prevState.fundAmount !== "") {
+				if (
+					prevState.viewMode === "fundPrompt" &&
+					prevState.inputActive &&
+					action.key === "return" &&
+					prevState.fundAmount !== ""
+				) {
 					const addr = prevState.accounts[prevState.selectedIndex]?.address
 					if (addr && node) {
 						const ethAmount = Number.parseFloat(prevState.fundAmount)
@@ -270,7 +283,9 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 							const weiAmount = BigInt(Math.floor(ethAmount * 1e18))
 							Effect.runPromise(fundAccount(node, addr, weiAmount)).then(
 								() => refreshAccounts(),
-								(err) => { console.error("[chop] fund failed:", err) },
+								(err) => {
+									console.error("[chop] fund failed:", err)
+								},
 							)
 						}
 					}
@@ -282,7 +297,9 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 					if (addr) {
 						Effect.runPromise(impersonateAccount(node, addr)).then(
 							() => {},
-							(err) => { console.error("[chop] impersonate failed:", err) },
+							(err) => {
+								console.error("[chop] impersonate failed:", err)
+							},
 						)
 					}
 				}
@@ -292,8 +309,13 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 				// Handle mine side effect — m key triggers mine
 				if (action.key === "m" && node) {
 					Effect.runPromise(mineBlock(node)).then(
-						() => { refreshBlocks(); refreshDashboard() },
-						(err) => { console.error("[chop] mine block failed:", err) },
+						() => {
+							refreshBlocks()
+							refreshDashboard()
+						},
+						(err) => {
+							console.error("[chop] mine block failed:", err)
+						},
 					)
 				}
 			}

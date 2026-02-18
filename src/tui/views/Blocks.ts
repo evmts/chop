@@ -302,7 +302,11 @@ export const createBlocks = (renderer: CliRenderer): BlocksHandle => {
 		setLine(2, `Hash:          ${block.hash}`, SEMANTIC.hash)
 		setLine(3, `Parent Hash:   ${block.parentHash}`, SEMANTIC.hash)
 		setLine(4, `Number:        ${block.number.toString()}`, DRACULA.purple)
-		setLine(5, `Timestamp:     ${formatTimestampAbsolute(block.timestamp)} (${formatTimestamp(block.timestamp)})`, DRACULA.foreground)
+		setLine(
+			5,
+			`Timestamp:     ${formatTimestampAbsolute(block.timestamp)} (${formatTimestamp(block.timestamp)})`,
+			DRACULA.foreground,
+		)
 		setLine(6, `Gas Used:      ${formatGasUsage(block.gasUsed, block.gasLimit)}`, SEMANTIC.gas)
 		setLine(7, `Base Fee:      ${formatWei(block.baseFeePerGas)}`, SEMANTIC.value)
 		setLine(8, `Transactions:  ${block.transactionHashes.length}`, DRACULA.foreground)
@@ -319,7 +323,10 @@ export const createBlocks = (renderer: CliRenderer): BlocksHandle => {
 				setLine(11 + maxTxLines, `  ... and ${block.transactionHashes.length - maxTxLines} more`, DRACULA.comment)
 			}
 			// Clear remaining
-			const usedLines = 11 + Math.min(block.transactionHashes.length, maxTxLines) + (block.transactionHashes.length > maxTxLines ? 1 : 0)
+			const usedLines =
+				11 +
+				Math.min(block.transactionHashes.length, maxTxLines) +
+				(block.transactionHashes.length > maxTxLines ? 1 : 0)
 			for (let i = usedLines; i < DETAIL_LINES - 1; i++) {
 				setLine(i, "")
 			}
