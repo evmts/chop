@@ -126,5 +126,57 @@ describe("TUI state", () => {
 				}
 			}),
 		)
+
+		it.effect("'j' maps to ViewKey 'j'", () =>
+			Effect.sync(() => {
+				const action = keyToAction("j")
+				expect(action).toEqual({ _tag: "ViewKey", key: "j" })
+			}),
+		)
+
+		it.effect("'k' maps to ViewKey 'k'", () =>
+			Effect.sync(() => {
+				const action = keyToAction("k")
+				expect(action).toEqual({ _tag: "ViewKey", key: "k" })
+			}),
+		)
+
+		it.effect("'return' maps to ViewKey 'return'", () =>
+			Effect.sync(() => {
+				const action = keyToAction("return")
+				expect(action).toEqual({ _tag: "ViewKey", key: "return" })
+			}),
+		)
+
+		it.effect("'escape' maps to ViewKey 'escape'", () =>
+			Effect.sync(() => {
+				const action = keyToAction("escape")
+				expect(action).toEqual({ _tag: "ViewKey", key: "escape" })
+			}),
+		)
+
+		it.effect("'/' maps to ViewKey '/'", () =>
+			Effect.sync(() => {
+				const action = keyToAction("/")
+				expect(action).toEqual({ _tag: "ViewKey", key: "/" })
+			}),
+		)
+	})
+
+	describe("ViewKey reducer", () => {
+		it.effect("ViewKey returns state unchanged (pass-through)", () =>
+			Effect.sync(() => {
+				const next = reduce(initialState, { _tag: "ViewKey", key: "j" })
+				expect(next).toEqual(initialState)
+			}),
+		)
+
+		it.effect("ViewKey does not affect activeTab", () =>
+			Effect.sync(() => {
+				const tabbed = reduce(initialState, { _tag: "SetTab", tab: 3 })
+				const next = reduce(tabbed, { _tag: "ViewKey", key: "return" })
+				expect(next.activeTab).toBe(3)
+			}),
+		)
 	})
 })

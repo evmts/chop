@@ -31,6 +31,7 @@ export type TuiAction =
 	| { readonly _tag: "SetTab"; readonly tab: number }
 	| { readonly _tag: "ToggleHelp" }
 	| { readonly _tag: "Quit" }
+	| { readonly _tag: "ViewKey"; readonly key: string }
 
 // ---------------------------------------------------------------------------
 // Reducer
@@ -41,6 +42,7 @@ export type TuiAction =
  *
  * Returns a new state for the given action.
  * `Quit` is a signal — it returns state unchanged (the caller handles exit).
+ * `ViewKey` is a pass-through — the App dispatches it to the active view.
  */
 export const reduce = (state: TuiState, action: TuiAction): TuiState => {
 	switch (action._tag) {
@@ -50,6 +52,8 @@ export const reduce = (state: TuiState, action: TuiAction): TuiState => {
 			return { ...state, helpVisible: !state.helpVisible }
 		case "Quit":
 			return state
+		case "ViewKey":
+			return state
 	}
 }
 
@@ -57,16 +61,25 @@ export const reduce = (state: TuiState, action: TuiAction): TuiState => {
 // Key Mapping
 // ---------------------------------------------------------------------------
 
+/** Keys that map to ViewKey actions (dispatched to the active view). */
+const VIEW_KEYS = new Set(["j", "k", "return", "escape", "/"])
+
 /**
  * Maps a key name (from keyboard event) to a TuiAction, or `null` if unmapped.
  *
- * - "1".."8" → SetTab(0..7)
- * - "?"      → ToggleHelp
- * - "q"      → Quit
+ * - "1".."8"          → SetTab(0..7)
+ * - "?"               → ToggleHelp
+ * - "q"               → Quit
+ * - "j","k","return","escape","/" → ViewKey (dispatched to active view)
  */
 export const keyToAction = (keyName: string): TuiAction | null => {
 	if (keyName === "?") return { _tag: "ToggleHelp" }
 	if (keyName === "q") return { _tag: "Quit" }
+
+	// View-specific keys (navigation, detail, filter)
+	if (VIEW_KEYS.has(keyName)) {
+		return { _tag: "ViewKey", key: keyName }
+	}
 
 	// Tab switching via number keys 1-8
 	const num = Number(keyName)
