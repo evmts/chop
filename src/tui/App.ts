@@ -9,11 +9,12 @@
  * The Call History view (tab 1) shows a scrollable table of past EVM calls.
  * The Accounts view (tab 3) shows devnet accounts with fund/impersonate.
  * The Blocks view (tab 4) shows blockchain blocks with mine via m.
+ * The Transactions view (tab 5) shows mined transactions with filter via /.
  * The Settings view (tab 6) shows node configuration with editable mining mode and gas limit.
  */
 
-import { Effect } from "effect"
 import type { CliRenderer } from "@opentui/core"
+import { Effect } from "effect"
 import type { TevmNodeShape } from "../node/index.js"
 import { createHelpOverlay } from "./components/HelpOverlay.js"
 import { createStatusBar } from "./components/StatusBar.js"
@@ -27,11 +28,13 @@ import { createBlocks } from "./views/Blocks.js"
 import { createCallHistory } from "./views/CallHistory.js"
 import { createDashboard } from "./views/Dashboard.js"
 import { createSettings } from "./views/Settings.js"
-import { getAccountDetails, fundAccount, impersonateAccount } from "./views/accounts-data.js"
+import { createTransactions } from "./views/Transactions.js"
+import { fundAccount, getAccountDetails, impersonateAccount } from "./views/accounts-data.js"
 import { getBlocksData, mineBlock } from "./views/blocks-data.js"
 import { getCallHistory } from "./views/call-history-data.js"
 import { getDashboardData } from "./views/dashboard-data.js"
 import { cycleMiningMode, getSettingsData, setBlockGasLimit } from "./views/settings-data.js"
+import { getTransactionsData } from "./views/transactions-data.js"
 
 /** Handle returned by createApp. */
 export interface AppHandle {
@@ -73,6 +76,7 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 	const callHistory = createCallHistory(renderer)
 	const accounts = createAccounts(renderer)
 	const blocks = createBlocks(renderer)
+	const transactions = createTransactions(renderer)
 	const settings = createSettings(renderer)
 
 	// Pass node reference to accounts view for fund/impersonate side effects
@@ -108,7 +112,8 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 	// View switching
 	// -------------------------------------------------------------------------
 
-	let currentView: "dashboard" | "callHistory" | "accounts" | "blocks" | "settings" | "placeholder" = "dashboard"
+	let currentView: "dashboard" | "callHistory" | "accounts" | "blocks" | "transactions" | "settings" | "placeholder" =
+		"dashboard"
 
 	/** Remove whatever is currently in the content area. */
 	const removeCurrentView = (): void => {
@@ -125,6 +130,9 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 			case "blocks":
 				contentArea.remove(blocks.container.id)
 				break
+			case "transactions":
+				contentArea.remove(transactions.container.id)
+				break
 			case "settings":
 				contentArea.remove(settings.container.id)
 				break
@@ -135,7 +143,7 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 	}
 
 	/** Set of tabs that have dedicated views (not placeholders). */
-	const IMPLEMENTED_TABS = new Set([0, 1, 3, 4, 6])
+	const IMPLEMENTED_TABS = new Set([0, 1, 3, 4, 5, 6])
 
 	const switchToView = (tab: number): void => {
 		if (tab === 0 && currentView !== "dashboard") {
@@ -154,6 +162,10 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 			removeCurrentView()
 			contentArea.add(blocks.container)
 			currentView = "blocks"
+		} else if (tab === 5 && currentView !== "transactions") {
+			removeCurrentView()
+			contentArea.add(transactions.container)
+			currentView = "transactions"
 		} else if (tab === 6 && currentView !== "settings") {
 			removeCurrentView()
 			contentArea.add(settings.container)
@@ -220,6 +232,17 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 		)
 	}
 
+	const refreshTransactions = (): void => {
+		if (!node || state.activeTab !== 5) return
+		// Effect.runPromise at the application edge — acceptable per project rules
+		Effect.runPromise(getTransactionsData(node)).then(
+			(data) => transactions.update(data.transactions),
+			(err) => {
+				console.error("[chop] transactions refresh failed:", err)
+			},
+		)
+	}
+
 	const refreshSettings = (): void => {
 		if (!node || state.activeTab !== 6) return
 		// Effect.runPromise at the application edge — acceptable per project rules
@@ -276,6 +299,7 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 		const isInputMode =
 			(state.activeTab === 1 && callHistory.getState().filterActive) ||
 			(state.activeTab === 3 && accounts.getState().inputActive) ||
+			(state.activeTab === 5 && transactions.getState().filterActive) ||
 			(state.activeTab === 6 && settings.getState().inputActive)
 		const action = keyToAction(keyName, isInputMode)
 		if (!action) return
@@ -344,6 +368,8 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 						},
 					)
 				}
+			} else if (state.activeTab === 5) {
+				transactions.handleKey(action.key)
 			} else if (state.activeTab === 6) {
 				settings.handleKey(action.key)
 				const settingsState = settings.getState()
@@ -387,6 +413,7 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 		refreshCallHistory()
 		refreshAccounts()
 		refreshBlocks()
+		refreshTransactions()
 		refreshSettings()
 	})
 
