@@ -2,10 +2,10 @@
  * Settings view component — form-style key-value layout of node settings.
  *
  * Sections:
- * - Node Configuration: RPC URL, Chain ID, Hardfork
+ * - Node Configuration: Chain ID, Hardfork
  * - Mining: Mining Mode (editable toggle), Block Time
  * - Gas: Block Gas Limit (editable), Base Fee, Min Gas Price
- * - Fork: Fork URL
+ * - Fork: Fork URL, Fork Block
  *
  * Uses @opentui/core construct API (no JSX). Exposes a pure
  * `settingsReduce()` function for unit testing.
@@ -18,6 +18,7 @@ import type { SettingsViewData } from "./settings-data.js"
 import {
 	formatBlockTime,
 	formatChainId,
+	formatForkBlock,
 	formatForkUrl,
 	formatGasLimitValue,
 	formatHardfork,
@@ -43,7 +44,6 @@ export interface SettingsFieldDef {
 
 /** All settings fields in display order. */
 export const SETTINGS_FIELDS: readonly SettingsFieldDef[] = [
-	{ key: "rpcUrl", label: "RPC URL", section: "Node Configuration", editable: false },
 	{ key: "chainId", label: "Chain ID", section: "Node Configuration", editable: false },
 	{ key: "hardfork", label: "Hardfork", section: "Node Configuration", editable: false },
 	{ key: "miningMode", label: "Mining Mode", section: "Mining", editable: true },
@@ -52,6 +52,7 @@ export const SETTINGS_FIELDS: readonly SettingsFieldDef[] = [
 	{ key: "baseFee", label: "Base Fee", section: "Gas", editable: false },
 	{ key: "minGasPrice", label: "Min Gas Price", section: "Gas", editable: false },
 	{ key: "forkUrl", label: "Fork URL", section: "Fork", editable: false },
+	{ key: "forkBlock", label: "Fork Block", section: "Fork", editable: false },
 ] as const
 
 // ---------------------------------------------------------------------------
@@ -179,7 +180,6 @@ export interface SettingsHandle {
  * ```
  * ┌─ Settings ──────────────────────────────────────────────┐
  * │  Node Configuration                                      │
- * │    RPC URL          N/A (local mode)                     │
  * │    Chain ID         31337 (0x7a69)                       │
  * │    Hardfork         Prague                               │
  * │                                                          │
@@ -194,6 +194,7 @@ export interface SettingsHandle {
  * │                                                          │
  * │  Fork                                                    │
  * │    Fork URL         N/A (local mode)                     │
+ * │    Fork Block       N/A (local mode)                     │
  * └──────────────────────────────────────────────────────────┘
  * ```
  */
@@ -272,8 +273,6 @@ export const createSettings = (renderer: CliRenderer): SettingsHandle => {
 	/** Get the formatted value for a field. */
 	const getFieldValue = (key: string, data: SettingsViewData): string => {
 		switch (key) {
-			case "rpcUrl":
-				return data.rpcUrl ?? "N/A (local mode)"
 			case "chainId":
 				return formatChainId(data.chainId)
 			case "hardfork":
@@ -290,6 +289,8 @@ export const createSettings = (renderer: CliRenderer): SettingsHandle => {
 				return formatWei(data.minGasPrice)
 			case "forkUrl":
 				return formatForkUrl(data.forkUrl)
+			case "forkBlock":
+				return formatForkBlock(data.forkBlock)
 			default:
 				return ""
 		}

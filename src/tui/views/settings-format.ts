@@ -12,7 +12,7 @@ import { addCommas } from "./dashboard-format.js"
 // Re-exports from dashboard-format for convenience
 // ---------------------------------------------------------------------------
 
-export { addCommas, formatWei } from "./dashboard-format.js"
+export { formatWei } from "./dashboard-format.js"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -80,6 +80,12 @@ export const formatBlockTime = (intervalMs: number): string => {
 export const formatForkUrl = (url: string | undefined): string => {
 	if (url === undefined) return "N/A (local mode)"
 	return url
+}
+
+/** Format a fork block number or show N/A for local mode. */
+export const formatForkBlock = (block: bigint | undefined): string => {
+	if (block === undefined) return "N/A (local mode)"
+	return addCommas(block)
 }
 
 // ---------------------------------------------------------------------------

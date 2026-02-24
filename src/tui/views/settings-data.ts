@@ -14,8 +14,6 @@ import type { MiningMode, TevmNodeShape } from "../../node/index.js"
 
 /** Aggregated data for the settings view. */
 export interface SettingsViewData {
-	/** RPC URL (if fork mode). */
-	readonly rpcUrl: string | undefined
 	/** Current chain ID. */
 	readonly chainId: bigint
 	/** Hardfork name. */
@@ -30,8 +28,10 @@ export interface SettingsViewData {
 	readonly baseFee: bigint
 	/** Minimum gas price. */
 	readonly minGasPrice: bigint
-	/** Fork URL (if in fork mode). */
+	/** Fork URL (upstream RPC URL, undefined in local mode). */
 	readonly forkUrl: string | undefined
+	/** Fork block number (undefined in local mode). */
+	readonly forkBlock: bigint | undefined
 }
 
 // ---------------------------------------------------------------------------
@@ -60,8 +60,16 @@ export const getSettingsData = (node: TevmNodeShape): Effect.Effect<SettingsView
 		// Read hardfork from release spec
 		const hardfork = node.releaseSpec.hardfork
 
+		// Fork block: genesis block number > 0 means fork mode
+		const genesisBlock = yield* node.blockchain
+			.getBlockByNumber(0n)
+			.pipe(Effect.catchAll(() => Effect.succeed(null)))
+		const forkBlock =
+			rpcUrl !== undefined && genesisBlock !== null && genesisBlock.number > 0n
+				? genesisBlock.number
+				: undefined
+
 		return {
-			rpcUrl,
 			chainId,
 			hardfork,
 			miningMode,
@@ -70,11 +78,11 @@ export const getSettingsData = (node: TevmNodeShape): Effect.Effect<SettingsView
 			baseFee,
 			minGasPrice,
 			forkUrl: rpcUrl,
+			forkBlock,
 		}
 	}).pipe(
 		Effect.catchAll(() =>
 			Effect.succeed({
-				rpcUrl: undefined,
 				chainId: 31337n,
 				hardfork: "prague",
 				miningMode: "auto" as MiningMode,
@@ -83,6 +91,7 @@ export const getSettingsData = (node: TevmNodeShape): Effect.Effect<SettingsView
 				baseFee: 1_000_000_000n,
 				minGasPrice: 0n,
 				forkUrl: undefined,
+				forkBlock: undefined,
 			}),
 		),
 	)

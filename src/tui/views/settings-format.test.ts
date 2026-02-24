@@ -1,9 +1,11 @@
 import { describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { expect } from "vitest"
+import { DRACULA } from "../theme.js"
 import {
 	formatBlockTime,
 	formatChainId,
+	formatForkBlock,
 	formatForkUrl,
 	formatGasLimitValue,
 	formatHardfork,
@@ -16,7 +18,7 @@ describe("settings-format", () => {
 			Effect.sync(() => {
 				const result = formatMiningMode("auto")
 				expect(result.text).toBe("Auto")
-				expect(result.color).toBeTruthy()
+				expect(result.color).toBe(DRACULA.green)
 			}),
 		)
 
@@ -24,7 +26,7 @@ describe("settings-format", () => {
 			Effect.sync(() => {
 				const result = formatMiningMode("manual")
 				expect(result.text).toBe("Manual")
-				expect(result.color).toBeTruthy()
+				expect(result.color).toBe(DRACULA.yellow)
 			}),
 		)
 
@@ -32,7 +34,7 @@ describe("settings-format", () => {
 			Effect.sync(() => {
 				const result = formatMiningMode("interval")
 				expect(result.text).toBe("Interval")
-				expect(result.color).toBeTruthy()
+				expect(result.color).toBe(DRACULA.cyan)
 			}),
 		)
 
@@ -135,6 +137,29 @@ describe("settings-format", () => {
 			Effect.sync(() => {
 				const result = formatForkUrl("https://eth.llamarpc.com")
 				expect(result).toBe("https://eth.llamarpc.com")
+			}),
+		)
+	})
+
+	describe("formatForkBlock", () => {
+		it.effect("undefined shows N/A (local mode)", () =>
+			Effect.sync(() => {
+				const result = formatForkBlock(undefined)
+				expect(result).toBe("N/A (local mode)")
+			}),
+		)
+
+		it.effect("shows block number with commas", () =>
+			Effect.sync(() => {
+				const result = formatForkBlock(21_000_000n)
+				expect(result).toBe("21,000,000")
+			}),
+		)
+
+		it.effect("shows zero block", () =>
+			Effect.sync(() => {
+				const result = formatForkBlock(0n)
+				expect(result).toBe("0")
 			}),
 		)
 	})

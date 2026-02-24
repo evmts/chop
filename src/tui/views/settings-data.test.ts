@@ -1,6 +1,7 @@
 import { describe, it } from "@effect/vitest"
 import { Effect, Ref } from "effect"
 import { expect } from "vitest"
+import type { TevmNodeShape } from "../../node/index.js"
 import { TevmNode, TevmNodeService } from "../../node/index.js"
 import { cycleMiningMode, getSettingsData, setBlockGasLimit } from "./settings-data.js"
 
@@ -42,6 +43,38 @@ describe("settings-data", () => {
 				const data = yield* getSettingsData(node)
 				expect(data.forkUrl).toBeUndefined()
 			}).pipe(Effect.provide(TevmNode.LocalTest())),
+		)
+
+		it.effect("forkBlock is undefined for local mode", () =>
+			Effect.gen(function* () {
+				const node = yield* TevmNodeService
+				const data = yield* getSettingsData(node)
+				expect(data.forkBlock).toBeUndefined()
+			}).pipe(Effect.provide(TevmNode.LocalTest())),
+		)
+
+		it.effect("catchAll returns sensible defaults on broken node", () =>
+			Effect.gen(function* () {
+				const brokenNode = {
+					mining: {
+						getMode: () => Effect.fail(new Error("broken")),
+						getInterval: () => Effect.fail(new Error("broken")),
+					},
+					nodeConfig: {} as unknown,
+					blockchain: {} as unknown,
+					releaseSpec: {} as unknown,
+				} as unknown as TevmNodeShape
+				const data = yield* getSettingsData(brokenNode)
+				expect(data.chainId).toBe(31337n)
+				expect(data.hardfork).toBe("prague")
+				expect(data.miningMode).toBe("auto")
+				expect(data.miningInterval).toBe(0)
+				expect(data.blockGasLimit).toBe(30_000_000n)
+				expect(data.baseFee).toBe(1_000_000_000n)
+				expect(data.minGasPrice).toBe(0n)
+				expect(data.forkUrl).toBeUndefined()
+				expect(data.forkBlock).toBeUndefined()
+			}),
 		)
 
 		it.effect("reflects nodeConfig changes to blockGasLimit", () =>

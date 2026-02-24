@@ -6,7 +6,6 @@ import type { SettingsViewData } from "./settings-data.js"
 
 /** Helper to create valid SettingsViewData. */
 const makeData = (overrides: Partial<SettingsViewData> = {}): SettingsViewData => ({
-	rpcUrl: undefined,
 	chainId: 31337n,
 	hardfork: "prague",
 	miningMode: "auto",
@@ -15,6 +14,7 @@ const makeData = (overrides: Partial<SettingsViewData> = {}): SettingsViewData =
 	baseFee: 1_000_000_000n,
 	minGasPrice: 0n,
 	forkUrl: undefined,
+	forkBlock: undefined,
 	...overrides,
 })
 
