@@ -106,7 +106,7 @@ describe("contracts-data", () => {
 				// Find our contract
 				const found = data.contracts.find((c) => c.address.endsWith("42"))
 				expect(found).toBeDefined()
-				expect(found!.codeSize).toBe(6) // 6 bytes of bytecode
+				expect(found?.codeSize).toBe(6) // 6 bytes of bytecode
 			}).pipe(Effect.provide(TevmNode.LocalTest())),
 		)
 
@@ -128,10 +128,10 @@ describe("contracts-data", () => {
 				const data = yield* getContractsData(node)
 				const contract = data.contracts.find((c) => c.address.endsWith("99"))
 				expect(contract).toBeDefined()
-				expect(typeof contract!.address).toBe("string")
-				expect(typeof contract!.codeSize).toBe("number")
-				expect(typeof contract!.bytecodeHex).toBe("string")
-				expect(contract!.bytecodeHex.startsWith("0x")).toBe(true)
+				expect(typeof contract?.address).toBe("string")
+				expect(typeof contract?.codeSize).toBe("number")
+				expect(typeof contract?.bytecodeHex).toBe("string")
+				expect(contract?.bytecodeHex.startsWith("0x")).toBe(true)
 			}).pipe(Effect.provide(TevmNode.LocalTest())),
 		)
 	})
@@ -159,7 +159,7 @@ describe("contracts-data", () => {
 
 				const detail = yield* getContractDetail(node, contract!)
 				expect(detail.instructions.length).toBeGreaterThan(0)
-				expect(detail.instructions[0]!.name).toBe("PUSH1")
+				expect(detail.instructions[0]?.name).toBe("PUSH1")
 			}).pipe(Effect.provide(TevmNode.LocalTest())),
 		)
 
@@ -185,7 +185,7 @@ describe("contracts-data", () => {
 
 				const detail = yield* getContractDetail(node, contract!)
 				expect(detail.selectors.length).toBe(1)
-				expect(detail.selectors[0]!.selector).toBe("0xa9059cbb")
+				expect(detail.selectors[0]?.selector).toBe("0xa9059cbb")
 			}).pipe(Effect.provide(TevmNode.LocalTest())),
 		)
 

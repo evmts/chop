@@ -6,9 +6,9 @@
  */
 
 import { Effect } from "effect"
-import type { TevmNodeShape } from "../../node/index.js"
-import { hexToBytes } from "../../evm/conversions.js"
 import { VERSION } from "../../cli/version.js"
+import { hexToBytes } from "../../evm/conversions.js"
+import type { TevmNodeShape } from "../../node/index.js"
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -82,30 +82,34 @@ export const getChainInfo = (node: TevmNodeShape): Effect.Effect<ChainInfoData> 
 			clientVersion: CLIENT_VERSION,
 			miningMode,
 		}
-	}).pipe(Effect.catchAll(() => Effect.succeed({
-		chainId: 0n,
-		blockNumber: 0n,
-		gasPrice: 0n,
-		baseFee: 0n,
-		clientVersion: CLIENT_VERSION,
-		miningMode: "unknown",
-	})))
+	}).pipe(
+		Effect.catchAll(() =>
+			Effect.succeed({
+				chainId: 0n,
+				blockNumber: 0n,
+				gasPrice: 0n,
+				baseFee: 0n,
+				clientVersion: CLIENT_VERSION,
+				miningMode: "unknown",
+			}),
+		),
+	)
 
 /** Fetch the most recent blocks (newest first). */
 export const getRecentBlocks = (node: TevmNodeShape, count = 5): Effect.Effect<readonly RecentBlockData[]> =>
 	Effect.gen(function* () {
-		const headBlockNumber = yield* node.blockchain.getHeadBlockNumber().pipe(
-			Effect.catchTag("GenesisError", () => Effect.succeed(0n)),
-		)
+		const headBlockNumber = yield* node.blockchain
+			.getHeadBlockNumber()
+			.pipe(Effect.catchTag("GenesisError", () => Effect.succeed(0n)))
 
 		const blocks: RecentBlockData[] = []
 		const start = headBlockNumber
 		const end = start - BigInt(count) + 1n < 0n ? 0n : start - BigInt(count) + 1n
 
 		for (let n = start; n >= end; n--) {
-			const block = yield* node.blockchain.getBlockByNumber(n).pipe(
-				Effect.catchTag("BlockNotFoundError", () => Effect.succeed(null)),
-			)
+			const block = yield* node.blockchain
+				.getBlockByNumber(n)
+				.pipe(Effect.catchTag("BlockNotFoundError", () => Effect.succeed(null)))
 			if (block === null) break
 
 			blocks.push({
@@ -122,9 +126,9 @@ export const getRecentBlocks = (node: TevmNodeShape, count = 5): Effect.Effect<r
 /** Fetch recent transactions from recent blocks. */
 export const getRecentTransactions = (node: TevmNodeShape, count = 10): Effect.Effect<readonly RecentTxData[]> =>
 	Effect.gen(function* () {
-		const headBlockNumber = yield* node.blockchain.getHeadBlockNumber().pipe(
-			Effect.catchTag("GenesisError", () => Effect.succeed(0n)),
-		)
+		const headBlockNumber = yield* node.blockchain
+			.getHeadBlockNumber()
+			.pipe(Effect.catchTag("GenesisError", () => Effect.succeed(0n)))
 
 		const txs: RecentTxData[] = []
 		// Track seen tx hashes to deduplicate (block store hash collisions can cause
@@ -133,9 +137,9 @@ export const getRecentTransactions = (node: TevmNodeShape, count = 10): Effect.E
 
 		// Walk backwards through blocks to find transactions
 		for (let n = headBlockNumber; n >= 0n && txs.length < count; n--) {
-			const block = yield* node.blockchain.getBlockByNumber(n).pipe(
-				Effect.catchTag("BlockNotFoundError", () => Effect.succeed(null)),
-			)
+			const block = yield* node.blockchain
+				.getBlockByNumber(n)
+				.pipe(Effect.catchTag("BlockNotFoundError", () => Effect.succeed(null)))
 			if (block === null) break
 
 			const hashes = block.transactionHashes ?? []
@@ -144,9 +148,9 @@ export const getRecentTransactions = (node: TevmNodeShape, count = 10): Effect.E
 				if (seen.has(hash)) continue
 				seen.add(hash)
 
-				const tx = yield* node.txPool.getTransaction(hash).pipe(
-					Effect.catchTag("TransactionNotFoundError", () => Effect.succeed(null)),
-				)
+				const tx = yield* node.txPool
+					.getTransaction(hash)
+					.pipe(Effect.catchTag("TransactionNotFoundError", () => Effect.succeed(null)))
 				if (tx === null) continue
 
 				txs.push({
@@ -180,9 +184,12 @@ export const getAccountSummaries = (node: TevmNodeShape): Effect.Effect<readonly
 
 /** Fetch all dashboard data sections in parallel. */
 export const getDashboardData = (node: TevmNodeShape): Effect.Effect<DashboardData> =>
-	Effect.all({
-		chainInfo: getChainInfo(node),
-		recentBlocks: getRecentBlocks(node),
-		recentTxs: getRecentTransactions(node),
-		accounts: getAccountSummaries(node),
-	}, { concurrency: "unbounded" })
+	Effect.all(
+		{
+			chainInfo: getChainInfo(node),
+			recentBlocks: getRecentBlocks(node),
+			recentTxs: getRecentTransactions(node),
+			accounts: getAccountSummaries(node),
+		},
+		{ concurrency: "unbounded" },
+	)

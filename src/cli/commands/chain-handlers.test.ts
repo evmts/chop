@@ -14,10 +14,6 @@ import { TevmNode, TevmNodeService } from "../../node/index.js"
 import { rpcCall } from "../../rpc/client.js"
 import { startRpcServer } from "../../rpc/server.js"
 import {
-	InvalidBlockIdError,
-	InvalidTimestampError,
-	ReceiptNotFoundError,
-	TransactionNotFoundError,
 	baseFeeHandler,
 	blockHandler,
 	findBlockHandler,

@@ -2,14 +2,14 @@ import { describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { expect } from "vitest"
 import {
-	formatTreeIndicator,
-	formatIndent,
+	formatBalanceLine,
+	formatCodeLine,
 	formatCodeSize,
 	formatHexOrDecimal,
-	formatStorageSlotLine,
-	formatBalanceLine,
+	formatIndent,
 	formatNonceLine,
-	formatCodeLine,
+	formatStorageSlotLine,
+	formatTreeIndicator,
 } from "./state-inspector-format.js"
 
 describe("state-inspector-format", () => {

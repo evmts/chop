@@ -2,7 +2,13 @@ import { describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { expect } from "vitest"
 import { TevmNode, TevmNodeService } from "../../node/index.js"
-import { getAccountSummaries, getChainInfo, getDashboardData, getRecentBlocks, getRecentTransactions } from "./dashboard-data.js"
+import {
+	getAccountSummaries,
+	getChainInfo,
+	getDashboardData,
+	getRecentBlocks,
+	getRecentTransactions,
+} from "./dashboard-data.js"
 
 describe("dashboard-data", () => {
 	describe("getChainInfo", () => {

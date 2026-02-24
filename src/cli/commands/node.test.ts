@@ -346,7 +346,8 @@ describe("chop node — fork mode E2E", () => {
 
 			// After close, requests should fail
 			const result = yield* Effect.tryPromise({
-				try: () => httpPost(fork.server.port, JSON.stringify({ jsonrpc: "2.0", method: "eth_chainId", params: [], id: 1 })),
+				try: () =>
+					httpPost(fork.server.port, JSON.stringify({ jsonrpc: "2.0", method: "eth_chainId", params: [], id: 1 })),
 				catch: (e) => e,
 			}).pipe(Effect.either)
 

@@ -523,25 +523,29 @@ describe("EvmWasmService — MLOAD happy path", () => {
 			//   PUSH1 0x00, MSTORE             → store the MLOAD result back to memory[0..32]
 			//   PUSH1 0x20, PUSH1 0x00, RETURN → return memory[0..32]
 			const bytecode = new Uint8Array([
-				0x60, 0xab, // PUSH1 0xAB
-				0x60, 0x00, // PUSH1 0x00
-				0x52,       // MSTORE → mem[0..32] = pad32(0xAB)
-				0x60, 0x00, // PUSH1 0x00
-				0x51,       // MLOAD  → reads 32 bytes at offset 0
-				0x60, 0x00, // PUSH1 0x00
-				0x52,       // MSTORE → stores MLOAD result back (should be same)
-				0x60, 0x20, // PUSH1 0x20
-				0x60, 0x00, // PUSH1 0x00
-				0xf3,       // RETURN
+				0x60,
+				0xab, // PUSH1 0xAB
+				0x60,
+				0x00, // PUSH1 0x00
+				0x52, // MSTORE → mem[0..32] = pad32(0xAB)
+				0x60,
+				0x00, // PUSH1 0x00
+				0x51, // MLOAD  → reads 32 bytes at offset 0
+				0x60,
+				0x00, // PUSH1 0x00
+				0x52, // MSTORE → stores MLOAD result back (should be same)
+				0x60,
+				0x20, // PUSH1 0x20
+				0x60,
+				0x00, // PUSH1 0x00
+				0xf3, // RETURN
 			])
 
 			const result = yield* evm.execute({ bytecode })
 			expect(result.success).toBe(true)
 			expect(result.output.length).toBe(32)
 			// Should be pad32(0xAB)
-			expect(bytesToHex(result.output)).toBe(
-				"0x00000000000000000000000000000000000000000000000000000000000000ab",
-			)
+			expect(bytesToHex(result.output)).toBe("0x00000000000000000000000000000000000000000000000000000000000000ab")
 			expect(result.gasUsed).toBeGreaterThan(0n)
 		}).pipe(Effect.provide(EvmWasmTest)),
 	)
@@ -551,23 +555,27 @@ describe("EvmWasmService — MLOAD happy path", () => {
 			const evm = yield* EvmWasmService
 			// Store 0xFF at offset 32, then MLOAD from offset 32
 			const bytecode = new Uint8Array([
-				0x60, 0xff, // PUSH1 0xFF
-				0x60, 0x20, // PUSH1 0x20 (offset 32)
-				0x52,       // MSTORE → mem[32..64] = pad32(0xFF)
-				0x60, 0x20, // PUSH1 0x20 (offset 32)
-				0x51,       // MLOAD  → reads 32 bytes at offset 32
-				0x60, 0x00, // PUSH1 0x00
-				0x52,       // MSTORE → stores to mem[0..32]
-				0x60, 0x20, // PUSH1 0x20
-				0x60, 0x00, // PUSH1 0x00
-				0xf3,       // RETURN
+				0x60,
+				0xff, // PUSH1 0xFF
+				0x60,
+				0x20, // PUSH1 0x20 (offset 32)
+				0x52, // MSTORE → mem[32..64] = pad32(0xFF)
+				0x60,
+				0x20, // PUSH1 0x20 (offset 32)
+				0x51, // MLOAD  → reads 32 bytes at offset 32
+				0x60,
+				0x00, // PUSH1 0x00
+				0x52, // MSTORE → stores to mem[0..32]
+				0x60,
+				0x20, // PUSH1 0x20
+				0x60,
+				0x00, // PUSH1 0x00
+				0xf3, // RETURN
 			])
 
 			const result = yield* evm.execute({ bytecode })
 			expect(result.success).toBe(true)
-			expect(bytesToHex(result.output)).toBe(
-				"0x00000000000000000000000000000000000000000000000000000000000000ff",
-			)
+			expect(bytesToHex(result.output)).toBe("0x00000000000000000000000000000000000000000000000000000000000000ff")
 		}).pipe(Effect.provide(EvmWasmTest)),
 	)
 })

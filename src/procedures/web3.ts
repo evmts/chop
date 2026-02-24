@@ -3,8 +3,8 @@
 import { Effect } from "effect"
 import { keccakHandler } from "../cli/commands/crypto.js"
 import type { TevmNodeShape } from "../node/index.js"
-import type { Procedure } from "./eth.js"
 import { wrapErrors } from "./errors.js"
+import type { Procedure } from "./eth.js"
 
 // ---------------------------------------------------------------------------
 // Procedures

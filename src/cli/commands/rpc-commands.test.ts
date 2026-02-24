@@ -34,9 +34,7 @@ describe("CLI E2E — send command non-JSON output", () => {
 	})
 
 	it("send without --json outputs raw tx hash", () => {
-		const result = runCli(
-			`send --to ${ZERO_ADDR} --from ${FUNDED_ADDR} -r http://127.0.0.1:${server.port}`,
-		)
+		const result = runCli(`send --to ${ZERO_ADDR} --from ${FUNDED_ADDR} -r http://127.0.0.1:${server.port}`)
 		expect(result.exitCode).toBe(0)
 		// Non-JSON output should be a plain tx hash (no JSON wrapping)
 		const output = result.stdout.trim()
@@ -74,9 +72,7 @@ describe("CLI E2E — rpc command non-string result", () => {
 	it("rpc eth_getBlockByNumber without --json outputs pretty-printed JSON (non-string result)", () => {
 		// eth_getBlockByNumber returns a block object (not a string)
 		// This exercises: typeof result === "string" ? result : JSON.stringify(result, null, 2)
-		const result = runCli(
-			`rpc eth_getBlockByNumber '"0x0"' false -r http://127.0.0.1:${server.port}`,
-		)
+		const result = runCli(`rpc eth_getBlockByNumber '"0x0"' false -r http://127.0.0.1:${server.port}`)
 		expect(result.exitCode).toBe(0)
 		const output = result.stdout.trim()
 
@@ -92,9 +88,7 @@ describe("CLI E2E — rpc command non-string result", () => {
 	it("rpc eth_chainId without --json outputs raw string (string result)", () => {
 		// eth_chainId returns a string "0x7a69"
 		// This exercises: typeof result === "string" ? result (the string branch)
-		const result = runCli(
-			`rpc eth_chainId -r http://127.0.0.1:${server.port}`,
-		)
+		const result = runCli(`rpc eth_chainId -r http://127.0.0.1:${server.port}`)
 		expect(result.exitCode).toBe(0)
 		const output = result.stdout.trim()
 		expect(output).toBe("0x7a69")
@@ -104,9 +98,7 @@ describe("CLI E2E — rpc command non-string result", () => {
 
 	it("rpc eth_getBlockByNumber --json wraps result in JSON envelope", () => {
 		// With --json, the result should be wrapped in { method, result } regardless of type
-		const result = runCli(
-			`rpc eth_getBlockByNumber '"0x0"' false -r http://127.0.0.1:${server.port} --json`,
-		)
+		const result = runCli(`rpc eth_getBlockByNumber '"0x0"' false -r http://127.0.0.1:${server.port} --json`)
 		expect(result.exitCode).toBe(0)
 		const json = JSON.parse(result.stdout.trim())
 		expect(json).toHaveProperty("method", "eth_getBlockByNumber")
@@ -118,9 +110,7 @@ describe("CLI E2E — rpc command non-string result", () => {
 		// Params that fail JSON.parse should be passed as raw strings
 		// eth_getBalance with plain addresses (not JSON-quoted) should still work
 		// because the handler falls back to treating them as strings
-		const result = runCli(
-			`rpc eth_getBalance ${ZERO_ADDR} latest -r http://127.0.0.1:${server.port}`,
-		)
+		const result = runCli(`rpc eth_getBalance ${ZERO_ADDR} latest -r http://127.0.0.1:${server.port}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0x0")
 	})

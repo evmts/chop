@@ -82,9 +82,7 @@ describe("resolveNameHandler", () => {
 			})
 
 			try {
-				const error = yield* resolveNameHandler(`http://127.0.0.1:${server.port}`, "nonexistent.eth").pipe(
-					Effect.flip,
-				)
+				const error = yield* resolveNameHandler(`http://127.0.0.1:${server.port}`, "nonexistent.eth").pipe(Effect.flip)
 				expect(error._tag).toBe("EnsError")
 				expect(error.message).toContain("No resolver found")
 			} finally {

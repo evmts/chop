@@ -7,8 +7,8 @@
  */
 
 import type { BoxRenderable, CliRenderer, TextRenderable } from "@opentui/core"
-import { type CallRecord, filterCallRecords } from "../services/call-history-store.js"
 import { getOpenTui } from "../opentui.js"
+import { type CallRecord, filterCallRecords } from "../services/call-history-store.js"
 import { DRACULA, SEMANTIC } from "../theme.js"
 import {
 	formatCallType,
@@ -345,9 +345,7 @@ export const createCallHistory = (renderer: CliRenderer): CallHistoryHandle => {
 
 		// Update title with count
 		const total = records.length
-		listTitle.content = viewState.filterQuery
-			? ` Call History (${total} matches) `
-			: ` Call History (${total}) `
+		listTitle.content = viewState.filterQuery ? ` Call History (${total} matches) ` : ` Call History (${total}) `
 	}
 
 	const renderDetail = (): void => {
@@ -365,7 +363,11 @@ export const createCallHistory = (renderer: CliRenderer): CallHistoryHandle => {
 			line.fg = fg
 		}
 
-		setDetailLine(0, `Call #${record.id} \u2014 ${ct.text} (${status.text} ${record.success ? "Success" : "Failed"})`, ct.color)
+		setDetailLine(
+			0,
+			`Call #${record.id} \u2014 ${ct.text} (${status.text} ${record.success ? "Success" : "Failed"})`,
+			ct.color,
+		)
 		setDetailLine(1, "")
 		setDetailLine(2, `From:      ${record.from}`, SEMANTIC.address)
 		setDetailLine(3, `To:        ${record.to || "(contract creation)"}`, SEMANTIC.address)

@@ -125,9 +125,9 @@ describe("MiningService", () => {
 			const blocks = yield* mining.mine(1)
 
 			expect(blocks).toHaveLength(1)
-			expect(blocks[0]!.number).toBe(headBefore + 1n)
-			expect(blocks[0]!.gasUsed).toBe(0n)
-			expect(blocks[0]!.transactionHashes).toEqual([])
+			expect(blocks[0]?.number).toBe(headBefore + 1n)
+			expect(blocks[0]?.gasUsed).toBe(0n)
+			expect(blocks[0]?.transactionHashes).toEqual([])
 
 			const headAfter = yield* blockchain.getHeadBlockNumber()
 			expect(headAfter).toBe(headBefore + 1n)
@@ -143,9 +143,9 @@ describe("MiningService", () => {
 			const blocks = yield* mining.mine(3)
 
 			expect(blocks).toHaveLength(3)
-			expect(blocks[0]!.number).toBe(headBefore + 1n)
-			expect(blocks[1]!.number).toBe(headBefore + 2n)
-			expect(blocks[2]!.number).toBe(headBefore + 3n)
+			expect(blocks[0]?.number).toBe(headBefore + 1n)
+			expect(blocks[1]?.number).toBe(headBefore + 2n)
+			expect(blocks[2]?.number).toBe(headBefore + 3n)
 
 			const headAfter = yield* blockchain.getHeadBlockNumber()
 			expect(headAfter).toBe(headBefore + 3n)
@@ -182,8 +182,8 @@ describe("MiningService", () => {
 
 			// Block should contain the tx
 			expect(blocks).toHaveLength(1)
-			expect(blocks[0]!.transactionHashes).toEqual([tx.hash])
-			expect(blocks[0]!.gasUsed).toBe(21000n)
+			expect(blocks[0]?.transactionHashes).toEqual([tx.hash])
+			expect(blocks[0]?.gasUsed).toBe(21000n)
 
 			// Tx should be marked as mined
 			const pendingAfter = yield* txPool.getPendingHashes()
@@ -193,7 +193,7 @@ describe("MiningService", () => {
 			const receipt = yield* txPool.getReceipt(tx.hash)
 			expect(receipt.status).toBe(1)
 			expect(receipt.gasUsed).toBe(21000n)
-			expect(receipt.blockNumber).toBe(blocks[0]!.number)
+			expect(receipt.blockNumber).toBe(blocks[0]?.number)
 		}).pipe(Effect.provide(MiningTestLayer)),
 	)
 
@@ -222,8 +222,8 @@ describe("MiningService", () => {
 			const blocks = yield* mining.mine(1)
 
 			// High fee tx should come first
-			expect(blocks[0]!.transactionHashes![0]).toBe(highFeeTx.hash)
-			expect(blocks[0]!.transactionHashes![1]).toBe(lowFeeTx.hash)
+			expect(blocks[0]?.transactionHashes?.[0]).toBe(highFeeTx.hash)
+			expect(blocks[0]?.transactionHashes?.[1]).toBe(lowFeeTx.hash)
 		}).pipe(Effect.provide(MiningTestLayer)),
 	)
 
@@ -254,9 +254,9 @@ describe("MiningService", () => {
 			const blocks = yield* mining.mine(1)
 
 			// Only tx1 (higher fee) should fit
-			expect(blocks[0]!.transactionHashes).toHaveLength(1)
-			expect(blocks[0]!.transactionHashes![0]).toBe(tx1.hash)
-			expect(blocks[0]!.gasUsed).toBe(20_000_000n)
+			expect(blocks[0]?.transactionHashes).toHaveLength(1)
+			expect(blocks[0]?.transactionHashes?.[0]).toBe(tx1.hash)
+			expect(blocks[0]?.gasUsed).toBe(20_000_000n)
 
 			// tx2 should still be pending
 			const pending = yield* txPool.getPendingHashes()
@@ -276,7 +276,7 @@ describe("MiningService", () => {
 			const headBefore = yield* blockchain.getHead()
 			const blocks = yield* mining.mine(1)
 
-			expect(blocks[0]!.parentHash).toBe(headBefore.hash)
+			expect(blocks[0]?.parentHash).toBe(headBefore.hash)
 		}).pipe(Effect.provide(MiningTestLayer)),
 	)
 
@@ -286,8 +286,8 @@ describe("MiningService", () => {
 
 			const blocks = yield* mining.mine(1)
 
-			expect(blocks[0]!.gasLimit).toBe(genesisBlock.gasLimit)
-			expect(blocks[0]!.baseFeePerGas).toBe(genesisBlock.baseFeePerGas)
+			expect(blocks[0]?.gasLimit).toBe(genesisBlock.gasLimit)
+			expect(blocks[0]?.baseFeePerGas).toBe(genesisBlock.baseFeePerGas)
 		}).pipe(Effect.provide(MiningTestLayer)),
 	)
 
@@ -341,13 +341,13 @@ describe("MiningService", () => {
 
 			expect(blocks).toHaveLength(3)
 			// First block has the tx
-			expect(blocks[0]!.transactionHashes).toEqual([tx.hash])
-			expect(blocks[0]!.gasUsed).toBe(21000n)
+			expect(blocks[0]?.transactionHashes).toEqual([tx.hash])
+			expect(blocks[0]?.gasUsed).toBe(21000n)
 			// Subsequent blocks are empty
-			expect(blocks[1]!.transactionHashes).toEqual([])
-			expect(blocks[1]!.gasUsed).toBe(0n)
-			expect(blocks[2]!.transactionHashes).toEqual([])
-			expect(blocks[2]!.gasUsed).toBe(0n)
+			expect(blocks[1]?.transactionHashes).toEqual([])
+			expect(blocks[1]?.gasUsed).toBe(0n)
+			expect(blocks[2]?.transactionHashes).toEqual([])
+			expect(blocks[2]?.gasUsed).toBe(0n)
 		}).pipe(Effect.provide(MiningTestLayer)),
 	)
 })

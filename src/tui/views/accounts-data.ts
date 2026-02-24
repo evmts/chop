@@ -6,8 +6,8 @@
  */
 
 import { Effect } from "effect"
-import type { TevmNodeShape } from "../../node/index.js"
 import { hexToBytes } from "../../evm/conversions.js"
+import type { TevmNodeShape } from "../../node/index.js"
 
 // ---------------------------------------------------------------------------
 // Types

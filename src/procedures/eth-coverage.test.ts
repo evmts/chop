@@ -15,13 +15,7 @@ import { describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { expect } from "vitest"
 import { TevmNode, TevmNodeService } from "../node/index.js"
-import {
-	ethAccounts,
-	ethFeeHistory,
-	ethGetBlockByHash,
-	ethGetBlockByNumber,
-	ethSendTransaction,
-} from "./eth.js"
+import { ethAccounts, ethFeeHistory, ethGetBlockByHash, ethGetBlockByNumber, ethSendTransaction } from "./eth.js"
 
 // ---------------------------------------------------------------------------
 // Helpers

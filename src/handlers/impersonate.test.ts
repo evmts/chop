@@ -42,9 +42,7 @@ describe("impersonation handlers", () => {
 			expect(result).toBe(true)
 
 			expect(node.impersonationManager.isImpersonated(TEST_ADDR)).toBe(true)
-			expect(
-				node.impersonationManager.isImpersonated("0xabcdefabcdefabcdefabcdefabcdefabcdefabcd"),
-			).toBe(true)
+			expect(node.impersonationManager.isImpersonated("0xabcdefabcdefabcdefabcdefabcdefabcdefabcd")).toBe(true)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 
@@ -57,9 +55,7 @@ describe("impersonation handlers", () => {
 			yield* autoImpersonateAccountHandler(node)(false)
 
 			expect(node.impersonationManager.isImpersonated(TEST_ADDR)).toBe(true)
-			expect(
-				node.impersonationManager.isImpersonated("0xabcdefabcdefabcdefabcdefabcdefabcdefabcd"),
-			).toBe(false)
+			expect(node.impersonationManager.isImpersonated("0xabcdefabcdefabcdefabcdefabcdefabcdefabcd")).toBe(false)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 })

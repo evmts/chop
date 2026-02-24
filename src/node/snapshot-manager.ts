@@ -58,11 +58,9 @@ export const makeSnapshotManager = (hostAdapter: HostAdapterShape): SnapshotMana
 				}
 
 				// Restore world state
-				yield* hostAdapter.restore(wsSnap).pipe(
-					Effect.catchTag("InvalidSnapshotError", () =>
-						Effect.fail(new UnknownSnapshotError({ snapshotId })),
-					),
-				)
+				yield* hostAdapter
+					.restore(wsSnap)
+					.pipe(Effect.catchTag("InvalidSnapshotError", () => Effect.fail(new UnknownSnapshotError({ snapshotId }))))
 
 				// Invalidate this snapshot and all later ones
 				for (const id of [...snapshots.keys()]) {

@@ -186,9 +186,9 @@ describe("WorldState — snapshot complex scenarios", () => {
 			const snap = yield* ws.snapshot()
 			yield* ws.commit(snap)
 			// Using committed snapshot for restore should fail
-			const result = yield* ws.restore(snap).pipe(
-				Effect.catchTag("InvalidSnapshotError", (e) => Effect.succeed(e._tag)),
-			)
+			const result = yield* ws
+				.restore(snap)
+				.pipe(Effect.catchTag("InvalidSnapshotError", (e) => Effect.succeed(e._tag)))
 			expect(result).toBe("InvalidSnapshotError")
 		}).pipe(Effect.provide(WorldStateTest)),
 	)

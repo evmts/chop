@@ -90,7 +90,7 @@ export const parseBlockId = (id: string): Effect.Effect<{ method: string; params
 /**
  * Format a block object for human-readable output.
  */
-const formatBlock = (block: Record<string, unknown>): string => {
+export const formatBlock = (block: Record<string, unknown>): string => {
 	const lines: string[] = []
 	const num = block.number
 	if (num) lines.push(`Block:          ${hexToDecimal(num)}`)
@@ -109,7 +109,7 @@ const formatBlock = (block: Record<string, unknown>): string => {
 /**
  * Format a transaction object for human-readable output.
  */
-const formatTx = (tx: Record<string, unknown>): string => {
+export const formatTx = (tx: Record<string, unknown>): string => {
 	const lines: string[] = []
 	if (tx.hash) lines.push(`Hash:        ${tx.hash}`)
 	if (tx.from) lines.push(`From:        ${tx.from}`)
@@ -126,7 +126,7 @@ const formatTx = (tx: Record<string, unknown>): string => {
 /**
  * Format a receipt object for human-readable output.
  */
-const formatReceipt = (receipt: Record<string, unknown>): string => {
+export const formatReceipt = (receipt: Record<string, unknown>): string => {
 	const lines: string[] = []
 	if (receipt.transactionHash) lines.push(`Tx Hash:       ${receipt.transactionHash}`)
 	if (receipt.status) lines.push(`Status:        ${receipt.status === "0x1" ? "Success" : "Reverted"}`)
@@ -143,7 +143,7 @@ const formatReceipt = (receipt: Record<string, unknown>): string => {
 /**
  * Format a single log entry for human-readable output.
  */
-const formatLog = (log: Record<string, unknown>): string => {
+export const formatLog = (log: Record<string, unknown>): string => {
 	const lines: string[] = []
 	lines.push(`Address: ${log.address ?? ""}`)
 	const topics = (log.topics as string[]) ?? []
@@ -158,7 +158,7 @@ const formatLog = (log: Record<string, unknown>): string => {
 /**
  * Format a logs result set for human-readable output.
  */
-const formatLogs = (logs: readonly Record<string, unknown>[]): string => {
+export const formatLogs = (logs: readonly Record<string, unknown>[]): string => {
 	if (logs.length === 0) return "No logs found"
 	return logs.map(formatLog).join("\n")
 }

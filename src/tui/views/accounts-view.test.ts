@@ -2,11 +2,7 @@ import { describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { expect } from "vitest"
 import { keyToAction } from "../state.js"
-import {
-	type AccountsViewState,
-	accountsReduce,
-	initialAccountsState,
-} from "./Accounts.js"
+import { type AccountsViewState, accountsReduce, initialAccountsState } from "./Accounts.js"
 import type { AccountDetail } from "./accounts-data.js"
 
 /** Helper to create a minimal AccountDetail. */

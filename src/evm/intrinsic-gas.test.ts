@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
 import { expect } from "vitest"
-import type { ReleaseSpecShape } from "./release-spec.js"
 import { type IntrinsicGasParams, calculateIntrinsicGas } from "./intrinsic-gas.js"
+import type { ReleaseSpecShape } from "./release-spec.js"
 
 // ---------------------------------------------------------------------------
 // Test release spec configs
@@ -115,9 +115,7 @@ describe("calculateIntrinsicGas", () => {
 		const params: IntrinsicGasParams = {
 			data: new Uint8Array(0),
 			isCreate: false,
-			accessList: [
-				{ address: `0x${"aa".repeat(20)}`, storageKeys: [`0x${"01".repeat(32)}`, `0x${"02".repeat(32)}`] },
-			],
+			accessList: [{ address: `0x${"aa".repeat(20)}`, storageKeys: [`0x${"01".repeat(32)}`, `0x${"02".repeat(32)}`] }],
 		}
 		// 21000 + 2400 + 2*1900 = 27200
 		expect(calculateIntrinsicGas(params, PRAGUE)).toBe(27200n)
@@ -140,9 +138,7 @@ describe("calculateIntrinsicGas", () => {
 		const params: IntrinsicGasParams = {
 			data: new Uint8Array(0),
 			isCreate: false,
-			accessList: [
-				{ address: `0x${"aa".repeat(20)}`, storageKeys: [`0x${"01".repeat(32)}`] },
-			],
+			accessList: [{ address: `0x${"aa".repeat(20)}`, storageKeys: [`0x${"01".repeat(32)}`] }],
 		}
 		// Access list ignored → 21000
 		expect(calculateIntrinsicGas(params, FRONTIER)).toBe(21000n)

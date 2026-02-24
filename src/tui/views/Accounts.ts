@@ -7,10 +7,16 @@
  */
 
 import type { BoxRenderable, CliRenderer, TextRenderable } from "@opentui/core"
-import type { AccountDetail } from "./accounts-data.js"
 import { getOpenTui } from "../opentui.js"
 import { DRACULA, SEMANTIC } from "../theme.js"
-import { formatAccountType, formatBalance, formatCodeIndicator, formatNonce, truncateAddress } from "./accounts-format.js"
+import type { AccountDetail } from "./accounts-data.js"
+import {
+	formatAccountType,
+	formatBalance,
+	formatCodeIndicator,
+	formatNonce,
+	truncateAddress,
+} from "./accounts-format.js"
 
 // ---------------------------------------------------------------------------
 // View state (pure, testable)
@@ -106,16 +112,33 @@ export const accountsReduce = (state: AccountsViewState, key: string): AccountsV
 	switch (key) {
 		case "j": {
 			const maxIndex = Math.max(0, state.accounts.length - 1)
-			return { ...state, selectedIndex: Math.min(state.selectedIndex + 1, maxIndex), fundConfirmed: false, impersonateRequested: false }
+			return {
+				...state,
+				selectedIndex: Math.min(state.selectedIndex + 1, maxIndex),
+				fundConfirmed: false,
+				impersonateRequested: false,
+			}
 		}
 		case "k":
-			return { ...state, selectedIndex: Math.max(0, state.selectedIndex - 1), fundConfirmed: false, impersonateRequested: false }
+			return {
+				...state,
+				selectedIndex: Math.max(0, state.selectedIndex - 1),
+				fundConfirmed: false,
+				impersonateRequested: false,
+			}
 		case "return":
 			if (state.accounts.length === 0) return state
 			return { ...state, viewMode: "detail", fundConfirmed: false, impersonateRequested: false }
 		case "f":
 			if (state.accounts.length === 0) return state
-			return { ...state, viewMode: "fundPrompt", inputActive: true, fundAmount: "", fundConfirmed: false, impersonateRequested: false }
+			return {
+				...state,
+				viewMode: "fundPrompt",
+				inputActive: true,
+				fundAmount: "",
+				fundConfirmed: false,
+				impersonateRequested: false,
+			}
 		case "i":
 			if (state.accounts.length === 0) return { ...state, impersonateRequested: false }
 			return { ...state, impersonateRequested: true, fundConfirmed: false }
@@ -362,7 +385,7 @@ export const createAccounts = (renderer: CliRenderer): AccountsHandle => {
 			setLine(i, "")
 		}
 
-		detailTitle.content = ` Account Detail (Esc to go back) `
+		detailTitle.content = " Account Detail (Esc to go back) "
 	}
 
 	const render = (): void => {

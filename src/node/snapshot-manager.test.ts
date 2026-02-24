@@ -3,7 +3,7 @@ import { Effect } from "effect"
 import { expect } from "vitest"
 import { hexToBytes } from "../evm/conversions.js"
 import { HostAdapterService, HostAdapterTest } from "../evm/host-adapter.js"
-import { makeSnapshotManager, UnknownSnapshotError } from "./snapshot-manager.js"
+import { UnknownSnapshotError, makeSnapshotManager } from "./snapshot-manager.js"
 
 const TEST_ADDR = hexToBytes(`0x${"00".repeat(19)}01`)
 const ONE_ETH = 1_000_000_000_000_000_000n

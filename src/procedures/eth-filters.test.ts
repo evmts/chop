@@ -43,9 +43,7 @@ describe("ethNewFilter — filter creation", () => {
 	it.effect("creates a filter with fromBlock and toBlock as hex strings", () =>
 		Effect.gen(function* () {
 			const node = yield* TevmNodeService
-			const result = yield* ethNewFilter(node)([
-				{ fromBlock: "0x0", toBlock: "0x10" },
-			])
+			const result = yield* ethNewFilter(node)([{ fromBlock: "0x0", toBlock: "0x10" }])
 			expect(typeof result).toBe("string")
 			expect((result as string).startsWith("0x")).toBe(true)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
@@ -54,9 +52,7 @@ describe("ethNewFilter — filter creation", () => {
 	it.effect("creates a filter with fromBlock 'latest' (resolves to current head)", () =>
 		Effect.gen(function* () {
 			const node = yield* TevmNodeService
-			const result = yield* ethNewFilter(node)([
-				{ fromBlock: "latest" },
-			])
+			const result = yield* ethNewFilter(node)([{ fromBlock: "latest" }])
 			expect(typeof result).toBe("string")
 			expect((result as string).startsWith("0x")).toBe(true)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
@@ -65,9 +61,7 @@ describe("ethNewFilter — filter creation", () => {
 	it.effect("creates a filter with toBlock 'latest' (resolves to current head)", () =>
 		Effect.gen(function* () {
 			const node = yield* TevmNodeService
-			const result = yield* ethNewFilter(node)([
-				{ toBlock: "latest" },
-			])
+			const result = yield* ethNewFilter(node)([{ toBlock: "latest" }])
 			expect(typeof result).toBe("string")
 			expect((result as string).startsWith("0x")).toBe(true)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
@@ -76,9 +70,7 @@ describe("ethNewFilter — filter creation", () => {
 	it.effect("creates a filter with both fromBlock and toBlock as 'latest'", () =>
 		Effect.gen(function* () {
 			const node = yield* TevmNodeService
-			const result = yield* ethNewFilter(node)([
-				{ fromBlock: "latest", toBlock: "latest" },
-			])
+			const result = yield* ethNewFilter(node)([{ fromBlock: "latest", toBlock: "latest" }])
 			expect(typeof result).toBe("string")
 			expect((result as string).startsWith("0x")).toBe(true)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
@@ -138,9 +130,7 @@ describe("ethGetFilterChanges — error and edge cases", () => {
 		Effect.gen(function* () {
 			const node = yield* TevmNodeService
 			// Create a log filter with specific address
-			const filterId = yield* ethNewFilter(node)([
-				{ address: `0x${"aa".repeat(20)}` },
-			])
+			const filterId = yield* ethNewFilter(node)([{ address: `0x${"aa".repeat(20)}` }])
 			const changes = yield* ethGetFilterChanges(node)([filterId])
 			expect(Array.isArray(changes)).toBe(true)
 			expect((changes as unknown[]).length).toBe(0)

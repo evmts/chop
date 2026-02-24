@@ -44,10 +44,10 @@ describe("WorldState — dumpState", () => {
 			const dump = yield* ws.dumpState()
 
 			expect(dump[ADDR1]).toBeDefined()
-			expect(dump[ADDR1]!.nonce).toBe("0x1")
-			expect(dump[ADDR1]!.balance).toBe("0x64")
-			expect(dump[ADDR1]!.storage[SLOT_A]).toBe("0x2a")
-			expect(dump[ADDR1]!.storage[SLOT_B]).toBe("0xff")
+			expect(dump[ADDR1]?.nonce).toBe("0x1")
+			expect(dump[ADDR1]?.balance).toBe("0x64")
+			expect(dump[ADDR1]?.storage[SLOT_A]).toBe("0x2a")
+			expect(dump[ADDR1]?.storage[SLOT_B]).toBe("0xff")
 		}).pipe(Effect.provide(WorldStateTest)),
 	)
 
@@ -59,7 +59,7 @@ describe("WorldState — dumpState", () => {
 			const dump = yield* ws.dumpState()
 
 			expect(dump[ADDR1]).toBeDefined()
-			expect(dump[ADDR1]!.storage).toEqual({})
+			expect(dump[ADDR1]?.storage).toEqual({})
 		}).pipe(Effect.provide(WorldStateTest)),
 	)
 
@@ -79,9 +79,9 @@ describe("WorldState — dumpState", () => {
 
 			const dump = yield* ws.dumpState()
 
-			expect(dump[ADDR1]!.nonce).toBe("0xa")
-			expect(dump[ADDR1]!.balance).toBe("0x3e8")
-			expect(dump[ADDR1]!.code).toBe("0x60006000fd")
+			expect(dump[ADDR1]?.nonce).toBe("0xa")
+			expect(dump[ADDR1]?.balance).toBe("0x3e8")
+			expect(dump[ADDR1]?.code).toBe("0x60006000fd")
 		}).pipe(Effect.provide(WorldStateTest)),
 	)
 
@@ -95,10 +95,10 @@ describe("WorldState — dumpState", () => {
 
 			const dump = yield* ws.dumpState()
 
-			expect(dump[ADDR1]!.storage[SLOT_A]).toBe("0x64")
-			expect(dump[ADDR1]!.storage[SLOT_B]).toBeUndefined()
-			expect(dump[ADDR2]!.storage[SLOT_B]).toBe("0xc8")
-			expect(dump[ADDR2]!.storage[SLOT_A]).toBeUndefined()
+			expect(dump[ADDR1]?.storage[SLOT_A]).toBe("0x64")
+			expect(dump[ADDR1]?.storage[SLOT_B]).toBeUndefined()
+			expect(dump[ADDR2]?.storage[SLOT_B]).toBe("0xc8")
+			expect(dump[ADDR2]?.storage[SLOT_A]).toBeUndefined()
 		}).pipe(Effect.provide(WorldStateTest)),
 	)
 
@@ -111,7 +111,7 @@ describe("WorldState — dumpState", () => {
 
 			const dump = yield* ws.dumpState()
 
-			expect(dump[ADDR1]!.storage[SLOT_A]).toBe(`0x${largeValue.toString(16)}`)
+			expect(dump[ADDR1]?.storage[SLOT_A]).toBe(`0x${largeValue.toString(16)}`)
 		}).pipe(Effect.provide(WorldStateTest)),
 	)
 })
@@ -296,10 +296,10 @@ describe("WorldState — loadState/dumpState round-trip", () => {
 			yield* ws.loadState(original)
 			const dumped = yield* ws.dumpState()
 
-			expect(dumped[ADDR1]!.nonce).toBe(original[ADDR1]!.nonce)
-			expect(dumped[ADDR1]!.balance).toBe(original[ADDR1]!.balance)
-			expect(dumped[ADDR1]!.code).toBe(original[ADDR1]!.code)
-			expect(dumped[ADDR1]!.storage).toEqual(original[ADDR1]!.storage)
+			expect(dumped[ADDR1]?.nonce).toBe(original[ADDR1]?.nonce)
+			expect(dumped[ADDR1]?.balance).toBe(original[ADDR1]?.balance)
+			expect(dumped[ADDR1]?.code).toBe(original[ADDR1]?.code)
+			expect(dumped[ADDR1]?.storage).toEqual(original[ADDR1]?.storage)
 		}).pipe(Effect.provide(WorldStateTest)),
 	)
 
@@ -321,10 +321,10 @@ describe("WorldState — loadState/dumpState round-trip", () => {
 			yield* ws.loadState(original)
 			const dumped = yield* ws.dumpState()
 
-			expect(dumped[ADDR1]!.nonce).toBe("0x1")
-			expect(dumped[ADDR1]!.balance).toBe("0x64")
-			expect(dumped[ADDR1]!.storage[SLOT_A]).toBe("0x2a")
-			expect(dumped[ADDR1]!.storage[SLOT_B]).toBe("0xff")
+			expect(dumped[ADDR1]?.nonce).toBe("0x1")
+			expect(dumped[ADDR1]?.balance).toBe("0x64")
+			expect(dumped[ADDR1]?.storage[SLOT_A]).toBe("0x2a")
+			expect(dumped[ADDR1]?.storage[SLOT_B]).toBe("0xff")
 		}).pipe(Effect.provide(WorldStateTest)),
 	)
 
@@ -356,12 +356,12 @@ describe("WorldState — loadState/dumpState round-trip", () => {
 			const dumped = yield* ws.dumpState()
 
 			for (const addr of [ADDR1, ADDR2, ADDR3]) {
-				expect(dumped[addr]!.nonce).toBe(original[addr]!.nonce)
-				expect(dumped[addr]!.balance).toBe(original[addr]!.balance)
+				expect(dumped[addr]?.nonce).toBe(original[addr]?.nonce)
+				expect(dumped[addr]?.balance).toBe(original[addr]?.balance)
 			}
-			expect(dumped[ADDR1]!.storage[SLOT_A]).toBe("0x1")
-			expect(dumped[ADDR2]!.storage[SLOT_B]).toBe("0x2")
-			expect(dumped[ADDR3]!.storage).toEqual({})
+			expect(dumped[ADDR1]?.storage[SLOT_A]).toBe("0x1")
+			expect(dumped[ADDR2]?.storage[SLOT_B]).toBe("0x2")
+			expect(dumped[ADDR3]?.storage).toEqual({})
 		}).pipe(Effect.provide(WorldStateTest)),
 	)
 })

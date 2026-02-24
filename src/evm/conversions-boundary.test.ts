@@ -50,13 +50,13 @@ describe("hexToBytes — boundary conditions", () => {
 	})
 
 	it("handles all-zero hex", () => {
-		const bytes = hexToBytes("0x" + "00".repeat(32))
+		const bytes = hexToBytes(`0x${"00".repeat(32)}`)
 		expect(bytes.length).toBe(32)
 		expect(bytes.every((b) => b === 0)).toBe(true)
 	})
 
 	it("handles all-ff hex", () => {
-		const bytes = hexToBytes("0x" + "ff".repeat(20))
+		const bytes = hexToBytes(`0x${"ff".repeat(20)}`)
 		expect(bytes.length).toBe(20)
 		expect(bytes.every((b) => b === 0xff)).toBe(true)
 	})
@@ -176,7 +176,7 @@ describe("bytesToBigint — boundary conditions", () => {
 describe("bytesToHex — boundary conditions", () => {
 	it("handles all 0xFF bytes (max address)", () => {
 		const bytes = new Uint8Array(20).fill(0xff)
-		expect(bytesToHex(bytes)).toBe("0x" + "ff".repeat(20))
+		expect(bytesToHex(bytes)).toBe(`0x${"ff".repeat(20)}`)
 	})
 
 	it("handles alternating bytes", () => {
@@ -191,14 +191,14 @@ describe("bytesToHex — boundary conditions", () => {
 	it("handles 32-byte value with only first byte set", () => {
 		const bytes = new Uint8Array(32)
 		bytes[0] = 0xff
-		expect(bytesToHex(bytes)).toBe("0xff" + "00".repeat(31))
+		expect(bytesToHex(bytes)).toBe(`0xff${"00".repeat(31)}`)
 	})
 
 	it("handles 1024-byte buffer", () => {
 		const bytes = new Uint8Array(1024).fill(0xab)
 		const hex = bytesToHex(bytes)
 		expect(hex.length).toBe(2 + 1024 * 2) // "0x" + 2048 hex chars
-		expect(hex).toBe("0x" + "ab".repeat(1024))
+		expect(hex).toBe(`0x${"ab".repeat(1024)}`)
 	})
 })
 
@@ -228,7 +228,7 @@ describe("conversions — round-trip comprehensive", () => {
 	})
 
 	it("hexToBytes → bytesToHex for 32-byte hash", () => {
-		const hex = "0x" + "ab".repeat(32)
+		const hex = `0x${"ab".repeat(32)}`
 		expect(bytesToHex(hexToBytes(hex))).toBe(hex)
 	})
 

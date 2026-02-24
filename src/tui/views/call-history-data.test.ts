@@ -148,7 +148,9 @@ describe("call-history-data", () => {
 				// Add 3 transactions in separate blocks
 				for (let i = 0; i < 3; i++) {
 					yield* node.txPool.addTransaction({
-						hash: `0x${String(i + 1).padStart(2, "0").repeat(32)}`,
+						hash: `0x${String(i + 1)
+							.padStart(2, "0")
+							.repeat(32)}`,
 						from: `0x${"11".repeat(20)}`,
 						to: `0x${"22".repeat(20)}`,
 						value: BigInt(i * 100),

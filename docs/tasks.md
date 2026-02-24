@@ -471,10 +471,10 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - TUI test: press `e` → edit prompt → value updates
 
 ### T4.10 Phase 4 Gate
-- [ ] All T4.1-T4.9 tasks complete
-- [ ] TUI E2E tests pass
-- [ ] VHS golden file tests pass
-- [ ] All 8 views render correctly
+- [x] All T4.1-T4.9 tasks complete
+- [x] TUI E2E tests pass (184 files, 3710 tests)
+- [x] VHS golden file tests pass
+- [x] All 8 views render correctly (dashboard-view.test.ts added for full coverage)
 
 ---
 

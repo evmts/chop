@@ -36,7 +36,7 @@ describe("getAccountsHandler", () => {
 		Effect.gen(function* () {
 			const node = yield* TevmNodeService
 			const addresses = yield* getAccountsHandler(node)()
-			expect(addresses[0]!.toLowerCase()).toBe("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")
+			expect(addresses[0]?.toLowerCase()).toBe("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 

@@ -35,7 +35,7 @@ describe("bigintToHex — boundary conditions", () => {
 		const hex = bigintToHex(maxU256)
 		expect(hex.startsWith("0x")).toBe(true)
 		// max uint256 = ff...ff (64 hex chars)
-		expect(hex).toBe("0x" + "f".repeat(64))
+		expect(hex).toBe(`0x${"f".repeat(64)}`)
 	})
 
 	it("converts 2^128 to hex", () => {
@@ -73,7 +73,7 @@ describe("bigintToHex32 — boundary conditions", () => {
 	it("converts max uint256 to 64-char padded hex", () => {
 		const maxU256 = 2n ** 256n - 1n
 		const hex = bigintToHex32(maxU256)
-		expect(hex).toBe("0x" + "f".repeat(64))
+		expect(hex).toBe(`0x${"f".repeat(64)}`)
 		expect(hex.length).toBe(2 + 64) // "0x" + 64 chars
 	})
 
@@ -86,7 +86,7 @@ describe("bigintToHex32 — boundary conditions", () => {
 
 	it("pads small values to 64 chars", () => {
 		expect(bigintToHex32(42n).length).toBe(66) // 0x + 64 chars
-		expect(bigintToHex32(42n)).toBe("0x" + "0".repeat(62) + "2a")
+		expect(bigintToHex32(42n)).toBe(`0x${"0".repeat(62)}2a`)
 	})
 })
 
@@ -120,7 +120,7 @@ describe("ethCall — boundary conditions", () => {
 		Effect.gen(function* () {
 			const node = yield* TevmNodeService
 			const data = bytesToHex(new Uint8Array([0x00]))
-			const from = "0x" + "00".repeat(19) + "ab"
+			const from = `0x${"00".repeat(19)}ab`
 			const result = yield* ethCall(node)([{ data, from }])
 			expect(result).toBe("0x")
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
@@ -135,7 +135,7 @@ describe("ethGetBalance — boundary conditions", () => {
 	it.effect("returns correct hex for max uint256 balance", () =>
 		Effect.gen(function* () {
 			const node = yield* TevmNodeService
-			const addr = "0x" + "00".repeat(19) + "ff"
+			const addr = `0x${"00".repeat(19)}ff`
 			const maxU256 = 2n ** 256n - 1n
 			yield* node.hostAdapter.setAccount(hexToBytes(addr), {
 				nonce: 0n,
@@ -144,14 +144,14 @@ describe("ethGetBalance — boundary conditions", () => {
 				code: new Uint8Array(0),
 			})
 			const result = yield* ethGetBalance(node)([addr])
-			expect(result).toBe("0x" + "f".repeat(64))
+			expect(result).toBe(`0x${"f".repeat(64)}`)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 
 	it.effect("returns 0x0 for zero-address account", () =>
 		Effect.gen(function* () {
 			const node = yield* TevmNodeService
-			const result = yield* ethGetBalance(node)(["0x" + "00".repeat(20)])
+			const result = yield* ethGetBalance(node)([`0x${"00".repeat(20)}`])
 			expect(result).toBe("0x0")
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
@@ -165,7 +165,7 @@ describe("ethGetCode — boundary conditions", () => {
 	it.effect("returns hex for large bytecode", () =>
 		Effect.gen(function* () {
 			const node = yield* TevmNodeService
-			const addr = "0x" + "00".repeat(19) + "dd"
+			const addr = `0x${"00".repeat(19)}dd`
 			const largeCode = new Uint8Array(1024).fill(0x60) // 1024 PUSH1 opcodes
 			yield* node.hostAdapter.setAccount(hexToBytes(addr), {
 				nonce: 0n,
@@ -175,7 +175,7 @@ describe("ethGetCode — boundary conditions", () => {
 			})
 			const result = (yield* ethGetCode(node)([addr])) as string
 			expect(result.length).toBe(2 + 1024 * 2) // 0x + hex
-			expect(result).toBe("0x" + "60".repeat(1024))
+			expect(result).toBe(`0x${"60".repeat(1024)}`)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 })
@@ -188,10 +188,10 @@ describe("ethGetStorageAt — boundary conditions", () => {
 	it.effect("returns padded zero for max slot number", () =>
 		Effect.gen(function* () {
 			const node = yield* TevmNodeService
-			const addr = "0x" + "00".repeat(19) + "aa"
-			const maxSlot = "0x" + "ff".repeat(32) // slot at max uint256
+			const addr = `0x${"00".repeat(19)}aa`
+			const maxSlot = `0x${"ff".repeat(32)}` // slot at max uint256
 			const result = yield* ethGetStorageAt(node)([addr, maxSlot])
-			expect(result).toBe("0x" + "0".repeat(64))
+			expect(result).toBe(`0x${"0".repeat(64)}`)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 })
@@ -204,7 +204,7 @@ describe("ethGetTransactionCount — boundary conditions", () => {
 	it.effect("returns correct hex for large nonce", () =>
 		Effect.gen(function* () {
 			const node = yield* TevmNodeService
-			const addr = "0x" + "00".repeat(19) + "ee"
+			const addr = `0x${"00".repeat(19)}ee`
 			yield* node.hostAdapter.setAccount(hexToBytes(addr), {
 				nonce: 255n,
 				balance: 0n,
@@ -219,7 +219,7 @@ describe("ethGetTransactionCount — boundary conditions", () => {
 	it.effect("returns correct hex for nonce 256", () =>
 		Effect.gen(function* () {
 			const node = yield* TevmNodeService
-			const addr = "0x" + "00".repeat(19) + "ef"
+			const addr = `0x${"00".repeat(19)}ef`
 			yield* node.hostAdapter.setAccount(hexToBytes(addr), {
 				nonce: 256n,
 				balance: 0n,

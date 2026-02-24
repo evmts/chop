@@ -2,12 +2,12 @@ import { describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { expect } from "vitest"
 import {
-	formatCodeSize,
-	formatPc,
-	formatDisassemblyLine,
 	formatBytecodeHex,
-	formatStorageValue,
+	formatCodeSize,
+	formatDisassemblyLine,
+	formatPc,
 	formatSelector,
+	formatStorageValue,
 } from "./contracts-format.js"
 
 describe("contracts-format", () => {

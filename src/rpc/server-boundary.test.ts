@@ -19,6 +19,22 @@ import { expect } from "vitest"
 import { TevmNode, TevmNodeService } from "../node/index.js"
 import { startRpcServer } from "./server.js"
 
+interface FetchInit {
+	method?: string
+	headers?: Record<string, string>
+	body?: string
+}
+
+interface FetchResponse {
+	ok: boolean
+	status: number
+	statusText: string
+	json(): Promise<unknown>
+	text(): Promise<string>
+}
+
+declare const fetch: (input: string, init?: FetchInit) => Promise<FetchResponse>
+
 // ---------------------------------------------------------------------------
 // 405 Method Not Allowed — non-POST requests
 // ---------------------------------------------------------------------------
@@ -29,7 +45,7 @@ describe("RPC Server — method not allowed", () => {
 			const node = yield* TevmNodeService
 			const server = yield* startRpcServer({ port: 0 }, node)
 			try {
-				const res = yield* Effect.tryPromise(() =>
+				const res: FetchResponse = yield* Effect.tryPromise(() =>
 					fetch(`http://127.0.0.1:${server.port}`, { method: "GET" }),
 				)
 				expect(res.status).toBe(405)
@@ -51,7 +67,7 @@ describe("RPC Server — method not allowed", () => {
 			const node = yield* TevmNodeService
 			const server = yield* startRpcServer({ port: 0 }, node)
 			try {
-				const res = yield* Effect.tryPromise(() =>
+				const res: FetchResponse = yield* Effect.tryPromise(() =>
 					fetch(`http://127.0.0.1:${server.port}`, {
 						method: "PUT",
 						headers: { "Content-Type": "application/json" },
@@ -74,7 +90,7 @@ describe("RPC Server — method not allowed", () => {
 			const node = yield* TevmNodeService
 			const server = yield* startRpcServer({ port: 0 }, node)
 			try {
-				const res = yield* Effect.tryPromise(() =>
+				const res: FetchResponse = yield* Effect.tryPromise(() =>
 					fetch(`http://127.0.0.1:${server.port}`, { method: "DELETE" }),
 				)
 				expect(res.status).toBe(405)
@@ -92,7 +108,7 @@ describe("RPC Server — method not allowed", () => {
 			const node = yield* TevmNodeService
 			const server = yield* startRpcServer({ port: 0 }, node)
 			try {
-				const res = yield* Effect.tryPromise(() =>
+				const res: FetchResponse = yield* Effect.tryPromise(() =>
 					fetch(`http://127.0.0.1:${server.port}`, {
 						method: "PATCH",
 						headers: { "Content-Type": "application/json" },
@@ -132,7 +148,7 @@ describe("RPC Server — lifecycle", () => {
 			const port = server.port
 
 			// Server should respond before closing
-			const res = yield* Effect.tryPromise(() =>
+			const res: FetchResponse = yield* Effect.tryPromise(() =>
 				fetch(`http://127.0.0.1:${port}`, {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
@@ -145,9 +161,9 @@ describe("RPC Server — lifecycle", () => {
 			yield* server.close()
 
 			// After closing, connection should fail
-			const error = yield* Effect.tryPromise(() =>
-				fetch(`http://127.0.0.1:${port}`, { method: "GET" }),
-			).pipe(Effect.flip)
+			const error = yield* Effect.tryPromise(() => fetch(`http://127.0.0.1:${port}`, { method: "GET" })).pipe(
+				Effect.flip,
+			)
 			expect(error).toBeDefined()
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
@@ -157,7 +173,7 @@ describe("RPC Server — lifecycle", () => {
 			const node = yield* TevmNodeService
 			const server = yield* startRpcServer({ port: 0, host: "127.0.0.1" }, node)
 			try {
-				const res = yield* Effect.tryPromise(() =>
+				const res: FetchResponse = yield* Effect.tryPromise(() =>
 					fetch(`http://127.0.0.1:${server.port}`, {
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
@@ -182,7 +198,7 @@ describe("RPC Server — POST request handling", () => {
 			const node = yield* TevmNodeService
 			const server = yield* startRpcServer({ port: 0 }, node)
 			try {
-				const res = yield* Effect.tryPromise(() =>
+				const res: FetchResponse = yield* Effect.tryPromise(() =>
 					fetch(`http://127.0.0.1:${server.port}`, {
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
@@ -206,7 +222,7 @@ describe("RPC Server — POST request handling", () => {
 			const node = yield* TevmNodeService
 			const server = yield* startRpcServer({ port: 0 }, node)
 			try {
-				const res = yield* Effect.tryPromise(() =>
+				const res: FetchResponse = yield* Effect.tryPromise(() =>
 					fetch(`http://127.0.0.1:${server.port}`, {
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
@@ -231,7 +247,7 @@ describe("RPC Server — POST request handling", () => {
 			const node = yield* TevmNodeService
 			const server = yield* startRpcServer({ port: 0 }, node)
 			try {
-				const res = yield* Effect.tryPromise(() =>
+				const res: FetchResponse = yield* Effect.tryPromise(() =>
 					fetch(`http://127.0.0.1:${server.port}`, {
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
@@ -255,7 +271,7 @@ describe("RPC Server — POST request handling", () => {
 			const node = yield* TevmNodeService
 			const server = yield* startRpcServer({ port: 0 }, node)
 			try {
-				const res = yield* Effect.tryPromise(() =>
+				const res: FetchResponse = yield* Effect.tryPromise(() =>
 					fetch(`http://127.0.0.1:${server.port}`, {
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
@@ -278,7 +294,7 @@ describe("RPC Server — POST request handling", () => {
 			const node = yield* TevmNodeService
 			const server = yield* startRpcServer({ port: 0 }, node)
 			try {
-				const res = yield* Effect.tryPromise(() =>
+				const res: FetchResponse = yield* Effect.tryPromise(() =>
 					fetch(`http://127.0.0.1:${server.port}`, {
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
@@ -306,7 +322,7 @@ describe("RPC Server — POST request handling", () => {
 			const node = yield* TevmNodeService
 			const server = yield* startRpcServer({ port: 0 }, node)
 			try {
-				const res = yield* Effect.tryPromise(() =>
+				const res: FetchResponse = yield* Effect.tryPromise(() =>
 					fetch(`http://127.0.0.1:${server.port}`, {
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
@@ -336,7 +352,7 @@ describe("RPC Server — sequential requests", () => {
 			const server = yield* startRpcServer({ port: 0 }, node)
 			try {
 				// First request
-				const res1 = yield* Effect.tryPromise(() =>
+				const res1: FetchResponse = yield* Effect.tryPromise(() =>
 					fetch(`http://127.0.0.1:${server.port}`, {
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
@@ -347,7 +363,7 @@ describe("RPC Server — sequential requests", () => {
 				expect(body1).toHaveProperty("result", "0x7a69")
 
 				// Second request
-				const res2 = yield* Effect.tryPromise(() =>
+				const res2: FetchResponse = yield* Effect.tryPromise(() =>
 					fetch(`http://127.0.0.1:${server.port}`, {
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
@@ -358,7 +374,7 @@ describe("RPC Server — sequential requests", () => {
 				expect(body2).toHaveProperty("result", "0x0")
 
 				// Third request — a non-POST to test interleaved handling
-				const res3 = yield* Effect.tryPromise(() =>
+				const res3: FetchResponse = yield* Effect.tryPromise(() =>
 					fetch(`http://127.0.0.1:${server.port}`, { method: "GET" }),
 				)
 				expect(res3.status).toBe(405)

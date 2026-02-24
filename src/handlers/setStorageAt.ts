@@ -1,6 +1,7 @@
 import { Effect } from "effect"
 import { hexToBytes } from "../evm/conversions.js"
 import type { TevmNodeShape } from "../node/index.js"
+import type { MissingAccountError } from "../state/errors.js"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -31,7 +32,7 @@ export interface SetStorageAtParams {
  */
 export const setStorageAtHandler =
 	(node: TevmNodeShape) =>
-	(params: SetStorageAtParams): Effect.Effect<true> =>
+	(params: SetStorageAtParams): Effect.Effect<true, MissingAccountError> =>
 		Effect.gen(function* () {
 			const addrBytes = hexToBytes(params.address)
 			const slotBytes = hexToBytes(params.slot)

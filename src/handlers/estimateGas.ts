@@ -1,7 +1,7 @@
 import { Effect } from "effect"
 import type { TevmNodeShape } from "../node/index.js"
 import { type CallParams, callHandler } from "./call.js"
-import { HandlerError } from "./errors.js"
+import type { HandlerError } from "./errors.js"
 
 // ---------------------------------------------------------------------------
 // Types

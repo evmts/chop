@@ -28,6 +28,6 @@ export interface GetTransactionByHashParams {
 export const getTransactionByHashHandler =
 	(node: TevmNodeShape) =>
 	(params: GetTransactionByHashParams): Effect.Effect<PoolTransaction | null> =>
-		node.txPool.getTransaction(params.hash).pipe(
-			Effect.catchTag("TransactionNotFoundError", () => Effect.succeed(null as PoolTransaction | null)),
-		)
+		node.txPool
+			.getTransaction(params.hash)
+			.pipe(Effect.catchTag("TransactionNotFoundError", () => Effect.succeed(null as PoolTransaction | null)))

@@ -32,9 +32,11 @@ describe("EvmWasm — REVERT in execute (non-trace)", () => {
 			// Store 0x00 at memory[0] (just to have defined memory), then REVERT with offset=0, size=0
 			// Bytecode: PUSH1 0x00, PUSH1 0x00, REVERT
 			const bytecode = new Uint8Array([
-				0x60, 0x00, // PUSH1 0x00 (size)
-				0x60, 0x00, // PUSH1 0x00 (offset)
-				0xfd,       // REVERT
+				0x60,
+				0x00, // PUSH1 0x00 (size)
+				0x60,
+				0x00, // PUSH1 0x00 (offset)
+				0xfd, // REVERT
 			])
 
 			const result = yield* evm.execute({ bytecode })
@@ -52,12 +54,16 @@ describe("EvmWasm — REVERT in execute (non-trace)", () => {
 			// Store 0xAB at memory offset 0, then REVERT returning 32 bytes from offset 0
 			// Bytecode: PUSH1 0xAB, PUSH1 0x00, MSTORE, PUSH1 0x20, PUSH1 0x00, REVERT
 			const bytecode = new Uint8Array([
-				0x60, 0xab, // PUSH1 0xAB
-				0x60, 0x00, // PUSH1 0x00
-				0x52,       // MSTORE (stores 0xAB at memory[0..32] as big-endian 32-byte word)
-				0x60, 0x20, // PUSH1 0x20 (size = 32)
-				0x60, 0x00, // PUSH1 0x00 (offset = 0)
-				0xfd,       // REVERT
+				0x60,
+				0xab, // PUSH1 0xAB
+				0x60,
+				0x00, // PUSH1 0x00
+				0x52, // MSTORE (stores 0xAB at memory[0..32] as big-endian 32-byte word)
+				0x60,
+				0x20, // PUSH1 0x20 (size = 32)
+				0x60,
+				0x00, // PUSH1 0x00 (offset = 0)
+				0xfd, // REVERT
 			])
 
 			const result = yield* evm.execute({ bytecode })
@@ -107,13 +113,17 @@ describe("EvmWasm — BALANCE without callback in executeWithTrace", () => {
 			//   PUSH1 0x00        — offset = 0
 			//   RETURN (0xf3)     — return memory[0..32]
 			const bytecode = new Uint8Array([
-				0x60, 0x42, // PUSH1 0x42 (address)
-				0x31,       // BALANCE
-				0x60, 0x00, // PUSH1 0x00 (memory offset)
-				0x52,       // MSTORE
-				0x60, 0x20, // PUSH1 0x20 (return size)
-				0x60, 0x00, // PUSH1 0x00 (return offset)
-				0xf3,       // RETURN
+				0x60,
+				0x42, // PUSH1 0x42 (address)
+				0x31, // BALANCE
+				0x60,
+				0x00, // PUSH1 0x00 (memory offset)
+				0x52, // MSTORE
+				0x60,
+				0x20, // PUSH1 0x20 (return size)
+				0x60,
+				0x00, // PUSH1 0x00 (return offset)
+				0xf3, // RETURN
 			])
 
 			// Pass empty callbacks object — no onBalanceRead

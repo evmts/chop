@@ -13,12 +13,10 @@ import type { TevmNodeShape } from "../node/index.js"
  * @param node - The TevmNode facade.
  * @returns A function that returns the current gas price as bigint.
  */
-export const gasPriceHandler =
-	(node: TevmNodeShape) =>
-	(): Effect.Effect<bigint> =>
-		Effect.gen(function* () {
-			const head = yield* node.blockchain.getHead().pipe(
-				Effect.catchTag("GenesisError", () => Effect.succeed({ baseFeePerGas: 1_000_000_000n })),
-			)
-			return head.baseFeePerGas
-		})
+export const gasPriceHandler = (node: TevmNodeShape) => (): Effect.Effect<bigint> =>
+	Effect.gen(function* () {
+		const head = yield* node.blockchain
+			.getHead()
+			.pipe(Effect.catchTag("GenesisError", () => Effect.succeed({ baseFeePerGas: 1_000_000_000n })))
+		return head.baseFeePerGas
+	})

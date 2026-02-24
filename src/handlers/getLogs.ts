@@ -32,10 +32,7 @@ const matchesAddress = (log: ReceiptLog, address?: string | readonly string[]): 
 }
 
 /** Check if a log matches the topics filter. */
-const matchesTopics = (
-	log: ReceiptLog,
-	topics?: readonly (string | readonly string[] | null)[],
-): boolean => {
+const matchesTopics = (log: ReceiptLog, topics?: readonly (string | readonly string[] | null)[]): boolean => {
 	if (!topics) return true
 	for (let i = 0; i < topics.length; i++) {
 		const filter = topics[i]
@@ -89,9 +86,9 @@ export const getLogsHandler =
 
 			if (params.blockHash) {
 				// If blockHash is specified, we only look at that block
-				const block = yield* node.blockchain.getBlock(params.blockHash).pipe(
-					Effect.catchTag("BlockNotFoundError", () => Effect.succeed(null)),
-				)
+				const block = yield* node.blockchain
+					.getBlock(params.blockHash)
+					.pipe(Effect.catchTag("BlockNotFoundError", () => Effect.succeed(null)))
 				if (!block) return [] as readonly ReceiptLog[]
 				fromBlockNum = block.number
 				toBlockNum = block.number
@@ -116,16 +113,16 @@ export const getLogsHandler =
 			const allLogs: ReceiptLog[] = []
 
 			for (let blockNum = fromBlockNum; blockNum <= toBlockNum; blockNum++) {
-				const block = yield* node.blockchain.getBlockByNumber(blockNum).pipe(
-					Effect.catchTag("BlockNotFoundError", () => Effect.succeed(null)),
-				)
+				const block = yield* node.blockchain
+					.getBlockByNumber(blockNum)
+					.pipe(Effect.catchTag("BlockNotFoundError", () => Effect.succeed(null)))
 				if (!block || !block.transactionHashes) continue
 
 				// For each transaction in the block, get its receipt
 				for (const txHash of block.transactionHashes) {
-					const receipt = yield* node.txPool.getReceipt(txHash).pipe(
-						Effect.catchTag("TransactionNotFoundError", () => Effect.succeed(null)),
-					)
+					const receipt = yield* node.txPool
+						.getReceipt(txHash)
+						.pipe(Effect.catchTag("TransactionNotFoundError", () => Effect.succeed(null)))
 					if (!receipt) continue
 
 					// Filter logs

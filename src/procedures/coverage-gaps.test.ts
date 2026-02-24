@@ -18,12 +18,12 @@
 import { describe, it } from "@effect/vitest"
 import { Effect, Ref } from "effect"
 import { expect } from "vitest"
-import { GenesisError, BlockNotFoundError } from "../blockchain/errors.js"
 import type { Block } from "../blockchain/block-store.js"
+import { BlockNotFoundError, GenesisError } from "../blockchain/errors.js"
 import type { TevmNodeShape } from "../node/index.js"
 import { TevmNode, TevmNodeService } from "../node/index.js"
-import { ethFeeHistory } from "./eth.js"
 import { anvilNodeInfo } from "./anvil.js"
+import { ethFeeHistory } from "./eth.js"
 
 // ---------------------------------------------------------------------------
 // ethFeeHistory — GenesisError catch branch (line 321)
@@ -41,8 +41,7 @@ describe("ethFeeHistory — GenesisError catch branch", () => {
 			const mockNode = {
 				blockchain: {
 					getHead: () => Effect.fail(new GenesisError({ message: "no genesis" })),
-					getBlockByNumber: (_n: bigint) =>
-						Effect.fail(new BlockNotFoundError({ identifier: `block ${_n}` })),
+					getBlockByNumber: (_n: bigint) => Effect.fail(new BlockNotFoundError({ identifier: `block ${_n}` })),
 				},
 			} as unknown as TevmNodeShape
 
@@ -94,8 +93,7 @@ describe("ethFeeHistory — BlockNotFoundError catch branch", () => {
 			const mockNode = {
 				blockchain: {
 					getHead: () => Effect.succeed(headBlock),
-					getBlockByNumber: (_n: bigint) =>
-						Effect.fail(new BlockNotFoundError({ identifier: `block ${_n}` })),
+					getBlockByNumber: (_n: bigint) => Effect.fail(new BlockNotFoundError({ identifier: `block ${_n}` })),
 				},
 			} as unknown as TevmNodeShape
 

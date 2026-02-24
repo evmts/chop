@@ -3,8 +3,8 @@ import { Effect } from "effect"
 import { expect } from "vitest"
 import { TevmNode, TevmNodeService } from "../node/index.js"
 import type { ReceiptLog, TransactionReceipt } from "../node/tx-pool.js"
-import { sendTransactionHandler } from "./sendTransaction.js"
 import { getLogsHandler } from "./getLogs.js"
+import { sendTransactionHandler } from "./sendTransaction.js"
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -74,7 +74,7 @@ describe("getLogs — address filtering", () => {
 				address: logAddr,
 			})
 			expect(result.length).toBe(1)
-			expect(result[0]!.address).toBe(logAddr)
+			expect(result[0]?.address).toBe(logAddr)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 
@@ -313,7 +313,7 @@ describe("getLogs — combined filtering", () => {
 				topics: [topic1],
 			})
 			expect(result.length).toBe(1)
-			expect(result[0]!.address).toBe(matchAddr)
+			expect(result[0]?.address).toBe(matchAddr)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 })

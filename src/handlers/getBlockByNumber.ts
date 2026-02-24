@@ -38,23 +38,23 @@ export const getBlockByNumberHandler =
 				case "pending":
 				case "safe":
 				case "finalized":
-					return yield* node.blockchain.getHead().pipe(
-						Effect.catchTag("GenesisError", () => Effect.succeed(null as Block | null)),
-					)
+					return yield* node.blockchain
+						.getHead()
+						.pipe(Effect.catchTag("GenesisError", () => Effect.succeed(null as Block | null)))
 
 				case "earliest":
-					return yield* node.blockchain.getBlockByNumber(0n).pipe(
-						Effect.catchTag("BlockNotFoundError", () => Effect.succeed(null as Block | null)),
-					)
+					return yield* node.blockchain
+						.getBlockByNumber(0n)
+						.pipe(Effect.catchTag("BlockNotFoundError", () => Effect.succeed(null as Block | null)))
 
 				default: {
 					const blockNumber = yield* Effect.try({
 						try: () => BigInt(blockTag),
 						catch: () => new HandlerError({ message: `Invalid block tag: ${blockTag}` }),
 					})
-					return yield* node.blockchain.getBlockByNumber(blockNumber).pipe(
-						Effect.catchTag("BlockNotFoundError", () => Effect.succeed(null as Block | null)),
-					)
+					return yield* node.blockchain
+						.getBlockByNumber(blockNumber)
+						.pipe(Effect.catchTag("BlockNotFoundError", () => Effect.succeed(null as Block | null)))
 				}
 			}
 		})

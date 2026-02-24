@@ -588,11 +588,10 @@ describe("rpcGenericHandler", () => {
 			const node = yield* TevmNodeService
 			const server = yield* startRpcServer({ port: 0 }, node)
 			try {
-				const result = yield* rpcGenericHandler(
-					`http://127.0.0.1:${server.port}`,
-					"eth_getBalance",
-					['"0x0000000000000000000000000000000000000000"', '"latest"'],
-				)
+				const result = yield* rpcGenericHandler(`http://127.0.0.1:${server.port}`, "eth_getBalance", [
+					'"0x0000000000000000000000000000000000000000"',
+					'"latest"',
+				])
 				expect(result).toBe("0x0")
 			} finally {
 				yield* server.close()
@@ -640,9 +639,7 @@ describe("CLI E2E — new RPC commands success", () => {
 	})
 
 	it("chop estimate returns a gas value", () => {
-		const result = runCli(
-			`estimate --to 0x0000000000000000000000000000000000000000 -r http://127.0.0.1:${server.port}`,
-		)
+		const result = runCli(`estimate --to 0x0000000000000000000000000000000000000000 -r http://127.0.0.1:${server.port}`)
 		expect(result.exitCode).toBe(0)
 		expect(Number(result.stdout.trim())).toBeGreaterThan(0)
 	})

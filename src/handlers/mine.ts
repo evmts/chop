@@ -1,6 +1,6 @@
 // Mining handlers — business logic for mining, auto-mine, and interval mining.
 
-import { Effect } from "effect"
+import type { Effect } from "effect"
 import type { Block } from "../blockchain/block-store.js"
 import type { TevmNodeShape } from "../node/index.js"
 import type { BlockBuildOptions } from "../node/mining.js"

@@ -3,9 +3,9 @@ import { Effect } from "effect"
 import { expect } from "vitest"
 import {
 	type StateInspectorViewState,
+	buildFlatTree,
 	initialStateInspectorState,
 	stateInspectorReduce,
-	buildFlatTree,
 } from "./StateInspector.js"
 import type { AccountTreeNode } from "./state-inspector-data.js"
 

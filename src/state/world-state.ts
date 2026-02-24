@@ -1,6 +1,6 @@
 import { Context, Effect, Layer } from "effect"
 import { bytesToHex, hexToBytes } from "../evm/conversions.js"
-import { type Account, EMPTY_CODE_HASH, EMPTY_ACCOUNT } from "./account.js"
+import { type Account, EMPTY_ACCOUNT, EMPTY_CODE_HASH } from "./account.js"
 import { type InvalidSnapshotError, MissingAccountError } from "./errors.js"
 import { type JournalEntry, JournalLive, JournalService } from "./journal.js"
 

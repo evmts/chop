@@ -29,6 +29,6 @@ export interface GetBlockByHashParams {
 export const getBlockByHashHandler =
 	(node: TevmNodeShape) =>
 	(params: GetBlockByHashParams): Effect.Effect<Block | null> =>
-		node.blockchain.getBlock(params.hash).pipe(
-			Effect.catchTag("BlockNotFoundError", () => Effect.succeed(null as Block | null)),
-		)
+		node.blockchain
+			.getBlock(params.hash)
+			.pipe(Effect.catchTag("BlockNotFoundError", () => Effect.succeed(null as Block | null)))

@@ -12,7 +12,7 @@
 import { describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { expect } from "vitest"
-import { bigintToBytes32, bytesToBigint, bytesToHex, hexToBytes } from "../evm/conversions.js"
+import { bytesToBigint, bytesToHex, hexToBytes } from "../evm/conversions.js"
 import { TevmNode, TevmNodeService } from "../node/index.js"
 import { callHandler } from "./call.js"
 
@@ -160,7 +160,7 @@ describe("callHandler — data field semantics", () => {
 			})
 
 			// Data is calldata, not bytecode (because `to` is set)
-			const result = yield* callHandler(node)({ to: CONTRACT_ADDR, data: "0x" + "ab".repeat(100) })
+			const result = yield* callHandler(node)({ to: CONTRACT_ADDR, data: `0x${"ab".repeat(100)}` })
 			expect(result.success).toBe(true)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)

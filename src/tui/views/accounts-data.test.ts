@@ -2,7 +2,7 @@ import { describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { expect } from "vitest"
 import { TevmNode, TevmNodeService } from "../../node/index.js"
-import { getAccountDetails, fundAccount, impersonateAccount } from "./accounts-data.js"
+import { fundAccount, getAccountDetails, impersonateAccount } from "./accounts-data.js"
 
 describe("accounts-data", () => {
 	describe("getAccountDetails", () => {

@@ -365,7 +365,7 @@ export const createSettings = (renderer: CliRenderer): SettingsHandle => {
 
 				// Gas limit in input mode
 				if (field.key === "blockGasLimit" && viewState.inputActive && isSelected) {
-					const cursor = viewState.gasLimitInput + "_"
+					const cursor = `${viewState.gasLimitInput}_`
 					line.content = `${prefix}${label} ${cursor}`
 					line.fg = DRACULA.foreground
 				} else {

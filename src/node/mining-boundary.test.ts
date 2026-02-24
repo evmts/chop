@@ -77,8 +77,8 @@ describe("MiningService — buildBlock branch coverage", () => {
 
 			const blocks = yield* mining.mine(1)
 			// Higher gasPrice should come first
-			expect(blocks[0]!.transactionHashes[0]).toBe(tx1.hash)
-			expect(blocks[0]!.transactionHashes[1]).toBe(tx2.hash)
+			expect(blocks[0]!.transactionHashes![0]!).toBe(tx1.hash)
+			expect(blocks[0]!.transactionHashes![1]!).toBe(tx2.hash)
 		}).pipe(Effect.provide(MiningTestLayer)),
 	)
 
@@ -97,7 +97,7 @@ describe("MiningService — buildBlock branch coverage", () => {
 			const blocks = yield* mining.mine(1)
 
 			// Block should use gas (50000) when gasUsed is undefined
-			expect(blocks[0]!.gasUsed).toBe(50000n)
+			expect(blocks[0]?.gasUsed).toBe(50000n)
 		}).pipe(Effect.provide(MiningTestLayer)),
 	)
 
@@ -195,7 +195,7 @@ describe("MiningService — buildBlock branch coverage", () => {
 			yield* txPool.addTransaction(tx2)
 
 			const blocks = yield* mining.mine(1)
-			expect(blocks[0]!.transactionHashes).toHaveLength(2)
+			expect(blocks[0]?.transactionHashes).toHaveLength(2)
 		}).pipe(Effect.provide(MiningTestLayer)),
 	)
 })

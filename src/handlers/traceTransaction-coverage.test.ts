@@ -31,7 +31,7 @@ describe("traceTransactionHandler — contract creation", () => {
 			expect(result.gas).toBeTypeOf("bigint")
 			// Contract creation runs the init code → should have structLogs
 			expect(result.structLogs.length).toBeGreaterThan(0)
-			expect(result.structLogs[0]!.op).toBe("PUSH1")
+			expect(result.structLogs[0]?.op).toBe("PUSH1")
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 })
@@ -62,7 +62,7 @@ describe("traceTransactionHandler — data field", () => {
 			const result = yield* traceTransactionHandler(node)({ hash })
 			expect(result.failed).toBe(false)
 			expect(result.structLogs.length).toBeGreaterThan(0)
-			expect(result.structLogs[0]!.op).toBe("PUSH1")
+			expect(result.structLogs[0]?.op).toBe("PUSH1")
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 

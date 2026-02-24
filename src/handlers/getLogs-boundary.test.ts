@@ -190,10 +190,7 @@ describe("getLogsHandler — address and topics filtering", () => {
 			const result = yield* getLogsHandler(node)({
 				fromBlock: "earliest",
 				toBlock: "latest",
-				address: [
-					"0x0000000000000000000000000000000000000001",
-					"0x0000000000000000000000000000000000000002",
-				],
+				address: ["0x0000000000000000000000000000000000000001", "0x0000000000000000000000000000000000000002"],
 			})
 			expect(result).toEqual([])
 		}).pipe(Effect.provide(TevmNode.LocalTest())),

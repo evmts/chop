@@ -9,7 +9,5 @@ import type { TevmNodeShape } from "../node/index.js"
  * @param node - The TevmNode facade.
  * @returns A function that returns the latest block number as bigint.
  */
-export const blockNumberHandler =
-	(node: TevmNodeShape) =>
-	(): Effect.Effect<bigint, GenesisError> =>
-		node.blockchain.getHeadBlockNumber()
+export const blockNumberHandler = (node: TevmNodeShape) => (): Effect.Effect<bigint, GenesisError> =>
+	node.blockchain.getHeadBlockNumber()

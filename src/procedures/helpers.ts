@@ -44,9 +44,7 @@ export const serializeBlock = (
 	gasLimit: bigintToHex(block.gasLimit),
 	gasUsed: bigintToHex(block.gasUsed),
 	timestamp: bigintToHex(block.timestamp),
-	transactions: includeFullTxs && fullTxs
-		? fullTxs.map(serializeTransaction)
-		: (block.transactionHashes ?? []),
+	transactions: includeFullTxs && fullTxs ? fullTxs.map(serializeTransaction) : (block.transactionHashes ?? []),
 	uncles: [],
 	baseFeePerGas: bigintToHex(block.baseFeePerGas),
 	mixHash: ZERO_HASH,
@@ -60,9 +58,7 @@ export const serializeBlock = (
  * Convert a PoolTransaction to JSON-RPC transaction object format.
  * All bigint fields are serialized as hex strings.
  */
-export const serializeTransaction = (
-	tx: PoolTransaction,
-): Record<string, unknown> => ({
+export const serializeTransaction = (tx: PoolTransaction): Record<string, unknown> => ({
 	hash: tx.hash,
 	nonce: bigintToHex(tx.nonce),
 	blockHash: tx.blockHash ?? null,
@@ -87,9 +83,7 @@ export const serializeTransaction = (
 /**
  * Convert a ReceiptLog to JSON-RPC log object format.
  */
-export const serializeLog = (
-	log: ReceiptLog,
-): Record<string, unknown> => ({
+export const serializeLog = (log: ReceiptLog): Record<string, unknown> => ({
 	address: log.address,
 	topics: log.topics,
 	data: log.data,

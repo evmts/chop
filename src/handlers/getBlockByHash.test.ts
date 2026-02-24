@@ -12,8 +12,8 @@ describe("getBlockByHashHandler", () => {
 			const genesis = yield* node.blockchain.getHead()
 			const block = yield* getBlockByHashHandler(node)({ hash: genesis.hash, includeFullTxs: false })
 			expect(block).not.toBeNull()
-			expect(block!.number).toBe(0n)
-			expect(block!.hash).toBe(genesis.hash)
+			expect(block?.number).toBe(0n)
+			expect(block?.hash).toBe(genesis.hash)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 
@@ -34,9 +34,9 @@ describe("getBlockByHashHandler", () => {
 			const genesis = yield* node.blockchain.getHead()
 			const block = yield* getBlockByHashHandler(node)({ hash: genesis.hash, includeFullTxs: false })
 			expect(block).not.toBeNull()
-			expect(block!.parentHash).toBeDefined()
-			expect(typeof block!.gasLimit).toBe("bigint")
-			expect(typeof block!.timestamp).toBe("bigint")
+			expect(block?.parentHash).toBeDefined()
+			expect(typeof block?.gasLimit).toBe("bigint")
+			expect(typeof block?.timestamp).toBe("bigint")
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 })

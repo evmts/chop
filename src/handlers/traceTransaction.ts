@@ -1,7 +1,7 @@
 import { Effect } from "effect"
 import type { TraceResult } from "../evm/trace-types.js"
 import type { TevmNodeShape } from "../node/index.js"
-import { TransactionNotFoundError } from "./errors.js"
+import type { TransactionNotFoundError } from "./errors.js"
 import { traceCallHandler } from "./traceCall.js"
 import type { TraceCallParams } from "./traceCall.js"
 

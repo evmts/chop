@@ -23,11 +23,11 @@ describe("traceBlockByNumberHandler", () => {
 			// Trace block 1
 			const results = yield* traceBlockByNumberHandler(node)({ blockNumber: 1n })
 			expect(results.length).toBe(1)
-			expect(results[0]!.result.failed).toBe(false)
-			expect(results[0]!.result.gas).toBeTypeOf("bigint")
-			expect(results[0]!.result.returnValue).toBe("0x")
+			expect(results[0]?.result.failed).toBe(false)
+			expect(results[0]?.result.gas).toBeTypeOf("bigint")
+			expect(results[0]?.result.returnValue).toBe("0x")
 			// Simple transfer → no code → empty structLogs
-			expect(results[0]!.result.structLogs).toEqual([])
+			expect(results[0]?.result.structLogs).toEqual([])
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 
@@ -53,8 +53,8 @@ describe("traceBlockByNumberHandler", () => {
 			expect(results.length).toBe(2)
 
 			// Each result should have the tx hash
-			expect(results[0]!.txHash).toBe(hash1)
-			expect(results[1]!.txHash).toBe(hash2)
+			expect(results[0]?.txHash).toBe(hash1)
+			expect(results[1]?.txHash).toBe(hash2)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 
@@ -99,8 +99,8 @@ describe("traceBlockByNumberHandler", () => {
 			// Trace the block
 			const results = yield* traceBlockByNumberHandler(node)({ blockNumber: 1n })
 			expect(results.length).toBe(1)
-			expect(results[0]!.result.structLogs.length).toBeGreaterThan(0)
-			expect(results[0]!.result.structLogs[0]!.op).toBe("PUSH1")
+			expect(results[0]?.result.structLogs.length).toBeGreaterThan(0)
+			expect(results[0]?.result.structLogs[0]?.op).toBe("PUSH1")
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 })
@@ -121,7 +121,7 @@ describe("traceBlockByHashHandler", () => {
 			// Trace by hash
 			const results = yield* traceBlockByHashHandler(node)({ blockHash: block.hash })
 			expect(results.length).toBe(1)
-			expect(results[0]!.result.failed).toBe(false)
+			expect(results[0]?.result.failed).toBe(false)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 

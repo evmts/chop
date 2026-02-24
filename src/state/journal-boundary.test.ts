@@ -105,7 +105,7 @@ describe("JournalService — boundary: snapshot edge cases", () => {
 			const journal = yield* JournalService
 			const snap1 = yield* journal.snapshot()
 			yield* journal.append(makeEntry("a"))
-			const _snap2 = yield* journal.snapshot()
+			yield* journal.snapshot()
 			yield* journal.append(makeEntry("b"))
 
 			// Commit outer — removes snap1 marker. snap2 still exists.

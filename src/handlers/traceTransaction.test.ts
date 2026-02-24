@@ -66,7 +66,7 @@ describe("traceTransactionHandler", () => {
 			const result = yield* traceTransactionHandler(node)({ hash })
 			expect(result.failed).toBe(false)
 			expect(result.structLogs.length).toBeGreaterThan(0)
-			expect(result.structLogs[0]!.op).toBe("PUSH1")
+			expect(result.structLogs[0]?.op).toBe("PUSH1")
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 

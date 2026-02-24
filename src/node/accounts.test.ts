@@ -41,16 +41,16 @@ describe("getTestAccounts", () => {
 		const a = getTestAccounts(5)
 		const b = getTestAccounts(5)
 		for (let i = 0; i < 5; i++) {
-			expect(a[i]!.address).toBe(b[i]!.address)
-			expect(a[i]!.privateKey).toBe(b[i]!.privateKey)
+			expect(a[i]?.address).toBe(b[i]?.address)
+			expect(a[i]?.privateKey).toBe(b[i]?.privateKey)
 		}
 	})
 
 	it("first account matches well-known Hardhat account #0", () => {
 		const [first] = getTestAccounts(1)
 		// Hardhat/Anvil default account #0
-		expect(first!.address.toLowerCase()).toBe("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")
-		expect(first!.privateKey).toBe("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
+		expect(first?.address.toLowerCase()).toBe("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")
+		expect(first?.privateKey).toBe("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
 	})
 })
 

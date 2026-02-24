@@ -243,10 +243,7 @@ describe("balanceHandler — funded accounts", () => {
 			const node = yield* TevmNodeService
 			const server = yield* startRpcServer({ port: 0 }, node)
 			try {
-				const result = yield* balanceHandler(
-					`http://127.0.0.1:${server.port}`,
-					`0x${"de".repeat(20)}`,
-				)
+				const result = yield* balanceHandler(`http://127.0.0.1:${server.port}`, `0x${"de".repeat(20)}`)
 				expect(result).toBe("0")
 			} finally {
 				yield* server.close()
@@ -365,12 +362,7 @@ describe("callHandler — success with deployed contract", () => {
 
 			try {
 				// Signature with output types -> result is decoded via abiDecodeHandler
-				const result = yield* callHandler(
-					`http://127.0.0.1:${server.port}`,
-					contractAddr,
-					"getValue()(uint256)",
-					[],
-				)
+				const result = yield* callHandler(`http://127.0.0.1:${server.port}`, contractAddr, "getValue()(uint256)", [])
 				// 0x42 = 66 decimal
 				expect(result).toContain("66")
 			} finally {
@@ -395,12 +387,7 @@ describe("callHandler — success with deployed contract", () => {
 
 			try {
 				// Signature with NO output types -> returns raw hex
-				const result = yield* callHandler(
-					`http://127.0.0.1:${server.port}`,
-					contractAddr,
-					"getValue()",
-					[],
-				)
+				const result = yield* callHandler(`http://127.0.0.1:${server.port}`, contractAddr, "getValue()", [])
 				// Should contain the hex representation
 				expect(result).toContain("42")
 			} finally {
@@ -476,10 +463,7 @@ describe("codeHandler — with deployed bytecode", () => {
 			const server = yield* startRpcServer({ port: 0 }, node)
 			try {
 				// An address that has no code deployed
-				const result = yield* codeHandler(
-					`http://127.0.0.1:${server.port}`,
-					`0x${"11".repeat(20)}`,
-				)
+				const result = yield* codeHandler(`http://127.0.0.1:${server.port}`, `0x${"11".repeat(20)}`)
 				expect(result).toBe("0x")
 			} finally {
 				yield* server.close()
@@ -545,11 +529,12 @@ describe("storageHandler — with set storage values", () => {
  * Command.run expects process.argv format: [node, script, ...args]
  * The first two elements are stripped, so actual args start at index 2.
  */
-const runCommand = (cmd: Command.Command<unknown>, argv: string[]) => {
-	const runner = Command.run(
-		Command.make("test").pipe(Command.withSubcommands([cmd])),
-		{ name: "test", version: "0.0.0" },
-	)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const runCommand = (cmd: Command.Command<any, any, any, any>, argv: string[]) => {
+	const runner = Command.run(Command.make("test").pipe(Command.withSubcommands([cmd])), {
+		name: "test",
+		version: "0.0.0",
+	})
 	return runner(["node", "script", ...argv]).pipe(Effect.provide(NodeContext.layer))
 }
 
@@ -557,203 +542,206 @@ const ZERO_ADDR = "0x0000000000000000000000000000000000000000"
 const ZERO_SLOT = "0x0000000000000000000000000000000000000000000000000000000000000000"
 
 describe("Command.make bodies — in-process execution", () => {
-	it.effect("chainIdCommand runs successfully in-process", () =>
-		Effect.gen(function* () {
-			const node = yield* TevmNodeService
-			const server = yield* startRpcServer({ port: 0 }, node)
-			try {
-				yield* runCommand(chainIdCommand, ["chain-id", "-r", `http://127.0.0.1:${server.port}`])
-			} finally {
-				yield* server.close()
-			}
-		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	it.effect(
+		"chainIdCommand runs successfully in-process",
+		() =>
+			Effect.gen(function* () {
+				const node = yield* TevmNodeService
+				const server = yield* startRpcServer({ port: 0 }, node)
+				try {
+					yield* runCommand(chainIdCommand, ["chain-id", "-r", `http://127.0.0.1:${server.port}`])
+				} finally {
+					yield* server.close()
+				}
+			}).pipe(Effect.provide(TevmNode.LocalTest())) as Effect.Effect<void>,
 	)
 
-	it.effect("chainIdCommand with --json flag runs successfully", () =>
-		Effect.gen(function* () {
-			const node = yield* TevmNodeService
-			const server = yield* startRpcServer({ port: 0 }, node)
-			try {
-				yield* runCommand(chainIdCommand, ["chain-id", "-r", `http://127.0.0.1:${server.port}`, "--json"])
-			} finally {
-				yield* server.close()
-			}
-		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	it.effect(
+		"chainIdCommand with --json flag runs successfully",
+		() =>
+			Effect.gen(function* () {
+				const node = yield* TevmNodeService
+				const server = yield* startRpcServer({ port: 0 }, node)
+				try {
+					yield* runCommand(chainIdCommand, ["chain-id", "-r", `http://127.0.0.1:${server.port}`, "--json"])
+				} finally {
+					yield* server.close()
+				}
+			}).pipe(Effect.provide(TevmNode.LocalTest())) as Effect.Effect<void>,
 	)
 
-	it.effect("blockNumberCommand runs successfully in-process", () =>
-		Effect.gen(function* () {
-			const node = yield* TevmNodeService
-			const server = yield* startRpcServer({ port: 0 }, node)
-			try {
-				yield* runCommand(blockNumberCommand, ["block-number", "-r", `http://127.0.0.1:${server.port}`])
-			} finally {
-				yield* server.close()
-			}
-		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	it.effect(
+		"blockNumberCommand runs successfully in-process",
+		() =>
+			Effect.gen(function* () {
+				const node = yield* TevmNodeService
+				const server = yield* startRpcServer({ port: 0 }, node)
+				try {
+					yield* runCommand(blockNumberCommand, ["block-number", "-r", `http://127.0.0.1:${server.port}`])
+				} finally {
+					yield* server.close()
+				}
+			}).pipe(Effect.provide(TevmNode.LocalTest())) as Effect.Effect<void>,
 	)
 
-	it.effect("blockNumberCommand with --json flag runs successfully", () =>
-		Effect.gen(function* () {
-			const node = yield* TevmNodeService
-			const server = yield* startRpcServer({ port: 0 }, node)
-			try {
-				yield* runCommand(blockNumberCommand, ["block-number", "-r", `http://127.0.0.1:${server.port}`, "--json"])
-			} finally {
-				yield* server.close()
-			}
-		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	it.effect(
+		"blockNumberCommand with --json flag runs successfully",
+		() =>
+			Effect.gen(function* () {
+				const node = yield* TevmNodeService
+				const server = yield* startRpcServer({ port: 0 }, node)
+				try {
+					yield* runCommand(blockNumberCommand, ["block-number", "-r", `http://127.0.0.1:${server.port}`, "--json"])
+				} finally {
+					yield* server.close()
+				}
+			}).pipe(Effect.provide(TevmNode.LocalTest())) as Effect.Effect<void>,
 	)
 
-	it.effect("balanceCommand runs successfully in-process", () =>
-		Effect.gen(function* () {
-			const node = yield* TevmNodeService
-			const server = yield* startRpcServer({ port: 0 }, node)
-			try {
-				yield* runCommand(balanceCommand, ["balance", ZERO_ADDR, "-r", `http://127.0.0.1:${server.port}`])
-			} finally {
-				yield* server.close()
-			}
-		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	it.effect(
+		"balanceCommand runs successfully in-process",
+		() =>
+			Effect.gen(function* () {
+				const node = yield* TevmNodeService
+				const server = yield* startRpcServer({ port: 0 }, node)
+				try {
+					yield* runCommand(balanceCommand, ["balance", ZERO_ADDR, "-r", `http://127.0.0.1:${server.port}`])
+				} finally {
+					yield* server.close()
+				}
+			}).pipe(Effect.provide(TevmNode.LocalTest())) as Effect.Effect<void>,
 	)
 
-	it.effect("balanceCommand with --json flag runs successfully", () =>
-		Effect.gen(function* () {
-			const node = yield* TevmNodeService
-			const server = yield* startRpcServer({ port: 0 }, node)
-			try {
-				yield* runCommand(balanceCommand, [
-					"balance",
-					ZERO_ADDR,
-					"-r",
-					`http://127.0.0.1:${server.port}`,
-					"--json",
-				])
-			} finally {
-				yield* server.close()
-			}
-		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	it.effect(
+		"balanceCommand with --json flag runs successfully",
+		() =>
+			Effect.gen(function* () {
+				const node = yield* TevmNodeService
+				const server = yield* startRpcServer({ port: 0 }, node)
+				try {
+					yield* runCommand(balanceCommand, ["balance", ZERO_ADDR, "-r", `http://127.0.0.1:${server.port}`, "--json"])
+				} finally {
+					yield* server.close()
+				}
+			}).pipe(Effect.provide(TevmNode.LocalTest())) as Effect.Effect<void>,
 	)
 
-	it.effect("nonceCommand runs successfully in-process", () =>
-		Effect.gen(function* () {
-			const node = yield* TevmNodeService
-			const server = yield* startRpcServer({ port: 0 }, node)
-			try {
-				yield* runCommand(nonceCommand, ["nonce", ZERO_ADDR, "-r", `http://127.0.0.1:${server.port}`])
-			} finally {
-				yield* server.close()
-			}
-		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	it.effect(
+		"nonceCommand runs successfully in-process",
+		() =>
+			Effect.gen(function* () {
+				const node = yield* TevmNodeService
+				const server = yield* startRpcServer({ port: 0 }, node)
+				try {
+					yield* runCommand(nonceCommand, ["nonce", ZERO_ADDR, "-r", `http://127.0.0.1:${server.port}`])
+				} finally {
+					yield* server.close()
+				}
+			}).pipe(Effect.provide(TevmNode.LocalTest())) as Effect.Effect<void>,
 	)
 
-	it.effect("nonceCommand with --json flag runs successfully", () =>
-		Effect.gen(function* () {
-			const node = yield* TevmNodeService
-			const server = yield* startRpcServer({ port: 0 }, node)
-			try {
-				yield* runCommand(nonceCommand, ["nonce", ZERO_ADDR, "-r", `http://127.0.0.1:${server.port}`, "--json"])
-			} finally {
-				yield* server.close()
-			}
-		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	it.effect(
+		"nonceCommand with --json flag runs successfully",
+		() =>
+			Effect.gen(function* () {
+				const node = yield* TevmNodeService
+				const server = yield* startRpcServer({ port: 0 }, node)
+				try {
+					yield* runCommand(nonceCommand, ["nonce", ZERO_ADDR, "-r", `http://127.0.0.1:${server.port}`, "--json"])
+				} finally {
+					yield* server.close()
+				}
+			}).pipe(Effect.provide(TevmNode.LocalTest())) as Effect.Effect<void>,
 	)
 
-	it.effect("codeCommand runs successfully in-process", () =>
-		Effect.gen(function* () {
-			const node = yield* TevmNodeService
-			const server = yield* startRpcServer({ port: 0 }, node)
-			try {
-				yield* runCommand(codeCommand, ["code", ZERO_ADDR, "-r", `http://127.0.0.1:${server.port}`])
-			} finally {
-				yield* server.close()
-			}
-		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	it.effect(
+		"codeCommand runs successfully in-process",
+		() =>
+			Effect.gen(function* () {
+				const node = yield* TevmNodeService
+				const server = yield* startRpcServer({ port: 0 }, node)
+				try {
+					yield* runCommand(codeCommand, ["code", ZERO_ADDR, "-r", `http://127.0.0.1:${server.port}`])
+				} finally {
+					yield* server.close()
+				}
+			}).pipe(Effect.provide(TevmNode.LocalTest())) as Effect.Effect<void>,
 	)
 
-	it.effect("codeCommand with --json flag runs successfully", () =>
-		Effect.gen(function* () {
-			const node = yield* TevmNodeService
-			const server = yield* startRpcServer({ port: 0 }, node)
-			try {
-				yield* runCommand(codeCommand, ["code", ZERO_ADDR, "-r", `http://127.0.0.1:${server.port}`, "--json"])
-			} finally {
-				yield* server.close()
-			}
-		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	it.effect(
+		"codeCommand with --json flag runs successfully",
+		() =>
+			Effect.gen(function* () {
+				const node = yield* TevmNodeService
+				const server = yield* startRpcServer({ port: 0 }, node)
+				try {
+					yield* runCommand(codeCommand, ["code", ZERO_ADDR, "-r", `http://127.0.0.1:${server.port}`, "--json"])
+				} finally {
+					yield* server.close()
+				}
+			}).pipe(Effect.provide(TevmNode.LocalTest())) as Effect.Effect<void>,
 	)
 
-	it.effect("storageCommand runs successfully in-process", () =>
-		Effect.gen(function* () {
-			const node = yield* TevmNodeService
-			const server = yield* startRpcServer({ port: 0 }, node)
-			try {
-				yield* runCommand(storageCommand, [
-					"storage",
-					ZERO_ADDR,
-					ZERO_SLOT,
-					"-r",
-					`http://127.0.0.1:${server.port}`,
-				])
-			} finally {
-				yield* server.close()
-			}
-		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	it.effect(
+		"storageCommand runs successfully in-process",
+		() =>
+			Effect.gen(function* () {
+				const node = yield* TevmNodeService
+				const server = yield* startRpcServer({ port: 0 }, node)
+				try {
+					yield* runCommand(storageCommand, ["storage", ZERO_ADDR, ZERO_SLOT, "-r", `http://127.0.0.1:${server.port}`])
+				} finally {
+					yield* server.close()
+				}
+			}).pipe(Effect.provide(TevmNode.LocalTest())) as Effect.Effect<void>,
 	)
 
-	it.effect("storageCommand with --json flag runs successfully", () =>
-		Effect.gen(function* () {
-			const node = yield* TevmNodeService
-			const server = yield* startRpcServer({ port: 0 }, node)
-			try {
-				yield* runCommand(storageCommand, [
-					"storage",
-					ZERO_ADDR,
-					ZERO_SLOT,
-					"-r",
-					`http://127.0.0.1:${server.port}`,
-					"--json",
-				])
-			} finally {
-				yield* server.close()
-			}
-		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	it.effect(
+		"storageCommand with --json flag runs successfully",
+		() =>
+			Effect.gen(function* () {
+				const node = yield* TevmNodeService
+				const server = yield* startRpcServer({ port: 0 }, node)
+				try {
+					yield* runCommand(storageCommand, [
+						"storage",
+						ZERO_ADDR,
+						ZERO_SLOT,
+						"-r",
+						`http://127.0.0.1:${server.port}`,
+						"--json",
+					])
+				} finally {
+					yield* server.close()
+				}
+			}).pipe(Effect.provide(TevmNode.LocalTest())) as Effect.Effect<void>,
 	)
 
-	it.effect("callCommand runs successfully in-process (no sig)", () =>
-		Effect.gen(function* () {
-			const node = yield* TevmNodeService
-			const server = yield* startRpcServer({ port: 0 }, node)
-			try {
-				yield* runCommand(callCommand, [
-					"call",
-					"--to",
-					ZERO_ADDR,
-					"-r",
-					`http://127.0.0.1:${server.port}`,
-				])
-			} finally {
-				yield* server.close()
-			}
-		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	it.effect(
+		"callCommand runs successfully in-process (no sig)",
+		() =>
+			Effect.gen(function* () {
+				const node = yield* TevmNodeService
+				const server = yield* startRpcServer({ port: 0 }, node)
+				try {
+					yield* runCommand(callCommand, ["call", "--to", ZERO_ADDR, "-r", `http://127.0.0.1:${server.port}`])
+				} finally {
+					yield* server.close()
+				}
+			}).pipe(Effect.provide(TevmNode.LocalTest())) as Effect.Effect<void>,
 	)
 
-	it.effect("callCommand with --json flag runs successfully", () =>
-		Effect.gen(function* () {
-			const node = yield* TevmNodeService
-			const server = yield* startRpcServer({ port: 0 }, node)
-			try {
-				yield* runCommand(callCommand, [
-					"call",
-					"--to",
-					ZERO_ADDR,
-					"-r",
-					`http://127.0.0.1:${server.port}`,
-					"--json",
-				])
-			} finally {
-				yield* server.close()
-			}
-		}).pipe(Effect.provide(TevmNode.LocalTest())),
+	it.effect(
+		"callCommand with --json flag runs successfully",
+		() =>
+			Effect.gen(function* () {
+				const node = yield* TevmNodeService
+				const server = yield* startRpcServer({ port: 0 }, node)
+				try {
+					yield* runCommand(callCommand, ["call", "--to", ZERO_ADDR, "-r", `http://127.0.0.1:${server.port}`, "--json"])
+				} finally {
+					yield* server.close()
+				}
+			}).pipe(Effect.provide(TevmNode.LocalTest())) as Effect.Effect<void>,
 	)
 })

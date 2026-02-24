@@ -228,9 +228,7 @@ describe("rpcCall — malformed response handling", () => {
 
 	it.effect("succeeds when response has valid JSON-RPC shape with null result", () =>
 		Effect.gen(function* () {
-			const mock = yield* Effect.promise(() =>
-				startMockServer(JSON.stringify({ jsonrpc: "2.0", result: null, id: 1 })),
-			)
+			const mock = yield* Effect.promise(() => startMockServer(JSON.stringify({ jsonrpc: "2.0", result: null, id: 1 })))
 			try {
 				const result = yield* rpcCall(`http://127.0.0.1:${mock.port}`, "eth_test", [])
 				expect(result).toBeNull()

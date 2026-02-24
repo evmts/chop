@@ -7,28 +7,28 @@
 
 /** Map opcode byte values to human-readable names. */
 export const OPCODE_NAMES: Record<number, string> = {
-	0x00: "STOP",
-	0x31: "BALANCE",
-	0x51: "MLOAD",
-	0x52: "MSTORE",
-	0x54: "SLOAD",
-	0x60: "PUSH1",
-	0xf3: "RETURN",
-	0xfd: "REVERT",
-	0xfe: "INVALID",
+	0: "STOP",
+	49: "BALANCE",
+	81: "MLOAD",
+	82: "MSTORE",
+	84: "SLOAD",
+	96: "PUSH1",
+	243: "RETURN",
+	253: "REVERT",
+	254: "INVALID",
 }
 
 /** Gas cost per opcode for the mini EVM interpreter. */
 export const OPCODE_GAS_COSTS: Record<number, bigint> = {
-	0x00: 0n, // STOP
-	0x31: 100n, // BALANCE
-	0x51: 3n, // MLOAD
-	0x52: 3n, // MSTORE
-	0x54: 2100n, // SLOAD
-	0x60: 3n, // PUSH1
-	0xf3: 0n, // RETURN
-	0xfd: 0n, // REVERT
-	0xfe: 0n, // INVALID
+	0: 0n, // STOP
+	49: 100n, // BALANCE
+	81: 3n, // MLOAD
+	82: 3n, // MSTORE
+	84: 2100n, // SLOAD
+	96: 3n, // PUSH1
+	243: 0n, // RETURN
+	253: 0n, // REVERT
+	254: 0n, // INVALID
 }
 
 // ---------------------------------------------------------------------------

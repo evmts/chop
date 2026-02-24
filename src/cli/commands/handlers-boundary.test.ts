@@ -15,12 +15,9 @@ import { expect } from "vitest"
 import { Keccak256 } from "voltaire-effect"
 
 import {
-	AbiError,
-	ArgumentCountError,
-	HexDecodeError,
-	InvalidSignatureError,
 	abiDecodeHandler,
 	abiEncodeHandler,
+	validateHexData as abiValidateHexData,
 	buildAbiItem,
 	calldataDecodeHandler,
 	calldataHandler,
@@ -29,27 +26,13 @@ import {
 	parseSignature,
 	toParams,
 	validateArgCount,
-	validateHexData as abiValidateHexData,
 } from "./abi.js"
 
-import {
-	ComputeAddressError,
-	InvalidAddressError,
-	InvalidHexError as AddrInvalidHexError,
-	computeAddressHandler,
-	create2Handler,
-	toCheckSumAddressHandler,
-} from "./address.js"
+import { computeAddressHandler, create2Handler, toCheckSumAddressHandler } from "./address.js"
 
-import {
-	InvalidBytecodeError,
-	SelectorLookupError,
-	disassembleHandler,
-	fourByteEventHandler,
-	fourByteHandler,
-} from "./bytecode.js"
+import { disassembleHandler, fourByteEventHandler, fourByteHandler } from "./bytecode.js"
 
-import { CryptoError, hashMessageHandler, keccakHandler, sigEventHandler, sigHandler } from "./crypto.js"
+import { hashMessageHandler, keccakHandler, sigEventHandler, sigHandler } from "./crypto.js"
 
 import { validateHexData } from "../shared.js"
 
@@ -720,7 +703,7 @@ describe("toCheckSumAddressHandler — boundary cases", () => {
 
 	it.effect("rejects address too long", () =>
 		Effect.gen(function* () {
-			const result = yield* toCheckSumAddressHandler("0x" + "aa".repeat(21)).pipe(Effect.either)
+			const result = yield* toCheckSumAddressHandler(`0x${"aa".repeat(21)}`).pipe(Effect.either)
 			expect(Either.isLeft(result)).toBe(true)
 		}).pipe(Effect.provide(Keccak256.KeccakLive)),
 	)
@@ -791,7 +774,7 @@ describe("computeAddressHandler — boundary cases", () => {
 describe("create2Handler — boundary cases", () => {
 	it.effect("rejects invalid deployer address", () =>
 		Effect.gen(function* () {
-			const salt = "0x" + "00".repeat(32)
+			const salt = `0x${"00".repeat(32)}`
 			const initCode = "0x600160005260206000f3"
 			const result = yield* create2Handler("0xbad", salt, initCode).pipe(Effect.either)
 			expect(Either.isLeft(result)).toBe(true)
@@ -813,7 +796,7 @@ describe("create2Handler — boundary cases", () => {
 		Effect.gen(function* () {
 			const result = yield* create2Handler(
 				"0xd8da6bf26964af9d7eed9e03e53415d37aa96045",
-				"0x" + "00".repeat(16),
+				`0x${"00".repeat(16)}`,
 				"0x600160005260206000f3",
 			).pipe(Effect.either)
 			expect(Either.isLeft(result)).toBe(true)
@@ -822,7 +805,7 @@ describe("create2Handler — boundary cases", () => {
 
 	it.effect("rejects invalid init code hex", () =>
 		Effect.gen(function* () {
-			const salt = "0x" + "00".repeat(32)
+			const salt = `0x${"00".repeat(32)}`
 			const result = yield* create2Handler("0xd8da6bf26964af9d7eed9e03e53415d37aa96045", salt, "not-hex").pipe(
 				Effect.either,
 			)
@@ -833,7 +816,7 @@ describe("create2Handler — boundary cases", () => {
 	it.effect("computes create2 address with valid inputs", () =>
 		Effect.gen(function* () {
 			const deployer = "0xd8da6bf26964af9d7eed9e03e53415d37aa96045"
-			const salt = "0x" + "00".repeat(32)
+			const salt = `0x${"00".repeat(32)}`
 			const initCode = "0x600160005260206000f3"
 			const result = yield* create2Handler(deployer, salt, initCode)
 			expect(result).toMatch(/^0x[0-9a-fA-F]{40}$/)
@@ -866,21 +849,21 @@ describe("disassembleHandler — boundary cases", () => {
 			// PUSH1 (0x60) expects 1 byte of data but bytecode ends
 			const result = yield* disassembleHandler("0x60")
 			expect(result).toHaveLength(1)
-			expect(result[0]!.name).toBe("PUSH1")
+			expect(result[0]?.name).toBe("PUSH1")
 			// pushData should be "0x" since there's no data byte available
-			expect(result[0]!.pushData).toBe("0x")
+			expect(result[0]?.pushData).toBe("0x")
 		}),
 	)
 
 	it.effect("PUSH32 with full 32 bytes of data", () =>
 		Effect.gen(function* () {
 			// 0x7f = PUSH32, followed by 32 bytes of 0xff
-			const bytecode = "0x7f" + "ff".repeat(32)
+			const bytecode = `0x7f${"ff".repeat(32)}`
 			const result = yield* disassembleHandler(bytecode)
 			expect(result).toHaveLength(1)
-			expect(result[0]!.name).toBe("PUSH32")
-			expect(result[0]!.pushData).toBe("0x" + "ff".repeat(32))
-			expect(result[0]!.pc).toBe(0)
+			expect(result[0]?.name).toBe("PUSH32")
+			expect(result[0]?.pushData).toBe(`0x${"ff".repeat(32)}`)
+			expect(result[0]?.pc).toBe(0)
 		}),
 	)
 
@@ -889,8 +872,8 @@ describe("disassembleHandler — boundary cases", () => {
 			// 0x61 = PUSH2, expects 2 bytes but only 1 available
 			const result = yield* disassembleHandler("0x61ab")
 			expect(result).toHaveLength(1)
-			expect(result[0]!.name).toBe("PUSH2")
-			expect(result[0]!.pushData).toBe("0xab")
+			expect(result[0]?.name).toBe("PUSH2")
+			expect(result[0]?.pushData).toBe("0xab")
 		}),
 	)
 
@@ -898,8 +881,8 @@ describe("disassembleHandler — boundary cases", () => {
 		Effect.gen(function* () {
 			const result = yield* disassembleHandler("0xef")
 			expect(result).toHaveLength(1)
-			expect(result[0]!.name).toBe("UNKNOWN(0xef)")
-			expect(result[0]!.opcode).toBe("0xef")
+			expect(result[0]?.name).toBe("UNKNOWN(0xef)")
+			expect(result[0]?.opcode).toBe("0xef")
 		}),
 	)
 
@@ -940,7 +923,7 @@ describe("disassembleHandler — boundary cases", () => {
 		Effect.gen(function* () {
 			const result = yield* disassembleHandler("0X00")
 			expect(result).toHaveLength(1)
-			expect(result[0]!.name).toBe("STOP")
+			expect(result[0]?.name).toBe("STOP")
 		}),
 	)
 
@@ -949,12 +932,12 @@ describe("disassembleHandler — boundary cases", () => {
 			// STOP, ADD, MUL → 0x00, 0x01, 0x02
 			const result = yield* disassembleHandler("0x000102")
 			expect(result).toHaveLength(3)
-			expect(result[0]!.name).toBe("STOP")
-			expect(result[0]!.pc).toBe(0)
-			expect(result[1]!.name).toBe("ADD")
-			expect(result[1]!.pc).toBe(1)
-			expect(result[2]!.name).toBe("MUL")
-			expect(result[2]!.pc).toBe(2)
+			expect(result[0]?.name).toBe("STOP")
+			expect(result[0]?.pc).toBe(0)
+			expect(result[1]?.name).toBe("ADD")
+			expect(result[1]?.pc).toBe(1)
+			expect(result[2]?.name).toBe("MUL")
+			expect(result[2]?.pc).toBe(2)
 		}),
 	)
 
@@ -963,11 +946,11 @@ describe("disassembleHandler — boundary cases", () => {
 			// PUSH1 0x80, STOP → 0x60 0x80 0x00
 			const result = yield* disassembleHandler("0x608000")
 			expect(result).toHaveLength(2)
-			expect(result[0]!.pc).toBe(0)
-			expect(result[0]!.name).toBe("PUSH1")
-			expect(result[0]!.pushData).toBe("0x80")
-			expect(result[1]!.pc).toBe(2)
-			expect(result[1]!.name).toBe("STOP")
+			expect(result[0]?.pc).toBe(0)
+			expect(result[0]?.name).toBe("PUSH1")
+			expect(result[0]?.pushData).toBe("0x80")
+			expect(result[1]?.pc).toBe(2)
+			expect(result[1]?.name).toBe("STOP")
 		}),
 	)
 
@@ -1087,7 +1070,7 @@ describe("fourByteEventHandler — boundary cases", () => {
 
 	it.effect("rejects topic with non-hex chars", () =>
 		Effect.gen(function* () {
-			const result = yield* fourByteEventHandler("0x" + "ZZ".repeat(32)).pipe(Effect.either)
+			const result = yield* fourByteEventHandler(`0x${"ZZ".repeat(32)}`).pipe(Effect.either)
 			expect(Either.isLeft(result)).toBe(true)
 			if (Either.isLeft(result)) {
 				expect(result.left._tag).toBe("SelectorLookupError")
@@ -1097,7 +1080,7 @@ describe("fourByteEventHandler — boundary cases", () => {
 
 	it.effect("rejects topic too long (66 hex chars instead of 64)", () =>
 		Effect.gen(function* () {
-			const result = yield* fourByteEventHandler("0x" + "aa".repeat(33)).pipe(Effect.either)
+			const result = yield* fourByteEventHandler(`0x${"aa".repeat(33)}`).pipe(Effect.either)
 			expect(Either.isLeft(result)).toBe(true)
 		}),
 	)
@@ -1311,7 +1294,7 @@ describe("shared validateHexData — boundary cases", () => {
 
 	it.effect("accepts long valid hex (256 bytes)", () =>
 		Effect.gen(function* () {
-			const longHex = "0x" + "ab".repeat(256)
+			const longHex = `0x${"ab".repeat(256)}`
 			const result = yield* validateHexData(longHex, mkTestError)
 			expect(result.length).toBe(256)
 		}),

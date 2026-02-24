@@ -27,9 +27,7 @@ describe("EvmWasm — executeWithTrace boundary conditions", () => {
 		Effect.gen(function* () {
 			const evm = yield* EvmWasmService
 			// RETURN opcode = 0xf3, needs 2 stack items (offset, size)
-			const result = yield* evm
-				.executeWithTrace({ bytecode: new Uint8Array([0xf3]) }, {})
-				.pipe(Effect.flip)
+			const result = yield* evm.executeWithTrace({ bytecode: new Uint8Array([0xf3]) }, {}).pipe(Effect.flip)
 			expect(result).toBeInstanceOf(WasmExecutionError)
 			expect(result.message).toContain("RETURN")
 			expect(result.message).toContain("stack underflow")
@@ -40,9 +38,7 @@ describe("EvmWasm — executeWithTrace boundary conditions", () => {
 		Effect.gen(function* () {
 			const evm = yield* EvmWasmService
 			// PUSH1 0x20, RETURN -> only offset on stack, no size
-			const result = yield* evm
-				.executeWithTrace({ bytecode: new Uint8Array([0x60, 0x20, 0xf3]) }, {})
-				.pipe(Effect.flip)
+			const result = yield* evm.executeWithTrace({ bytecode: new Uint8Array([0x60, 0x20, 0xf3]) }, {}).pipe(Effect.flip)
 			expect(result).toBeInstanceOf(WasmExecutionError)
 			expect(result.message).toContain("RETURN")
 			expect(result.message).toContain("stack underflow")
@@ -53,9 +49,7 @@ describe("EvmWasm — executeWithTrace boundary conditions", () => {
 		Effect.gen(function* () {
 			const evm = yield* EvmWasmService
 			// REVERT opcode = 0xfd, needs 2 stack items (offset, size)
-			const result = yield* evm
-				.executeWithTrace({ bytecode: new Uint8Array([0xfd]) }, {})
-				.pipe(Effect.flip)
+			const result = yield* evm.executeWithTrace({ bytecode: new Uint8Array([0xfd]) }, {}).pipe(Effect.flip)
 			expect(result).toBeInstanceOf(WasmExecutionError)
 			expect(result.message).toContain("REVERT")
 			expect(result.message).toContain("stack underflow")
@@ -66,9 +60,7 @@ describe("EvmWasm — executeWithTrace boundary conditions", () => {
 		Effect.gen(function* () {
 			const evm = yield* EvmWasmService
 			// PUSH1 0x00, REVERT -> only offset, no size
-			const result = yield* evm
-				.executeWithTrace({ bytecode: new Uint8Array([0x60, 0x00, 0xfd]) }, {})
-				.pipe(Effect.flip)
+			const result = yield* evm.executeWithTrace({ bytecode: new Uint8Array([0x60, 0x00, 0xfd]) }, {}).pipe(Effect.flip)
 			expect(result).toBeInstanceOf(WasmExecutionError)
 			expect(result.message).toContain("REVERT")
 			expect(result.message).toContain("stack underflow")
@@ -79,9 +71,7 @@ describe("EvmWasm — executeWithTrace boundary conditions", () => {
 		Effect.gen(function* () {
 			const evm = yield* EvmWasmService
 			// MLOAD (0x51) with nothing on stack
-			const result = yield* evm
-				.executeWithTrace({ bytecode: new Uint8Array([0x51]) }, {})
-				.pipe(Effect.flip)
+			const result = yield* evm.executeWithTrace({ bytecode: new Uint8Array([0x51]) }, {}).pipe(Effect.flip)
 			expect(result).toBeInstanceOf(WasmExecutionError)
 			expect(result.message).toContain("MLOAD")
 			expect(result.message).toContain("stack underflow")
@@ -92,9 +82,7 @@ describe("EvmWasm — executeWithTrace boundary conditions", () => {
 		Effect.gen(function* () {
 			const evm = yield* EvmWasmService
 			// PUSH1 0x00, MSTORE -> only offset, no value
-			const result = yield* evm
-				.executeWithTrace({ bytecode: new Uint8Array([0x60, 0x00, 0x52]) }, {})
-				.pipe(Effect.flip)
+			const result = yield* evm.executeWithTrace({ bytecode: new Uint8Array([0x60, 0x00, 0x52]) }, {}).pipe(Effect.flip)
 			expect(result).toBeInstanceOf(WasmExecutionError)
 			expect(result.message).toContain("MSTORE")
 			expect(result.message).toContain("stack underflow")
@@ -105,9 +93,7 @@ describe("EvmWasm — executeWithTrace boundary conditions", () => {
 		Effect.gen(function* () {
 			const evm = yield* EvmWasmService
 			// SLOAD (0x54) with empty stack
-			const result = yield* evm
-				.executeWithTrace({ bytecode: new Uint8Array([0x54]) }, {})
-				.pipe(Effect.flip)
+			const result = yield* evm.executeWithTrace({ bytecode: new Uint8Array([0x54]) }, {}).pipe(Effect.flip)
 			expect(result).toBeInstanceOf(WasmExecutionError)
 			expect(result.message).toContain("SLOAD")
 			expect(result.message).toContain("stack underflow")
@@ -118,9 +104,7 @@ describe("EvmWasm — executeWithTrace boundary conditions", () => {
 		Effect.gen(function* () {
 			const evm = yield* EvmWasmService
 			// BALANCE (0x31) with empty stack
-			const result = yield* evm
-				.executeWithTrace({ bytecode: new Uint8Array([0x31]) }, {})
-				.pipe(Effect.flip)
+			const result = yield* evm.executeWithTrace({ bytecode: new Uint8Array([0x31]) }, {}).pipe(Effect.flip)
 			expect(result).toBeInstanceOf(WasmExecutionError)
 			expect(result.message).toContain("BALANCE")
 			expect(result.message).toContain("stack underflow")
@@ -131,9 +115,7 @@ describe("EvmWasm — executeWithTrace boundary conditions", () => {
 		Effect.gen(function* () {
 			const evm = yield* EvmWasmService
 			// 0xfe = INVALID opcode
-			const result = yield* evm
-				.executeWithTrace({ bytecode: new Uint8Array([0xfe]) }, {})
-				.pipe(Effect.flip)
+			const result = yield* evm.executeWithTrace({ bytecode: new Uint8Array([0xfe]) }, {}).pipe(Effect.flip)
 			expect(result).toBeInstanceOf(WasmExecutionError)
 			expect(result.message).toContain("Unsupported opcode")
 			expect(result.message).toContain("0xfe")
@@ -150,10 +132,7 @@ describe("EvmWasm — executeWithTrace structLog entries", () => {
 		Effect.gen(function* () {
 			const evm = yield* EvmWasmService
 			// PUSH1 0x42, STOP
-			const result = yield* evm.executeWithTrace(
-				{ bytecode: new Uint8Array([0x60, 0x42, 0x00]) },
-				{},
-			)
+			const result = yield* evm.executeWithTrace({ bytecode: new Uint8Array([0x60, 0x42, 0x00]) }, {})
 
 			expect(result.success).toBe(true)
 			expect(result.output.length).toBe(0)
@@ -182,12 +161,16 @@ describe("EvmWasm — executeWithTrace structLog entries", () => {
 			const evm = yield* EvmWasmService
 			// PUSH1 0x42, PUSH1 0x00, MSTORE, PUSH1 0x20, PUSH1 0x00, RETURN
 			const bytecode = new Uint8Array([
-				0x60, 0x42, // PUSH1 0x42
-				0x60, 0x00, // PUSH1 0x00
-				0x52,       // MSTORE
-				0x60, 0x20, // PUSH1 0x20
-				0x60, 0x00, // PUSH1 0x00
-				0xf3,       // RETURN
+				0x60,
+				0x42, // PUSH1 0x42
+				0x60,
+				0x00, // PUSH1 0x00
+				0x52, // MSTORE
+				0x60,
+				0x20, // PUSH1 0x20
+				0x60,
+				0x00, // PUSH1 0x00
+				0xf3, // RETURN
 			])
 
 			const result = yield* evm.executeWithTrace({ bytecode }, {})
@@ -215,9 +198,11 @@ describe("EvmWasm — executeWithTrace structLog entries", () => {
 			const evm = yield* EvmWasmService
 			// PUSH1 0x00, PUSH1 0x00, REVERT -> revert with empty data
 			const bytecode = new Uint8Array([
-				0x60, 0x00, // PUSH1 0x00 (size)
-				0x60, 0x00, // PUSH1 0x00 (offset)
-				0xfd,       // REVERT
+				0x60,
+				0x00, // PUSH1 0x00 (size)
+				0x60,
+				0x00, // PUSH1 0x00 (offset)
+				0xfd, // REVERT
 			])
 
 			const result = yield* evm.executeWithTrace({ bytecode }, {})
@@ -234,10 +219,7 @@ describe("EvmWasm — executeWithTrace structLog entries", () => {
 	it.effect("empty bytecode produces empty structLogs", () =>
 		Effect.gen(function* () {
 			const evm = yield* EvmWasmService
-			const result = yield* evm.executeWithTrace(
-				{ bytecode: new Uint8Array([]) },
-				{},
-			)
+			const result = yield* evm.executeWithTrace({ bytecode: new Uint8Array([]) }, {})
 
 			expect(result.success).toBe(true)
 			expect(result.output.length).toBe(0)
@@ -250,13 +232,17 @@ describe("EvmWasm — executeWithTrace structLog entries", () => {
 			const evm = yield* EvmWasmService
 			// PUSH1 0x01, SLOAD, PUSH1 0x00, MSTORE, PUSH1 0x20, PUSH1 0x00, RETURN
 			const bytecode = new Uint8Array([
-				0x60, 0x01, // PUSH1 0x01 (slot)
-				0x54,       // SLOAD
-				0x60, 0x00, // PUSH1 0x00 (offset)
-				0x52,       // MSTORE
-				0x60, 0x20, // PUSH1 0x20 (size)
-				0x60, 0x00, // PUSH1 0x00 (offset)
-				0xf3,       // RETURN
+				0x60,
+				0x01, // PUSH1 0x01 (slot)
+				0x54, // SLOAD
+				0x60,
+				0x00, // PUSH1 0x00 (offset)
+				0x52, // MSTORE
+				0x60,
+				0x20, // PUSH1 0x20 (size)
+				0x60,
+				0x00, // PUSH1 0x00 (offset)
+				0xf3, // RETURN
 			])
 
 			const storageValue = new Uint8Array(32)
@@ -291,10 +277,7 @@ describe("EvmWasm — executeWithTrace structLog entries", () => {
 			// PUSH1 0x42, PUSH1 0x00, STOP
 			const bytecode = new Uint8Array([0x60, 0x42, 0x60, 0x00, 0x00])
 
-			const result = yield* evm.executeWithTrace(
-				{ bytecode, gas: 1_000_000n },
-				{},
-			)
+			const result = yield* evm.executeWithTrace({ bytecode, gas: 1_000_000n }, {})
 
 			expect(result.success).toBe(true)
 			expect(result.structLogs.length).toBe(3) // PUSH1, PUSH1, STOP

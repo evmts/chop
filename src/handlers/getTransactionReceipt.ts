@@ -28,6 +28,4 @@ export interface GetTransactionReceiptParams {
 export const getTransactionReceiptHandler =
 	(node: TevmNodeShape) =>
 	(params: GetTransactionReceiptParams): Effect.Effect<TransactionReceipt | null> =>
-		node.txPool.getReceipt(params.hash).pipe(
-			Effect.catchTag("TransactionNotFoundError", () => Effect.succeed(null)),
-		)
+		node.txPool.getReceipt(params.hash).pipe(Effect.catchTag("TransactionNotFoundError", () => Effect.succeed(null)))

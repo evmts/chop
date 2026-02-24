@@ -3,10 +3,10 @@ import { describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { expect } from "vitest"
 import { bytesToHex } from "../../evm/conversions.js"
-import { TevmNode, TevmNodeService } from "../../node/index.js"
 import { setCodeHandler } from "../../handlers/setCode.js"
+import { TevmNode, TevmNodeService } from "../../node/index.js"
 import { startRpcServer } from "../../rpc/server.js"
-import { resolveNameHandler, lookupAddressHandler, namehashHandler, EnsError } from "./ens.js"
+import { EnsError, lookupAddressHandler, namehashHandler, resolveNameHandler } from "./ens.js"
 
 /** ENS registry address on Ethereum mainnet (same as in ens.ts) */
 const ENS_REGISTRY = "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e"
@@ -83,10 +83,9 @@ describe("lookupAddressHandler", () => {
 			const server = yield* startRpcServer({ port: 0 }, node)
 			const url = `http://127.0.0.1:${server.port}`
 			try {
-				const error = yield* lookupAddressHandler(
-					url,
-					"0x0000000000000000000000000000000000000001",
-				).pipe(Effect.catchTag("EnsError", (e) => Effect.succeed(e)))
+				const error = yield* lookupAddressHandler(url, "0x0000000000000000000000000000000000000001").pipe(
+					Effect.catchTag("EnsError", (e) => Effect.succeed(e)),
+				)
 				expect(error).toBeInstanceOf(EnsError)
 				expect((error as EnsError).message).toContain("No resolver found")
 			} finally {
@@ -101,10 +100,9 @@ describe("lookupAddressHandler", () => {
 			const server = yield* startRpcServer({ port: 0 }, node)
 			const url = `http://127.0.0.1:${server.port}`
 			try {
-				const error = yield* lookupAddressHandler(
-					url,
-					`0x${"00".repeat(20)}`,
-				).pipe(Effect.catchTag("EnsError", (e) => Effect.succeed(e)))
+				const error = yield* lookupAddressHandler(url, `0x${"00".repeat(20)}`).pipe(
+					Effect.catchTag("EnsError", (e) => Effect.succeed(e)),
+				)
 				// When no registry, eth_call returns "0x", which is not a zero address.
 				// It falls through and tries to call the resolver. That also returns "0x".
 				// nameHex = "0x" → length <= 2 → "No name found" error path.

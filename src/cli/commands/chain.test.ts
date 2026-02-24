@@ -5,15 +5,7 @@ import { afterAll, beforeAll, expect } from "vitest"
 import { TevmNode, TevmNodeService } from "../../node/index.js"
 import { startRpcServer } from "../../rpc/server.js"
 import { type TestServer, runCli, startTestServer } from "../test-helpers.js"
-import {
-	baseFeeHandler,
-	blockHandler,
-	findBlockHandler,
-	gasPriceHandler,
-	logsHandler,
-	parseBlockId,
-} from "./chain.js"
-import { sendHandler } from "./rpc.js"
+import { baseFeeHandler, blockHandler, findBlockHandler, gasPriceHandler, logsHandler, parseBlockId } from "./chain.js"
 
 // ============================================================================
 // Handler tests — parseBlockId
@@ -80,7 +72,7 @@ describe("blockHandler", () => {
 			const server = yield* startRpcServer({ port: 0 }, node)
 			try {
 				const result = yield* blockHandler(`http://127.0.0.1:${server.port}`, "latest")
-				expect(result["number"]).toBe("0x0")
+				expect(result.number).toBe("0x0")
 				expect(result).toHaveProperty("hash")
 				expect(result).toHaveProperty("timestamp")
 				expect(result).toHaveProperty("gasLimit")
@@ -96,7 +88,7 @@ describe("blockHandler", () => {
 			const server = yield* startRpcServer({ port: 0 }, node)
 			try {
 				const result = yield* blockHandler(`http://127.0.0.1:${server.port}`, "0")
-				expect(result["number"]).toBe("0x0")
+				expect(result.number).toBe("0x0")
 			} finally {
 				yield* server.close()
 			}

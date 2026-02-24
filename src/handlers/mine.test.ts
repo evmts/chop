@@ -2,8 +2,8 @@ import { describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { expect } from "vitest"
 import { TevmNode, TevmNodeService } from "../node/index.js"
-import { sendTransactionHandler } from "./sendTransaction.js"
 import { mineHandler, setAutomineHandler, setIntervalMiningHandler } from "./mine.js"
+import { sendTransactionHandler } from "./sendTransaction.js"
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -106,8 +106,8 @@ describe("mine handler — integration with sendTransaction", () => {
 			expect(headAfterMine).toBe(headBefore + 1n)
 
 			// Block should contain the tx
-			expect(blocks[0]!.transactionHashes).toHaveLength(1)
-			expect(blocks[0]!.gasUsed).toBeGreaterThan(0n)
+			expect(blocks[0]?.transactionHashes).toHaveLength(1)
+			expect(blocks[0]?.gasUsed).toBeGreaterThan(0n)
 
 			// Tx should no longer be pending
 			const pendingAfter = yield* node.txPool.getPendingHashes()
@@ -144,9 +144,7 @@ describe("mine handler — integration with sendTransaction", () => {
 				value: 0n,
 			})
 
-			const head = yield* node.blockchain
-				.getHead()
-				.pipe(Effect.catchTag("GenesisError", (e) => Effect.die(e)))
+			const head = yield* node.blockchain.getHead().pipe(Effect.catchTag("GenesisError", (e) => Effect.die(e)))
 
 			expect(head.transactionHashes).toHaveLength(1)
 			expect(head.gasUsed).toBeGreaterThan(0n)

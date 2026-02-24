@@ -148,12 +148,7 @@ describe("callHandler — signature with output types (decode path)", () => {
 
 			try {
 				// Signature with output types triggers the decode path (line 127-129)
-				const result = yield* callHandler(
-					`http://127.0.0.1:${server.port}`,
-					contractAddr,
-					"getValue()(uint256)",
-					[],
-				)
+				const result = yield* callHandler(`http://127.0.0.1:${server.port}`, contractAddr, "getValue()(uint256)", [])
 				// 0x42 = 66 decimal; decoded result should contain "66"
 				expect(result).toContain("66")
 			} finally {
@@ -261,12 +256,7 @@ describe("estimateHandler — with and without signature", () => {
 
 			try {
 				// Estimate with a function signature (exercises the sig branch)
-				const result = yield* estimateHandler(
-					`http://127.0.0.1:${server.port}`,
-					contractAddr,
-					"getValue()",
-					[],
-				)
+				const result = yield* estimateHandler(`http://127.0.0.1:${server.port}`, contractAddr, "getValue()", [])
 				expect(Number(result)).toBeGreaterThan(0)
 				expect(result).not.toContain("0x")
 			} finally {
@@ -290,12 +280,9 @@ describe("estimateHandler — with and without signature", () => {
 			})
 
 			try {
-				const result = yield* estimateHandler(
-					`http://127.0.0.1:${server.port}`,
-					contractAddr,
-					"balanceOf(address)",
-					["0x0000000000000000000000000000000000000001"],
-				)
+				const result = yield* estimateHandler(`http://127.0.0.1:${server.port}`, contractAddr, "balanceOf(address)", [
+					"0x0000000000000000000000000000000000000001",
+				])
 				expect(Number(result)).toBeGreaterThan(0)
 			} finally {
 				yield* server.close()
@@ -602,9 +589,21 @@ describe("callHandler — edge cases", () => {
 			// PUSH1 0x40, PUSH1 0x00, RETURN → returns 64 bytes
 			const contractAddr = `0x${"00".repeat(19)}5a`
 			const contractCode = new Uint8Array([
-				0x60, 0x01, 0x60, 0x00, 0x52, // MSTORE 1 at 0
-				0x60, 0x02, 0x60, 0x20, 0x52, // MSTORE 2 at 32
-				0x60, 0x40, 0x60, 0x00, 0xf3, // RETURN 64 bytes
+				0x60,
+				0x01,
+				0x60,
+				0x00,
+				0x52, // MSTORE 1 at 0
+				0x60,
+				0x02,
+				0x60,
+				0x20,
+				0x52, // MSTORE 2 at 32
+				0x60,
+				0x40,
+				0x60,
+				0x00,
+				0xf3, // RETURN 64 bytes
 			])
 			yield* node.hostAdapter.setAccount(hexToBytes(contractAddr), {
 				nonce: 0n,

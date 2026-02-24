@@ -3,15 +3,23 @@ import { Effect } from "effect"
 import { expect, vi } from "vitest"
 import { HttpTransportLive, HttpTransportService } from "./http-transport.js"
 
+declare const AbortController: typeof globalThis.AbortController
+
 // ---------------------------------------------------------------------------
 // Minimal types for mock fetch (no DOM lib)
 // ---------------------------------------------------------------------------
+
+interface MinimalAbortSignal {
+	readonly aborted: boolean
+	addEventListener(type: string, listener: () => void): void
+	removeEventListener(type: string, listener: () => void): void
+}
 
 interface MinimalFetchInit {
 	method?: string
 	headers?: Record<string, string>
 	body?: string
-	signal?: AbortSignal
+	signal?: MinimalAbortSignal
 }
 
 interface MinimalFetchResponse {
@@ -155,9 +163,7 @@ describe("HttpTransportService — network errors", () => {
 			})
 			try {
 				const transport = yield* HttpTransportService
-				const error = yield* transport
-					.batchRequest([{ method: "eth_blockNumber", params: [] }])
-					.pipe(Effect.flip)
+				const error = yield* transport.batchRequest([{ method: "eth_blockNumber", params: [] }]).pipe(Effect.flip)
 				expect(error._tag).toBe("ForkRpcError")
 				expect(error.message).toContain("ECONNREFUSED")
 			} finally {

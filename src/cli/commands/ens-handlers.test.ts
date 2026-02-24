@@ -102,9 +102,7 @@ describe("resolveNameHandler — local devnet (no ENS registry)", () => {
 				// returns "0x" (empty return data). The handler parses this as
 				// a short/malformed address string rather than the zero-address
 				// pattern, so it falls through and returns "0x" as the result.
-				const result = yield* resolveNameHandler(rpcUrl, "vitalik.eth").pipe(
-					Effect.provide(FetchHttpClient.layer),
-				)
+				const result = yield* resolveNameHandler(rpcUrl, "vitalik.eth").pipe(Effect.provide(FetchHttpClient.layer))
 
 				// The handler succeeds but returns a malformed address
 				expect(typeof result).toBe("string")

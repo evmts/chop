@@ -93,8 +93,8 @@ describe("ForkWorldState — dumpState / loadState", () => {
 			expect(typeof dump).toBe("object")
 			// WorldStateDump is Record<string, SerializedAccount> (flat map)
 			expect(dump[addr1]).toBeDefined()
-			expect(dump[addr1]!.balance).toBe("0x309")
-			expect(dump[addr1]!.nonce).toBe("0x3")
+			expect(dump[addr1]?.balance).toBe("0x309")
+			expect(dump[addr1]?.nonce).toBe("0x3")
 		}).pipe(Effect.provide(ForkWorldStateTest({ blockNumber: 100n }))),
 	)
 
@@ -133,8 +133,8 @@ describe("ForkWorldState — dumpState / loadState", () => {
 			yield* ws.setStorage(addr1, slot2, 99n)
 
 			const dump = yield* ws.dumpState()
-			expect(dump[addr1]!.storage).toBeDefined()
-			expect(Object.keys(dump[addr1]!.storage!).length).toBe(2)
+			expect(dump[addr1]?.storage).toBeDefined()
+			expect(Object.keys(dump[addr1]?.storage!).length).toBe(2)
 		}).pipe(Effect.provide(ForkWorldStateTest({ blockNumber: 100n }))),
 	)
 })

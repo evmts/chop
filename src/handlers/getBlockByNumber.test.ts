@@ -10,7 +10,7 @@ describe("getBlockByNumberHandler", () => {
 			const node = yield* TevmNodeService
 			const block = yield* getBlockByNumberHandler(node)({ blockTag: "latest", includeFullTxs: false })
 			expect(block).not.toBeNull()
-			expect(block!.number).toBe(0n)
+			expect(block?.number).toBe(0n)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 
@@ -19,7 +19,7 @@ describe("getBlockByNumberHandler", () => {
 			const node = yield* TevmNodeService
 			const block = yield* getBlockByNumberHandler(node)({ blockTag: "earliest", includeFullTxs: false })
 			expect(block).not.toBeNull()
-			expect(block!.number).toBe(0n)
+			expect(block?.number).toBe(0n)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 
@@ -28,7 +28,7 @@ describe("getBlockByNumberHandler", () => {
 			const node = yield* TevmNodeService
 			const block = yield* getBlockByNumberHandler(node)({ blockTag: "pending", includeFullTxs: false })
 			expect(block).not.toBeNull()
-			expect(block!.number).toBe(0n)
+			expect(block?.number).toBe(0n)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 
@@ -37,7 +37,7 @@ describe("getBlockByNumberHandler", () => {
 			const node = yield* TevmNodeService
 			const block = yield* getBlockByNumberHandler(node)({ blockTag: "0x0", includeFullTxs: false })
 			expect(block).not.toBeNull()
-			expect(block!.number).toBe(0n)
+			expect(block?.number).toBe(0n)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 
@@ -55,9 +55,7 @@ describe("getBlockByNumberHandler", () => {
 			const result = yield* getBlockByNumberHandler(node)({
 				blockTag: "not-a-number",
 				includeFullTxs: false,
-			}).pipe(
-				Effect.flip,
-			)
+			}).pipe(Effect.flip)
 			expect(result._tag).toBe("HandlerError")
 			expect(result.message).toContain("Invalid block tag")
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
@@ -68,8 +66,8 @@ describe("getBlockByNumberHandler", () => {
 			const node = yield* TevmNodeService
 			const block = yield* getBlockByNumberHandler(node)({ blockTag: "latest", includeFullTxs: false })
 			expect(block).not.toBeNull()
-			expect(block!.hash).toBeDefined()
-			expect(block!.hash.startsWith("0x")).toBe(true)
+			expect(block?.hash).toBeDefined()
+			expect(block?.hash.startsWith("0x")).toBe(true)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 })

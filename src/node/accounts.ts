@@ -3,8 +3,8 @@
 
 import { Effect } from "effect"
 import { hexToBytes } from "../evm/conversions.js"
-import { EMPTY_CODE_HASH } from "../state/account.js"
 import type { HostAdapterShape } from "../evm/host-adapter.js"
+import { EMPTY_CODE_HASH } from "../state/account.js"
 
 // ---------------------------------------------------------------------------
 // Types

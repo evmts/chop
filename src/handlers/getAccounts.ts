@@ -8,7 +8,5 @@ import type { TevmNodeShape } from "../node/index.js"
  * @param node - The TevmNode facade.
  * @returns A function that returns the account addresses as lowercase hex strings.
  */
-export const getAccountsHandler =
-	(node: TevmNodeShape) =>
-	(): Effect.Effect<readonly string[]> =>
-		Effect.succeed(node.accounts.map((a) => a.address.toLowerCase()))
+export const getAccountsHandler = (node: TevmNodeShape) => (): Effect.Effect<readonly string[]> =>
+	Effect.succeed(node.accounts.map((a) => a.address.toLowerCase()))

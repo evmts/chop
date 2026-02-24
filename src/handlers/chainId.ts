@@ -1,4 +1,4 @@
-import { Effect, Ref } from "effect"
+import { type Effect, Ref } from "effect"
 import type { TevmNodeShape } from "../node/index.js"
 
 /**

@@ -1,6 +1,6 @@
 import { Effect } from "effect"
 import { hexToBytes } from "../evm/conversions.js"
-import { ConversionError } from "../evm/errors.js"
+import type { ConversionError } from "../evm/errors.js"
 import { calculateIntrinsicGas } from "../evm/intrinsic-gas.js"
 import type { TevmNodeShape } from "../node/index.js"
 import {

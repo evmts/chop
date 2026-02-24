@@ -27,9 +27,9 @@ import type { CallRecord, CallType } from "../services/call-history-store.js"
  */
 export const getCallHistory = (node: TevmNodeShape, count = 50): Effect.Effect<readonly CallRecord[]> =>
 	Effect.gen(function* () {
-		const headBlockNumber = yield* node.blockchain.getHeadBlockNumber().pipe(
-			Effect.catchTag("GenesisError", () => Effect.succeed(0n)),
-		)
+		const headBlockNumber = yield* node.blockchain
+			.getHeadBlockNumber()
+			.pipe(Effect.catchTag("GenesisError", () => Effect.succeed(0n)))
 
 		const records: CallRecord[] = []
 		// Track seen tx hashes to deduplicate (block store hash collisions can cause
@@ -39,9 +39,9 @@ export const getCallHistory = (node: TevmNodeShape, count = 50): Effect.Effect<r
 
 		// Walk backwards from head block (newest first)
 		for (let n = headBlockNumber; n >= 0n && records.length < count; n--) {
-			const block = yield* node.blockchain.getBlockByNumber(n).pipe(
-				Effect.catchTag("BlockNotFoundError", () => Effect.succeed(null)),
-			)
+			const block = yield* node.blockchain
+				.getBlockByNumber(n)
+				.pipe(Effect.catchTag("BlockNotFoundError", () => Effect.succeed(null)))
 			if (block === null) break
 
 			const hashes = block.transactionHashes ?? []
@@ -51,14 +51,14 @@ export const getCallHistory = (node: TevmNodeShape, count = 50): Effect.Effect<r
 				seen.add(hash)
 
 				// Fetch transaction and receipt
-				const tx = yield* node.txPool.getTransaction(hash).pipe(
-					Effect.catchTag("TransactionNotFoundError", () => Effect.succeed(null)),
-				)
+				const tx = yield* node.txPool
+					.getTransaction(hash)
+					.pipe(Effect.catchTag("TransactionNotFoundError", () => Effect.succeed(null)))
 				if (tx === null) continue
 
-				const receipt = yield* node.txPool.getReceipt(hash).pipe(
-					Effect.catchTag("TransactionNotFoundError", () => Effect.succeed(null)),
-				)
+				const receipt = yield* node.txPool
+					.getReceipt(hash)
+					.pipe(Effect.catchTag("TransactionNotFoundError", () => Effect.succeed(null)))
 
 				// Determine call type
 				const type: CallType = tx.to === undefined || tx.to === null ? "CREATE" : "CALL"
@@ -72,17 +72,18 @@ export const getCallHistory = (node: TevmNodeShape, count = 50): Effect.Effect<r
 					value: tx.value,
 					gasUsed: receipt?.gasUsed ?? tx.gasUsed ?? 0n,
 					gasLimit: tx.gas,
-					success: receipt ? receipt.status === 1 : (tx.status === 1),
+					success: receipt ? receipt.status === 1 : tx.status === 1,
 					calldata: tx.data,
 					returnData: "0x", // Not available from pool transaction
 					blockNumber: block.number,
 					timestamp: block.timestamp,
 					txHash: tx.hash,
-					logs: receipt?.logs.map((log) => ({
-						address: log.address,
-						topics: log.topics,
-						data: log.data,
-					})) ?? [],
+					logs:
+						receipt?.logs.map((log) => ({
+							address: log.address,
+							topics: log.topics,
+							data: log.data,
+						})) ?? [],
 				}
 
 				records.push(record)

@@ -13,9 +13,9 @@ import { getOpenTui } from "../opentui.js"
 import { DRACULA, SEMANTIC } from "../theme.js"
 import type { ContractDetail, ContractSummary } from "./contracts-data.js"
 import {
+	formatBytecodeHex,
 	formatCodeSize,
 	formatDisassemblyLine,
-	formatBytecodeHex,
 	formatSelector,
 	formatStorageValue,
 	truncateAddress,

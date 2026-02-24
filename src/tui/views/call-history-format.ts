@@ -5,8 +5,8 @@
  * Reuses truncateAddress/truncateHash/formatWei/formatGas from dashboard-format.ts.
  */
 
-import { DRACULA, SEMANTIC } from "../theme.js"
 import type { CallType } from "../services/call-history-store.js"
+import { DRACULA, SEMANTIC } from "../theme.js"
 import { addCommas } from "./dashboard-format.js"
 
 // ---------------------------------------------------------------------------

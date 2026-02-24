@@ -28,7 +28,14 @@ export {
 	getTransactionCountHandler,
 	HandlerError,
 } from "./handlers/index.js"
-export type { CallParams, CallResult, GetBalanceParams, GetCodeParams, GetStorageAtParams, GetTransactionCountParams } from "./handlers/index.js"
+export type {
+	CallParams,
+	CallResult,
+	GetBalanceParams,
+	GetCodeParams,
+	GetStorageAtParams,
+	GetTransactionCountParams,
+} from "./handlers/index.js"
 
 // Node (composition root)
 export type { TestAccount } from "./node/accounts.js"

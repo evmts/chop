@@ -23,14 +23,14 @@ describe("debugTraceCall branch coverage", () => {
 			)
 			expect(typeof result).toBe("string")
 			expect((result as string).startsWith("error:")).toBe(true)
-			expect((result as string)).toContain("traceCall requires either")
+			expect(result as string).toContain("traceCall requires either")
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 
 	it.effect("only 'to' field — exercises typeof callObj.to === 'string' branch", () =>
 		Effect.gen(function* () {
 			const node = yield* TevmNodeService
-			const to = node.accounts[1]!.address
+			const to = node.accounts[1]?.address
 
 			// Only 'to' is set — from/data/value/gas branches all take false path
 			const result = (yield* debugTraceCall(node)([{ to }])) as Record<string, unknown>
@@ -44,7 +44,7 @@ describe("debugTraceCall branch coverage", () => {
 	it.effect("from + data + value + gas — exercises all conditional spread branches as true", () =>
 		Effect.gen(function* () {
 			const node = yield* TevmNodeService
-			const from = node.accounts[0]!.address
+			const from = node.accounts[0]?.address
 
 			// PUSH1 0x42, PUSH1 0x00, MSTORE, PUSH1 0x20, PUSH1 0x00, RETURN
 			const data = bytesToHex(new Uint8Array([0x60, 0x42, 0x60, 0x00, 0x52, 0x60, 0x20, 0x60, 0x00, 0xf3]))
@@ -102,7 +102,7 @@ describe("debugTraceCall branch coverage", () => {
 	it.effect("only 'from' field — handler rejects (no to/data), exercises from branch", () =>
 		Effect.gen(function* () {
 			const node = yield* TevmNodeService
-			const from = node.accounts[0]!.address
+			const from = node.accounts[0]?.address
 
 			// from is set but to/data are missing — handler rejects
 			const result = yield* debugTraceCall(node)([{ from }]).pipe(
@@ -153,8 +153,8 @@ describe("debugTraceTransaction serialized output format", () => {
 			const node = yield* TevmNodeService
 			const router = methodRouter(node)
 
-			const from = node.accounts[0]!.address
-			const to = node.accounts[1]!.address
+			const from = node.accounts[0]?.address
+			const to = node.accounts[1]?.address
 
 			// Send a transaction (auto-mines)
 			const hash = (yield* router("eth_sendTransaction", [{ from, to, value: "0x3e8" }])) as string
@@ -197,8 +197,8 @@ describe("debugTraceBlockByNumber branch coverage", () => {
 			const node = yield* TevmNodeService
 			const router = methodRouter(node)
 
-			const from = node.accounts[0]!.address
-			const to = node.accounts[1]!.address
+			const from = node.accounts[0]?.address
+			const to = node.accounts[1]?.address
 
 			// Mine a tx into block 1
 			yield* router("eth_sendTransaction", [{ from, to, value: "0x3e8" }])
@@ -243,8 +243,8 @@ describe("debugTraceBlockByHash branch coverage", () => {
 			const node = yield* TevmNodeService
 			const router = methodRouter(node)
 
-			const from = node.accounts[0]!.address
-			const to = node.accounts[1]!.address
+			const from = node.accounts[0]?.address
+			const to = node.accounts[1]?.address
 
 			yield* router("eth_sendTransaction", [{ from, to, value: "0x3e8" }])
 
@@ -303,12 +303,12 @@ describe("serializeStructLog output validation", () => {
 			}
 
 			// Verify first log (PUSH1)
-			expect(structLogs[0]!.pc).toBe(0)
-			expect(structLogs[0]!.op).toBe("PUSH1")
+			expect(structLogs[0]?.pc).toBe(0)
+			expect(structLogs[0]?.op).toBe("PUSH1")
 
 			// Verify second log (STOP)
-			expect(structLogs[1]!.pc).toBe(2)
-			expect(structLogs[1]!.op).toBe("STOP")
+			expect(structLogs[1]?.pc).toBe(2)
+			expect(structLogs[1]?.op).toBe("STOP")
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 

@@ -1,8 +1,8 @@
 // Snapshot / revert handlers — business logic for evm_snapshot and evm_revert.
 
 import type { Effect } from "effect"
-import type { UnknownSnapshotError } from "../node/snapshot-manager.js"
 import type { TevmNodeShape } from "../node/index.js"
+import type { UnknownSnapshotError } from "../node/snapshot-manager.js"
 
 /**
  * Handler for evm_snapshot.
@@ -11,10 +11,7 @@ import type { TevmNodeShape } from "../node/index.js"
  * @param node - The TevmNode facade.
  * @returns A function that returns the snapshot ID.
  */
-export const snapshotHandler =
-	(node: TevmNodeShape) =>
-	(): Effect.Effect<number> =>
-		node.snapshotManager.take()
+export const snapshotHandler = (node: TevmNodeShape) => (): Effect.Effect<number> => node.snapshotManager.take()
 
 /**
  * Handler for evm_revert.

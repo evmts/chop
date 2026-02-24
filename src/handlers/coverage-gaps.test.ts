@@ -15,7 +15,7 @@ import { Effect } from "effect"
 import { expect } from "vitest"
 import type { Block } from "../blockchain/block-store.js"
 import type { BlockchainApi } from "../blockchain/blockchain.js"
-import { BlockNotFoundError, GenesisError } from "../blockchain/errors.js"
+import { BlockNotFoundError } from "../blockchain/errors.js"
 import type { TevmNodeShape } from "../node/index.js"
 import { TransactionNotFoundError } from "./errors.js"
 import { getLogsHandler } from "./getLogs.js"
@@ -102,9 +102,7 @@ describe("getLogsHandler — receipt not found for tx in block (line 126)", () =
 				getHead: () => Effect.succeed(blockWithTxs),
 				getBlock: (hash) => Effect.fail(new BlockNotFoundError({ identifier: hash })),
 				getBlockByNumber: (num) =>
-					num === 0n
-						? Effect.succeed(blockWithTxs)
-						: Effect.fail(new BlockNotFoundError({ identifier: String(num) })),
+					num === 0n ? Effect.succeed(blockWithTxs) : Effect.fail(new BlockNotFoundError({ identifier: String(num) })),
 				putBlock: () => Effect.void,
 				getHeadBlockNumber: () => Effect.succeed(0n),
 				getLatestBlock: () => Effect.succeed(blockWithTxs),

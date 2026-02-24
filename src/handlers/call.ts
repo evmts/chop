@@ -95,9 +95,7 @@ export const callHandler =
 			const result = yield* node.evm
 				.executeAsync(executeParams, node.hostAdapter.hostCallbacks)
 				.pipe(
-					Effect.catchTag("WasmExecutionError", (e) =>
-						Effect.fail(new HandlerError({ message: e.message, cause: e })),
-					),
+					Effect.catchTag("WasmExecutionError", (e) => Effect.fail(new HandlerError({ message: e.message, cause: e }))),
 				)
 
 			return {

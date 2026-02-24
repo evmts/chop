@@ -3,7 +3,7 @@ import { Cause, Effect, Layer, Option } from "effect"
 import { expect } from "vitest"
 import { JournalLive } from "../../state/journal.js"
 import { WorldStateService } from "../../state/world-state.js"
-import { ForkDataError, ForkRpcError } from "./errors.js"
+import { type ForkDataError, ForkRpcError } from "./errors.js"
 import { ForkWorldStateLive } from "./fork-state.js"
 import { type HttpTransportApi, HttpTransportService } from "./http-transport.js"
 
@@ -18,7 +18,9 @@ const slot1 = "0x000000000000000000000000000000000000000000000000000000000000000
  * Run an effect and capture its defect (die) value if it dies.
  * Returns the defect value, or fails the test if the effect succeeds.
  */
-const captureDefect = <A>(effect: Effect.Effect<A, never, WorldStateService>): Effect.Effect<unknown, never, WorldStateService> =>
+const captureDefect = <A>(
+	effect: Effect.Effect<A, never, WorldStateService>,
+): Effect.Effect<unknown, never, WorldStateService> =>
 	effect.pipe(
 		Effect.catchAllCause((cause) => {
 			const dieOpt = Cause.dieOption(cause)
@@ -67,8 +69,7 @@ const FailingStorageLayer = (errorMessage: string) => {
 				unknown,
 				ForkRpcError
 			>,
-		batchRequest: () =>
-			Effect.succeed(["0x64", "0x1", "0x"]) as Effect.Effect<readonly unknown[], ForkRpcError>,
+		batchRequest: () => Effect.succeed(["0x64", "0x1", "0x"]) as Effect.Effect<readonly unknown[], ForkRpcError>,
 	}
 	return ForkWorldStateLive({ blockNumber: 100n }).pipe(
 		Layer.provide(JournalLive()),

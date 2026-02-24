@@ -19,6 +19,11 @@ import { hexToBytes } from "../../evm/conversions.js"
 import { type RpcClientError, rpcCall } from "../../rpc/client.js"
 import { handleCommandErrors, jsonOption, rpcUrlOption } from "../shared.js"
 
+declare class TextDecoder {
+	constructor(label?: string)
+	decode(input?: ArrayBufferView | ArrayBuffer): string
+}
+
 // ============================================================================
 // Error Types
 // ============================================================================

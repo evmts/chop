@@ -12,7 +12,7 @@ import { describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { expect } from "vitest"
 import { DEFAULT_BALANCE } from "../../node/accounts.js"
-import { formatBanner, startNodeServer, type NodeServerOptions } from "./node.js"
+import { type NodeServerOptions, formatBanner, startNodeServer } from "./node.js"
 
 // ---------------------------------------------------------------------------
 // formatBanner — coverage tests
@@ -38,12 +38,7 @@ describe("formatBanner — coverage", () => {
 	})
 
 	it("with fork URL and fork block number shows both", () => {
-		const banner = formatBanner(
-			3000,
-			[sampleAccount],
-			"https://eth-mainnet.alchemyapi.io/v2/key",
-			19_500_000n,
-		)
+		const banner = formatBanner(3000, [sampleAccount], "https://eth-mainnet.alchemyapi.io/v2/key", 19_500_000n)
 
 		expect(banner).toContain("Fork Mode")
 		expect(banner).toContain("Fork URL: https://eth-mainnet.alchemyapi.io/v2/key")
@@ -52,11 +47,7 @@ describe("formatBanner — coverage", () => {
 	})
 
 	it("with fork URL but no block number omits Block Number line", () => {
-		const banner = formatBanner(
-			4000,
-			[sampleAccount],
-			"https://rpc.ankr.com/eth",
-		)
+		const banner = formatBanner(4000, [sampleAccount], "https://rpc.ankr.com/eth")
 
 		expect(banner).toContain("Fork Mode")
 		expect(banner).toContain("Fork URL: https://rpc.ankr.com/eth")
@@ -105,7 +96,11 @@ describe("startNodeServer — local mode coverage", () => {
 
 	it.effect("local mode with custom accounts count", () =>
 		Effect.gen(function* () {
-			const { server, accounts, close } = yield* startNodeServer({
+			const {
+				server: _server,
+				accounts,
+				close,
+			} = yield* startNodeServer({
 				port: 0,
 				accounts: 3,
 			})

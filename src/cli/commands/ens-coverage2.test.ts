@@ -15,7 +15,7 @@ import { FetchHttpClient } from "@effect/platform"
 import { describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { expect } from "vitest"
-import { bytesToHex, hexToBytes } from "../../evm/conversions.js"
+import { hexToBytes } from "../../evm/conversions.js"
 import { TevmNode, TevmNodeService } from "../../node/index.js"
 import { startRpcServer } from "../../rpc/server.js"
 import { EnsError, lookupAddressHandler, namehashHandler, resolveNameHandler } from "./ens.js"
@@ -157,9 +157,7 @@ describe("resolveNameHandler — local devnet error paths", () => {
 			})
 
 			try {
-				const error = yield* resolveNameHandler(`http://127.0.0.1:${server.port}`, "nonexistent.eth").pipe(
-					Effect.flip,
-				)
+				const error = yield* resolveNameHandler(`http://127.0.0.1:${server.port}`, "nonexistent.eth").pipe(Effect.flip)
 				expect(error._tag).toBe("EnsError")
 				expect(error.message).toContain("No resolver found")
 				expect(error.message).toContain("nonexistent.eth")
@@ -197,9 +195,7 @@ describe("resolveNameHandler — local devnet error paths", () => {
 			})
 
 			try {
-				const error = yield* resolveNameHandler(`http://127.0.0.1:${server.port}`, "zeroresolver.eth").pipe(
-					Effect.flip,
-				)
+				const error = yield* resolveNameHandler(`http://127.0.0.1:${server.port}`, "zeroresolver.eth").pipe(Effect.flip)
 				expect(error._tag).toBe("EnsError")
 				expect(error.message).toContain("Name not resolved")
 				expect(error.message).toContain("zeroresolver.eth")
@@ -427,9 +423,7 @@ describe("lookupAddressHandler — local devnet error paths", () => {
 				const result = yield* lookupAddressHandler(
 					`http://127.0.0.1:${server.port}`,
 					"0xaabbccddee00112233445566778899aabbccddee",
-				).pipe(
-					Effect.catchTag("EnsError", (e) => Effect.succeed(`error:${e.message}`)),
-				)
+				).pipe(Effect.catchTag("EnsError", (e) => Effect.succeed(`error:${e.message}`)))
 				// The result should either be an error message about decoding failure
 				// or a garbage string (since the data is malformed but may not throw)
 				expect(typeof result).toBe("string")

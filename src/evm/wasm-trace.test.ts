@@ -35,7 +35,7 @@ describe("EvmWasmService — executeWithTrace", () => {
 			// structLogs should contain entries for each opcode executed
 			expect(result.structLogs.length).toBeGreaterThan(0)
 			// First log should be PUSH1
-			expect(result.structLogs[0]!.op).toBe("PUSH1")
+			expect(result.structLogs[0]?.op).toBe("PUSH1")
 		}).pipe(Effect.provide(EvmWasmTest)),
 	)
 
@@ -47,7 +47,7 @@ describe("EvmWasmService — executeWithTrace", () => {
 			expect(result.output.length).toBe(0)
 			// structLogs should have at least one entry for STOP
 			expect(result.structLogs.length).toBeGreaterThanOrEqual(1)
-			expect(result.structLogs[0]!.op).toBe("STOP")
+			expect(result.structLogs[0]?.op).toBe("STOP")
 		}).pipe(Effect.provide(EvmWasmTest)),
 	)
 

@@ -89,7 +89,7 @@ describe("TxPool — duplicate transactions", () => {
 			yield* pool.addTransaction(tx)
 			yield* pool.addTransaction(tx)
 
-			const pending = yield* pool.getPendingHashes()
+			yield* pool.getPendingHashes()
 			// Should have 2 entries since it pushes to pendingHashes each time,
 			// but getPendingTransactions filters correctly
 			const pendingTxs = yield* pool.getPendingTransactions()

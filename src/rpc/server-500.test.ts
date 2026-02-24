@@ -14,6 +14,22 @@ import { expect, vi } from "vitest"
 import type { TevmNodeShape } from "../node/index.js"
 import { startRpcServer } from "./server.js"
 
+interface FetchInit {
+	method?: string
+	headers?: Record<string, string>
+	body?: string
+}
+
+interface FetchResponse {
+	ok: boolean
+	status: number
+	statusText: string
+	json(): Promise<unknown>
+	text(): Promise<string>
+}
+
+declare const fetch: (input: string, init?: FetchInit) => Promise<FetchResponse>
+
 // ---------------------------------------------------------------------------
 // Mock handler.js so handleRequest returns an Effect that dies (defect).
 // vi.mock is hoisted by vitest, so it runs before imports are resolved.
@@ -35,7 +51,7 @@ describe("RPC Server - 500 error handler path", () => {
 			const server = yield* startRpcServer({ port: 0 }, stubNode)
 
 			try {
-				const res = yield* Effect.tryPromise(() =>
+				const res: FetchResponse = yield* Effect.tryPromise(() =>
 					fetch(`http://127.0.0.1:${server.port}`, {
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
@@ -63,7 +79,7 @@ describe("RPC Server - 500 error handler path", () => {
 			const server = yield* startRpcServer({ port: 0 }, stubNode)
 
 			try {
-				const res = yield* Effect.tryPromise(() =>
+				const res: FetchResponse = yield* Effect.tryPromise(() =>
 					fetch(`http://127.0.0.1:${server.port}`, {
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
@@ -96,7 +112,7 @@ describe("RPC Server - 500 error handler path", () => {
 
 			try {
 				// GET request should be rejected before handleRequest is ever called
-				const res = yield* Effect.tryPromise(() =>
+				const res: FetchResponse = yield* Effect.tryPromise(() =>
 					fetch(`http://127.0.0.1:${server.port}`, { method: "GET" }),
 				)
 
@@ -120,7 +136,7 @@ describe("RPC Server - 500 error handler path", () => {
 
 			try {
 				// First request triggers 500
-				const res1 = yield* Effect.tryPromise(() =>
+				const res1: FetchResponse = yield* Effect.tryPromise(() =>
 					fetch(`http://127.0.0.1:${server.port}`, {
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
@@ -130,7 +146,7 @@ describe("RPC Server - 500 error handler path", () => {
 				expect(res1.status).toBe(500)
 
 				// Second request also triggers 500 (server did not crash)
-				const res2 = yield* Effect.tryPromise(() =>
+				const res2: FetchResponse = yield* Effect.tryPromise(() =>
 					fetch(`http://127.0.0.1:${server.port}`, {
 						method: "POST",
 						headers: { "Content-Type": "application/json" },

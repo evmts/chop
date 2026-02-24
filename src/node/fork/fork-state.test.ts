@@ -363,8 +363,6 @@ describe("ForkWorldStateTest", () => {
 // ---------------------------------------------------------------------------
 
 describe("ForkWorldState — snapshot/restore with delete and re-set", () => {
-	const addr2 = "0x0000000000000000000000000000000000000002"
-
 	it.effect("set account -> snapshot -> delete -> restore -> account is back", () =>
 		Effect.gen(function* () {
 			const ws = yield* WorldStateService

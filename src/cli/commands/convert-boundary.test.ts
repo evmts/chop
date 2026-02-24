@@ -381,7 +381,9 @@ describe("toBaseHandler — boundary cases", () => {
 			expect(Either.isLeft(result)).toBe(true)
 			if (Either.isLeft(result)) {
 				expect(result.left._tag).toBe("InvalidBaseError")
-				expect(result.left.base).toBe(0)
+				if (result.left._tag === "InvalidBaseError") {
+					expect(result.left.base).toBe(0)
+				}
 			}
 		}),
 	)
@@ -392,7 +394,9 @@ describe("toBaseHandler — boundary cases", () => {
 			expect(Either.isLeft(result)).toBe(true)
 			if (Either.isLeft(result)) {
 				expect(result.left._tag).toBe("InvalidBaseError")
-				expect(result.left.base).toBe(1)
+				if (result.left._tag === "InvalidBaseError") {
+					expect(result.left.base).toBe(1)
+				}
 			}
 		}),
 	)
@@ -403,7 +407,9 @@ describe("toBaseHandler — boundary cases", () => {
 			expect(Either.isLeft(result)).toBe(true)
 			if (Either.isLeft(result)) {
 				expect(result.left._tag).toBe("InvalidBaseError")
-				expect(result.left.base).toBe(37)
+				if (result.left._tag === "InvalidBaseError") {
+					expect(result.left.base).toBe(37)
+				}
 			}
 		}),
 	)
@@ -414,7 +420,9 @@ describe("toBaseHandler — boundary cases", () => {
 			expect(Either.isLeft(result)).toBe(true)
 			if (Either.isLeft(result)) {
 				expect(result.left._tag).toBe("InvalidBaseError")
-				expect(result.left.base).toBe(100)
+				if (result.left._tag === "InvalidBaseError") {
+					expect(result.left.base).toBe(100)
+				}
 			}
 		}),
 	)
@@ -668,21 +676,21 @@ describe("toBytes32Handler — boundary cases", () => {
 	it.effect("handles empty hex '0x' — pads to 32 zero bytes", () =>
 		Effect.gen(function* () {
 			const result = yield* toBytes32Handler("0x")
-			expect(result).toBe("0x" + "0".repeat(64))
+			expect(result).toBe(`0x${"0".repeat(64)}`)
 		}),
 	)
 
 	it.effect("handles numeric string '0'", () =>
 		Effect.gen(function* () {
 			const result = yield* toBytes32Handler("0")
-			expect(result).toBe("0x" + "0".repeat(64))
+			expect(result).toBe(`0x${"0".repeat(64)}`)
 		}),
 	)
 
 	it.effect("handles numeric string '1'", () =>
 		Effect.gen(function* () {
 			const result = yield* toBytes32Handler("1")
-			expect(result).toBe("0x" + "0".repeat(63) + "1")
+			expect(result).toBe(`0x${"0".repeat(63)}1`)
 		}),
 	)
 
@@ -692,7 +700,7 @@ describe("toBytes32Handler — boundary cases", () => {
 			expect(result).toMatch(/^0x/)
 			expect(result.length).toBe(66) // 0x + 64 hex chars
 			// "hello" in hex is 68656c6c6f (10 hex chars)
-			expect(result).toBe("0x" + "0".repeat(54) + "68656c6c6f")
+			expect(result).toBe(`0x${"0".repeat(54)}68656c6c6f`)
 		}),
 	)
 
@@ -709,7 +717,7 @@ describe("toBytes32Handler — boundary cases", () => {
 		Effect.gen(function* () {
 			const maxUint256 = (2n ** 256n - 1n).toString()
 			const result = yield* toBytes32Handler(maxUint256)
-			expect(result).toBe("0x" + "f".repeat(64))
+			expect(result).toBe(`0x${"f".repeat(64)}`)
 		}),
 	)
 })
@@ -1031,7 +1039,7 @@ describe("toRlpHandler — boundary cases", () => {
 
 	it.effect("encodes large data (256 bytes)", () =>
 		Effect.gen(function* () {
-			const largeHex = "0x" + "ab".repeat(256)
+			const largeHex = `0x${"ab".repeat(256)}`
 			const result = yield* toRlpHandler([largeHex])
 			expect(result).toMatch(/^0x/)
 			// Verify round-trip

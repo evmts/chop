@@ -51,14 +51,11 @@ export const formatNonce = (nonce: bigint): string => nonce.toString()
  * EOA → cyan, Contract → pink.
  */
 export const formatAccountType = (isContract: boolean): FormattedField =>
-	isContract
-		? { text: "Contract", color: DRACULA.pink }
-		: { text: "EOA", color: SEMANTIC.primary }
+	isContract ? { text: "Contract", color: DRACULA.pink } : { text: "EOA", color: SEMANTIC.primary }
 
 // ---------------------------------------------------------------------------
 // Code indicator
 // ---------------------------------------------------------------------------
 
 /** Return "Yes" if code is non-empty, "No" otherwise. */
-export const formatCodeIndicator = (code: Uint8Array): string =>
-	code.length > 0 ? "Yes" : "No"
+export const formatCodeIndicator = (code: Uint8Array): string => (code.length > 0 ? "Yes" : "No")

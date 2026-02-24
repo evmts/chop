@@ -8,9 +8,9 @@ describe("FilterManager", () => {
 		expect(id).toBe("0x1")
 		const filter = fm.getFilter(id)
 		expect(filter).toBeDefined()
-		expect(filter!.type).toBe("log")
-		expect(filter!.criteria?.fromBlock).toBe(0n)
-		expect(filter!.lastPolledBlock).toBe(5n)
+		expect(filter?.type).toBe("log")
+		expect(filter?.criteria?.fromBlock).toBe(0n)
+		expect(filter?.lastPolledBlock).toBe(5n)
 	})
 
 	it("newBlockFilter creates a block filter", () => {
@@ -19,8 +19,8 @@ describe("FilterManager", () => {
 		expect(id).toBe("0x1")
 		const filter = fm.getFilter(id)
 		expect(filter).toBeDefined()
-		expect(filter!.type).toBe("block")
-		expect(filter!.lastPolledBlock).toBe(10n)
+		expect(filter?.type).toBe("block")
+		expect(filter?.lastPolledBlock).toBe(10n)
 	})
 
 	it("newPendingTransactionFilter creates a pending tx filter", () => {
@@ -29,7 +29,7 @@ describe("FilterManager", () => {
 		expect(id).toBe("0x1")
 		const filter = fm.getFilter(id)
 		expect(filter).toBeDefined()
-		expect(filter!.type).toBe("pendingTransaction")
+		expect(filter?.type).toBe("pendingTransaction")
 	})
 
 	it("allocates monotonically increasing IDs", () => {
@@ -63,7 +63,7 @@ describe("FilterManager", () => {
 		const fm = makeFilterManager()
 		const id = fm.newBlockFilter(0n)
 		fm.updateLastPolled(id, 100n)
-		expect(fm.getFilter(id)!.lastPolledBlock).toBe(100n)
+		expect(fm.getFilter(id)?.lastPolledBlock).toBe(100n)
 	})
 
 	it("updateLastPolled is no-op for non-existent filter", () => {

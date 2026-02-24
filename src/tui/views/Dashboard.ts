@@ -189,12 +189,7 @@ export const createDashboard = (renderer: CliRenderer): DashboardHandle => {
 // ---------------------------------------------------------------------------
 
 /** Safely set a line's content and color. */
-const setLine = (
-	lines: TextRenderable[],
-	index: number,
-	content: string,
-	fg: string,
-): void => {
+const setLine = (lines: TextRenderable[], index: number, content: string, fg: string): void => {
 	const line = lines[index]
 	if (!line) return
 	line.content = content

@@ -28,9 +28,7 @@ describe("wrapErrors", () => {
 	it.effect("wraps expected errors as InternalError", () =>
 		Effect.gen(function* () {
 			const program = wrapErrors(Effect.fail(new Error("something went wrong")))
-			const result = yield* program.pipe(
-				Effect.catchTag("InternalError", (e) => Effect.succeed(e.message)),
-			)
+			const result = yield* program.pipe(Effect.catchTag("InternalError", (e) => Effect.succeed(e.message)))
 			expect(result).toContain("something went wrong")
 		}),
 	)
@@ -38,9 +36,7 @@ describe("wrapErrors", () => {
 	it.effect("wraps string errors as InternalError", () =>
 		Effect.gen(function* () {
 			const program = wrapErrors(Effect.fail("string error"))
-			const result = yield* program.pipe(
-				Effect.catchTag("InternalError", (e) => Effect.succeed(e.message)),
-			)
+			const result = yield* program.pipe(Effect.catchTag("InternalError", (e) => Effect.succeed(e.message)))
 			expect(result).toBe("string error")
 		}),
 	)
@@ -48,9 +44,7 @@ describe("wrapErrors", () => {
 	it.effect("wraps defects as InternalError", () =>
 		Effect.gen(function* () {
 			const program = wrapErrors(Effect.die("kaboom"))
-			const result = yield* program.pipe(
-				Effect.catchTag("InternalError", (e) => Effect.succeed(e.message)),
-			)
+			const result = yield* program.pipe(Effect.catchTag("InternalError", (e) => Effect.succeed(e.message)))
 			expect(result).toBe("kaboom")
 		}),
 	)
@@ -58,9 +52,7 @@ describe("wrapErrors", () => {
 	it.effect("wraps Error defects with message", () =>
 		Effect.gen(function* () {
 			const program = wrapErrors(Effect.die(new Error("defect error")))
-			const result = yield* program.pipe(
-				Effect.catchTag("InternalError", (e) => Effect.succeed(e.message)),
-			)
+			const result = yield* program.pipe(Effect.catchTag("InternalError", (e) => Effect.succeed(e.message)))
 			expect(result).toContain("defect error")
 		}),
 	)

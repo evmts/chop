@@ -28,8 +28,8 @@ describe("getTransactionByHashHandler", () => {
 
 			const tx = yield* getTransactionByHashHandler(node)({ hash: result.hash })
 			expect(tx).not.toBeNull()
-			expect(tx!.hash).toBe(result.hash)
-			expect(tx!.from.toLowerCase()).toBe(sender.toLowerCase())
+			expect(tx?.hash).toBe(result.hash)
+			expect(tx?.from.toLowerCase()).toBe(sender.toLowerCase())
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 
@@ -47,7 +47,7 @@ describe("getTransactionByHashHandler", () => {
 
 			const tx = yield* getTransactionByHashHandler(node)({ hash: result.hash })
 			expect(tx).not.toBeNull()
-			expect(tx!.value).toBe(5000n)
+			expect(tx?.value).toBe(5000n)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 })

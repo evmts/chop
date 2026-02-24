@@ -1,7 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { expect } from "vitest"
-import { hexToBytes } from "../evm/conversions.js"
 import { TevmNode, TevmNodeService } from "../node/index.js"
 import type { TransactionReceipt } from "../node/tx-pool.js"
 import { ethAccounts, ethGetTransactionReceipt, ethSendTransaction } from "./eth.js"
@@ -217,10 +216,7 @@ describe("ethGetTransactionReceipt — receipt fields", () => {
 				logs: [
 					{
 						address: `0x${"33".repeat(20)}`,
-						topics: [
-							`0x${"44".repeat(32)}`,
-							`0x${"55".repeat(32)}`,
-						],
+						topics: [`0x${"44".repeat(32)}`, `0x${"55".repeat(32)}`],
 						data: "0xdeadbeef",
 						blockNumber: 1n,
 						transactionHash: txHash,
@@ -257,24 +253,21 @@ describe("ethGetTransactionReceipt — receipt fields", () => {
 			expect(logs).toHaveLength(2)
 
 			// First log — verify all serialized fields
-			expect(logs[0]!.address).toBe(`0x${"33".repeat(20)}`)
-			expect(logs[0]!.topics).toEqual([
-				`0x${"44".repeat(32)}`,
-				`0x${"55".repeat(32)}`,
-			])
-			expect(logs[0]!.data).toBe("0xdeadbeef")
-			expect(logs[0]!.blockNumber).toBe("0x1")
-			expect(logs[0]!.transactionHash).toBe(txHash)
-			expect(logs[0]!.transactionIndex).toBe("0x0")
-			expect(logs[0]!.blockHash).toBe(`0x${"aa".repeat(32)}`)
-			expect(logs[0]!.logIndex).toBe("0x0")
-			expect(logs[0]!.removed).toBe(false)
+			expect(logs[0]?.address).toBe(`0x${"33".repeat(20)}`)
+			expect(logs[0]?.topics).toEqual([`0x${"44".repeat(32)}`, `0x${"55".repeat(32)}`])
+			expect(logs[0]?.data).toBe("0xdeadbeef")
+			expect(logs[0]?.blockNumber).toBe("0x1")
+			expect(logs[0]?.transactionHash).toBe(txHash)
+			expect(logs[0]?.transactionIndex).toBe("0x0")
+			expect(logs[0]?.blockHash).toBe(`0x${"aa".repeat(32)}`)
+			expect(logs[0]?.logIndex).toBe("0x0")
+			expect(logs[0]?.removed).toBe(false)
 
 			// Second log — verify logIndex is "0x1"
-			expect(logs[1]!.address).toBe(`0x${"66".repeat(20)}`)
-			expect(logs[1]!.topics).toEqual([])
-			expect(logs[1]!.logIndex).toBe("0x1")
-			expect(logs[1]!.removed).toBe(false)
+			expect(logs[1]?.address).toBe(`0x${"66".repeat(20)}`)
+			expect(logs[1]?.topics).toEqual([])
+			expect(logs[1]?.logIndex).toBe("0x1")
+			expect(logs[1]?.removed).toBe(false)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 })

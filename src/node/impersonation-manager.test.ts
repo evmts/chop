@@ -19,7 +19,7 @@ describe("ImpersonationManager", () => {
 	)
 
 	it.effect("not impersonated by default → isImpersonated → false", () =>
-		Effect.gen(function* () {
+		Effect.sync(() => {
 			const im = makeImpersonationManager()
 
 			const result = im.isImpersonated(ADDR_A)

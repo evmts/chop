@@ -57,8 +57,8 @@ describe("debug_traceTransaction", () => {
 			const node = yield* TevmNodeService
 			const router = methodRouter(node)
 
-			const from = node.accounts[0]!.address
-			const to = node.accounts[1]!.address
+			const from = node.accounts[0]?.address
+			const to = node.accounts[1]?.address
 
 			// Send a transaction first
 			const hash = (yield* router("eth_sendTransaction", [{ from, to, value: "0x3e8" }])) as string
@@ -80,8 +80,8 @@ describe("debug_traceBlockByNumber", () => {
 			const node = yield* TevmNodeService
 			const router = methodRouter(node)
 
-			const from = node.accounts[0]!.address
-			const to = node.accounts[1]!.address
+			const from = node.accounts[0]?.address
+			const to = node.accounts[1]?.address
 
 			// Send a transaction (auto-mines to block 1)
 			yield* router("eth_sendTransaction", [{ from, to, value: "0x3e8" }])
@@ -89,8 +89,8 @@ describe("debug_traceBlockByNumber", () => {
 			// Trace block 1
 			const results = (yield* router("debug_traceBlockByNumber", ["0x1"])) as Record<string, unknown>[]
 			expect(results.length).toBe(1)
-			expect(results[0]!.txHash).toBeDefined()
-			expect((results[0]!.result as Record<string, unknown>).failed).toBe(false)
+			expect(results[0]?.txHash).toBeDefined()
+			expect((results[0]?.result as Record<string, unknown>).failed).toBe(false)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 })
@@ -101,8 +101,8 @@ describe("debug_traceBlockByHash", () => {
 			const node = yield* TevmNodeService
 			const router = methodRouter(node)
 
-			const from = node.accounts[0]!.address
-			const to = node.accounts[1]!.address
+			const from = node.accounts[0]?.address
+			const to = node.accounts[1]?.address
 
 			// Send a transaction (auto-mines to block 1)
 			yield* router("eth_sendTransaction", [{ from, to, value: "0x3e8" }])
@@ -114,8 +114,8 @@ describe("debug_traceBlockByHash", () => {
 			// Trace by hash
 			const results = (yield* router("debug_traceBlockByHash", [blockHash])) as Record<string, unknown>[]
 			expect(results.length).toBe(1)
-			expect(results[0]!.txHash).toBeDefined()
-			expect((results[0]!.result as Record<string, unknown>).failed).toBe(false)
+			expect(results[0]?.txHash).toBeDefined()
+			expect((results[0]?.result as Record<string, unknown>).failed).toBe(false)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 })

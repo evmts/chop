@@ -69,7 +69,7 @@ describe("ConversionError + WasmLoadError + WasmExecutionError discrimination", 
 	)
 
 	it.effect("empty message is allowed", () =>
-		Effect.gen(function* () {
+		Effect.sync(() => {
 			const error = new ConversionError({ message: "" })
 			expect(error.message).toBe("")
 			expect(error._tag).toBe("ConversionError")
@@ -77,7 +77,7 @@ describe("ConversionError + WasmLoadError + WasmExecutionError discrimination", 
 	)
 
 	it.effect("unicode message is preserved", () =>
-		Effect.gen(function* () {
+		Effect.sync(() => {
 			const error = new ConversionError({ message: "invalid hex: 0x🦄" })
 			expect(error.message).toBe("invalid hex: 0x🦄")
 		}),

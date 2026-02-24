@@ -10,7 +10,7 @@
  */
 
 import { describe, expect, it } from "vitest"
-import { EMPTY_ACCOUNT, type Account, accountEquals, isEmptyAccount } from "./account.js"
+import { type Account, EMPTY_ACCOUNT, accountEquals, isEmptyAccount } from "./account.js"
 
 // ---------------------------------------------------------------------------
 // EMPTY_ACCOUNT — shape validation

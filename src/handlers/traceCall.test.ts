@@ -57,8 +57,8 @@ describe("traceCallHandler", () => {
 			const result = yield* traceCallHandler(node)({ data })
 			expect(result.failed).toBe(false)
 			expect(result.structLogs.length).toBe(1)
-			expect(result.structLogs[0]!.op).toBe("STOP")
-			expect(result.structLogs[0]!.pc).toBe(0)
+			expect(result.structLogs[0]?.op).toBe("STOP")
+			expect(result.structLogs[0]?.pc).toBe(0)
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 
@@ -116,9 +116,9 @@ describe("traceCallHandler", () => {
 			const data = bytesToHex(new Uint8Array([0x60, 0x42, 0x60, 0x00, 0x00]))
 
 			const result = yield* traceCallHandler(node)({ data, gas: 1_000_000n })
-			expect(result.structLogs[0]!.gas).toBe(1_000_000n) // Full gas at start
-			expect(result.structLogs[1]!.gas).toBe(1_000_000n - 3n) // After PUSH1 (cost=3)
-			expect(result.structLogs[2]!.gas).toBe(1_000_000n - 6n) // After two PUSH1s
+			expect(result.structLogs[0]?.gas).toBe(1_000_000n) // Full gas at start
+			expect(result.structLogs[1]?.gas).toBe(1_000_000n - 3n) // After PUSH1 (cost=3)
+			expect(result.structLogs[2]?.gas).toBe(1_000_000n - 6n) // After two PUSH1s
 		}).pipe(Effect.provide(TevmNode.LocalTest())),
 	)
 

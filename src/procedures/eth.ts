@@ -19,7 +19,7 @@ import {
 	sendTransactionHandler,
 } from "../handlers/index.js"
 import type { TevmNodeShape } from "../node/index.js"
-import { InvalidParamsError, InternalError, wrapErrors } from "./errors.js"
+import { InternalError, InvalidParamsError, wrapErrors } from "./errors.js"
 import { serializeBlock, serializeLog, serializeTransaction } from "./helpers.js"
 
 // ---------------------------------------------------------------------------
@@ -314,11 +314,13 @@ export const ethFeeHistory =
 		wrapErrors(
 			Effect.gen(function* () {
 				const blockCount = Number(params[0] as string)
-				const head = yield* node.blockchain.getHead().pipe(
-					Effect.catchTag("GenesisError", () =>
-						Effect.succeed({ number: 0n, baseFeePerGas: 1_000_000_000n, gasUsed: 0n, gasLimit: 30_000_000n }),
-					),
-				)
+				const head = yield* node.blockchain
+					.getHead()
+					.pipe(
+						Effect.catchTag("GenesisError", () =>
+							Effect.succeed({ number: 0n, baseFeePerGas: 1_000_000_000n, gasUsed: 0n, gasLimit: 30_000_000n }),
+						),
+					)
 
 				const baseFeePerGas: string[] = []
 				const gasUsedRatio: number[] = []
@@ -326,11 +328,13 @@ export const ethFeeHistory =
 
 				for (let i = 0; i < Math.min(blockCount, Number(head.number) + 1); i++) {
 					const blockNum = oldestBlock + BigInt(i)
-					const block = yield* node.blockchain.getBlockByNumber(blockNum).pipe(
-						Effect.catchTag("BlockNotFoundError", () =>
-							Effect.succeed({ baseFeePerGas: 1_000_000_000n, gasUsed: 0n, gasLimit: 30_000_000n }),
-						),
-					)
+					const block = yield* node.blockchain
+						.getBlockByNumber(blockNum)
+						.pipe(
+							Effect.catchTag("BlockNotFoundError", () =>
+								Effect.succeed({ baseFeePerGas: 1_000_000_000n, gasUsed: 0n, gasLimit: 30_000_000n }),
+							),
+						)
 					baseFeePerGas.push(bigintToHex(block.baseFeePerGas))
 					gasUsedRatio.push(block.gasLimit > 0n ? Number(block.gasUsed) / Number(block.gasLimit) : 0)
 				}
@@ -413,9 +417,9 @@ export const ethNewFilter =
 		wrapErrors(
 			Effect.gen(function* () {
 				const filterObj = (params[0] ?? {}) as Record<string, unknown>
-				const head = yield* node.blockchain.getHead().pipe(
-					Effect.catchTag("GenesisError", () => Effect.succeed({ number: 0n })),
-				)
+				const head = yield* node.blockchain
+					.getHead()
+					.pipe(Effect.catchTag("GenesisError", () => Effect.succeed({ number: 0n })))
 
 				const fromBlock = filterObj.fromBlock
 					? filterObj.fromBlock === "latest"
@@ -432,9 +436,7 @@ export const ethNewFilter =
 					{
 						...(fromBlock !== undefined ? { fromBlock } : {}),
 						...(toBlock !== undefined ? { toBlock } : {}),
-						...(filterObj.address !== undefined
-							? { address: filterObj.address as string | readonly string[] }
-							: {}),
+						...(filterObj.address !== undefined ? { address: filterObj.address as string | readonly string[] } : {}),
 						...(filterObj.topics !== undefined
 							? { topics: filterObj.topics as readonly (string | readonly string[] | null)[] }
 							: {}),
@@ -457,17 +459,17 @@ export const ethGetFilterChanges =
 					return yield* Effect.fail(new InvalidParamsError({ message: `Filter ${filterId} not found` }))
 				}
 
-				const head = yield* node.blockchain.getHead().pipe(
-					Effect.catchTag("GenesisError", () => Effect.succeed({ number: 0n })),
-				)
+				const head = yield* node.blockchain
+					.getHead()
+					.pipe(Effect.catchTag("GenesisError", () => Effect.succeed({ number: 0n })))
 
 				if (filter.type === "block") {
 					// Return block hashes since last poll
 					const hashes: string[] = []
 					for (let i = filter.lastPolledBlock + 1n; i <= head.number; i++) {
-						const block = yield* node.blockchain.getBlockByNumber(i).pipe(
-							Effect.catchTag("BlockNotFoundError", () => Effect.succeed(null)),
-						)
+						const block = yield* node.blockchain
+							.getBlockByNumber(i)
+							.pipe(Effect.catchTag("BlockNotFoundError", () => Effect.succeed(null)))
 						if (block) hashes.push(block.hash)
 					}
 					node.filterManager.updateLastPolled(filterId, head.number)
@@ -498,7 +500,7 @@ export const ethUninstallFilter =
 	(node: TevmNodeShape): Procedure =>
 	(params) =>
 		wrapErrors(
-			Effect.gen(function* () {
+			Effect.sync(() => {
 				const filterId = params[0] as string
 				return node.filterManager.removeFilter(filterId)
 			}),
@@ -510,9 +512,9 @@ export const ethNewBlockFilter =
 	(_params) =>
 		wrapErrors(
 			Effect.gen(function* () {
-				const head = yield* node.blockchain.getHead().pipe(
-					Effect.catchTag("GenesisError", () => Effect.succeed({ number: 0n })),
-				)
+				const head = yield* node.blockchain
+					.getHead()
+					.pipe(Effect.catchTag("GenesisError", () => Effect.succeed({ number: 0n })))
 				return node.filterManager.newBlockFilter(head.number)
 			}),
 		)
@@ -523,9 +525,9 @@ export const ethNewPendingTransactionFilter =
 	(_params) =>
 		wrapErrors(
 			Effect.gen(function* () {
-				const head = yield* node.blockchain.getHead().pipe(
-					Effect.catchTag("GenesisError", () => Effect.succeed({ number: 0n })),
-				)
+				const head = yield* node.blockchain
+					.getHead()
+					.pipe(Effect.catchTag("GenesisError", () => Effect.succeed({ number: 0n })))
 				return node.filterManager.newPendingTransactionFilter(head.number)
 			}),
 		)

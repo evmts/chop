@@ -61,13 +61,9 @@ export const getSettingsData = (node: TevmNodeShape): Effect.Effect<SettingsView
 		const hardfork = node.releaseSpec.hardfork
 
 		// Fork block: genesis block number > 0 means fork mode
-		const genesisBlock = yield* node.blockchain
-			.getBlockByNumber(0n)
-			.pipe(Effect.catchAll(() => Effect.succeed(null)))
+		const genesisBlock = yield* node.blockchain.getBlockByNumber(0n).pipe(Effect.catchAll(() => Effect.succeed(null)))
 		const forkBlock =
-			rpcUrl !== undefined && genesisBlock !== null && genesisBlock.number > 0n
-				? genesisBlock.number
-				: undefined
+			rpcUrl !== undefined && genesisBlock !== null && genesisBlock.number > 0n ? genesisBlock.number : undefined
 
 		return {
 			chainId,

@@ -5,16 +5,15 @@ import { expect } from "vitest"
 import { TevmNode, TevmNodeService } from "../../node/index.js"
 import { startRpcServer } from "../../rpc/server.js"
 import {
-	txHandler,
-	receiptHandler,
-	findBlockHandler,
-	blockHandler,
-	parseBlockId,
-	logsHandler,
-	gasPriceHandler,
-	baseFeeHandler,
 	InvalidBlockIdError,
-	InvalidTimestampError,
+	baseFeeHandler,
+	blockHandler,
+	findBlockHandler,
+	gasPriceHandler,
+	logsHandler,
+	parseBlockId,
+	receiptHandler,
+	txHandler,
 } from "./chain.js"
 import { sendHandler } from "./rpc.js"
 
@@ -62,10 +61,7 @@ describe("txHandler", () => {
 			const node = yield* TevmNodeService
 			const server = yield* startRpcServer({ port: 0 }, node)
 			try {
-				const error = yield* txHandler(
-					`http://127.0.0.1:${server.port}`,
-					`0x${"00".repeat(32)}`,
-				).pipe(Effect.flip)
+				const error = yield* txHandler(`http://127.0.0.1:${server.port}`, `0x${"00".repeat(32)}`).pipe(Effect.flip)
 				expect(error._tag).toBe("TransactionNotFoundError")
 			} finally {
 				yield* server.close()
@@ -100,10 +96,7 @@ describe("receiptHandler", () => {
 			const node = yield* TevmNodeService
 			const server = yield* startRpcServer({ port: 0 }, node)
 			try {
-				const error = yield* receiptHandler(
-					`http://127.0.0.1:${server.port}`,
-					`0x${"00".repeat(32)}`,
-				).pipe(Effect.flip)
+				const error = yield* receiptHandler(`http://127.0.0.1:${server.port}`, `0x${"00".repeat(32)}`).pipe(Effect.flip)
 				expect(error._tag).toBe("ReceiptNotFoundError")
 			} finally {
 				yield* server.close()
