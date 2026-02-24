@@ -7,6 +7,7 @@
  * When a TevmNodeShape is provided, the Dashboard view (tab 0) shows live
  * chain data that auto-updates after state changes.
  * The Call History view (tab 1) shows a scrollable table of past EVM calls.
+ * The Contracts view (tab 2) shows deployed contracts with disassembly/bytecode/storage.
  * The Accounts view (tab 3) shows devnet accounts with fund/impersonate.
  * The Blocks view (tab 4) shows blockchain blocks with mine via m.
  * The Transactions view (tab 5) shows mined transactions with filter via /.
@@ -26,12 +27,14 @@ import { DRACULA } from "./theme.js"
 import { createAccounts } from "./views/Accounts.js"
 import { createBlocks } from "./views/Blocks.js"
 import { createCallHistory } from "./views/CallHistory.js"
+import { createContracts } from "./views/Contracts.js"
 import { createDashboard } from "./views/Dashboard.js"
 import { createSettings } from "./views/Settings.js"
 import { createTransactions } from "./views/Transactions.js"
 import { fundAccount, getAccountDetails, impersonateAccount } from "./views/accounts-data.js"
 import { getBlocksData, mineBlock } from "./views/blocks-data.js"
 import { getCallHistory } from "./views/call-history-data.js"
+import { getContractDetail, getContractsData } from "./views/contracts-data.js"
 import { getDashboardData } from "./views/dashboard-data.js"
 import { cycleMiningMode, getSettingsData, setBlockGasLimit } from "./views/settings-data.js"
 import { getTransactionsData } from "./views/transactions-data.js"
@@ -74,6 +77,7 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 	const helpOverlay = createHelpOverlay(renderer)
 	const dashboard = createDashboard(renderer)
 	const callHistory = createCallHistory(renderer)
+	const contracts = createContracts(renderer)
 	const accounts = createAccounts(renderer)
 	const blocks = createBlocks(renderer)
 	const transactions = createTransactions(renderer)
@@ -112,8 +116,15 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 	// View switching
 	// -------------------------------------------------------------------------
 
-	let currentView: "dashboard" | "callHistory" | "accounts" | "blocks" | "transactions" | "settings" | "placeholder" =
-		"dashboard"
+	let currentView:
+		| "dashboard"
+		| "callHistory"
+		| "contracts"
+		| "accounts"
+		| "blocks"
+		| "transactions"
+		| "settings"
+		| "placeholder" = "dashboard"
 
 	/** Remove whatever is currently in the content area. */
 	const removeCurrentView = (): void => {
@@ -123,6 +134,9 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 				break
 			case "callHistory":
 				contentArea.remove(callHistory.container.id)
+				break
+			case "contracts":
+				contentArea.remove(contracts.container.id)
 				break
 			case "accounts":
 				contentArea.remove(accounts.container.id)
@@ -143,7 +157,7 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 	}
 
 	/** Set of tabs that have dedicated views (not placeholders). */
-	const IMPLEMENTED_TABS = new Set([0, 1, 3, 4, 5, 6])
+	const IMPLEMENTED_TABS = new Set([0, 1, 2, 3, 4, 5, 6])
 
 	const switchToView = (tab: number): void => {
 		if (tab === 0 && currentView !== "dashboard") {
@@ -154,6 +168,10 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 			removeCurrentView()
 			contentArea.add(callHistory.container)
 			currentView = "callHistory"
+		} else if (tab === 2 && currentView !== "contracts") {
+			removeCurrentView()
+			contentArea.add(contracts.container)
+			currentView = "contracts"
 		} else if (tab === 3 && currentView !== "accounts") {
 			removeCurrentView()
 			contentArea.add(accounts.container)
@@ -254,6 +272,17 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 		)
 	}
 
+	const refreshContracts = (): void => {
+		if (!node || state.activeTab !== 2) return
+		// Effect.runPromise at the application edge — acceptable per project rules
+		Effect.runPromise(getContractsData(node)).then(
+			(data) => contracts.update(data.contracts),
+			(err) => {
+				console.error("[chop] contracts refresh failed:", err)
+			},
+		)
+	}
+
 	// Initial dashboard data load
 	refreshDashboard()
 
@@ -313,6 +342,28 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 		if (action._tag === "ViewKey") {
 			if (state.activeTab === 1) {
 				callHistory.handleKey(action.key)
+			} else if (state.activeTab === 2) {
+				const prevContractsState = contracts.getState()
+				contracts.handleKey(action.key)
+				const nextContractsState = contracts.getState()
+
+				// Handle Enter in list mode — load contract detail
+				if (
+					action.key === "return" &&
+					prevContractsState.viewMode === "list" &&
+					nextContractsState.viewMode === "disassembly" &&
+					node
+				) {
+					const selectedContract = nextContractsState.contracts[nextContractsState.selectedIndex]
+					if (selectedContract) {
+						Effect.runPromise(getContractDetail(node, selectedContract)).then(
+							(detail) => contracts.updateDetail(detail),
+							(err) => {
+								console.error("[chop] contract detail fetch failed:", err)
+							},
+						)
+					}
+				}
 			} else if (state.activeTab === 3) {
 				// Check for fund/impersonate signals before handling key
 				const prevState = accounts.getState()
@@ -411,6 +462,7 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 		// Refresh active view data
 		refreshDashboard()
 		refreshCallHistory()
+		refreshContracts()
 		refreshAccounts()
 		refreshBlocks()
 		refreshTransactions()
