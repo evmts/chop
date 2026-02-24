@@ -17,8 +17,34 @@ export default defineConfig({
 		coverage: {
 			provider: "v8",
 			include: ["src/**/*.ts"],
-			exclude: ["src/**/*.test.ts", "src/**/index.ts", "src/tui/**"],
+			exclude: ["src/**/*.test.ts", "src/**/index.ts", "src/tui/**", "src/cli/test-server.ts", "src/cli/test-helpers.ts"],
 			reporter: ["text", "html", "lcov", "json-summary"],
+			thresholds: {
+				"src/evm/**": {
+					statements: 80,
+					branches: 80,
+					functions: 80,
+					lines: 80,
+				},
+				"src/state/**": {
+					statements: 80,
+					branches: 80,
+					functions: 80,
+					lines: 80,
+				},
+				"src/blockchain/**": {
+					statements: 80,
+					branches: 80,
+					functions: 80,
+					lines: 80,
+				},
+				"src/node/**": {
+					statements: 80,
+					branches: 80,
+					functions: 80,
+					lines: 80,
+				},
+			},
 		},
 
 		snapshotFormat: {
