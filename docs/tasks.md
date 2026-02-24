@@ -442,9 +442,9 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - TUI test: select block → detail shows header fields
 
 ### T4.7 Transactions View
-- [ ] Transaction table with hash, from, to, value, status
-- [ ] Detail on Enter (decoded calldata, logs, receipt)
-- [ ] Filter via `/`
+- [x] Transaction table with hash, from, to, value, status
+- [x] Detail on Enter (decoded calldata, logs, receipt)
+- [x] Filter via `/`
 
 **Validation**:
 - TUI test: send tx → appears in list
