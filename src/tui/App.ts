@@ -12,6 +12,7 @@
  * The Blocks view (tab 4) shows blockchain blocks with mine via m.
  * The Transactions view (tab 5) shows mined transactions with filter via /.
  * The Settings view (tab 6) shows node configuration with editable mining mode and gas limit.
+ * The State Inspector view (tab 7) shows a tree browser for accounts → storage.
  */
 
 import type { CliRenderer } from "@opentui/core"
@@ -31,12 +32,14 @@ import { createContracts } from "./views/Contracts.js"
 import { createDashboard } from "./views/Dashboard.js"
 import { createSettings } from "./views/Settings.js"
 import { createTransactions } from "./views/Transactions.js"
+import { buildFlatTree, createStateInspector } from "./views/StateInspector.js"
 import { fundAccount, getAccountDetails, impersonateAccount } from "./views/accounts-data.js"
 import { getBlocksData, mineBlock } from "./views/blocks-data.js"
 import { getCallHistory } from "./views/call-history-data.js"
 import { getContractDetail, getContractsData } from "./views/contracts-data.js"
 import { getDashboardData } from "./views/dashboard-data.js"
 import { cycleMiningMode, getSettingsData, setBlockGasLimit } from "./views/settings-data.js"
+import { getStateInspectorData, setStorageValue } from "./views/state-inspector-data.js"
 import { getTransactionsData } from "./views/transactions-data.js"
 
 /** Handle returned by createApp. */
@@ -82,6 +85,7 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 	const blocks = createBlocks(renderer)
 	const transactions = createTransactions(renderer)
 	const settings = createSettings(renderer)
+	const stateInspector = createStateInspector(renderer)
 
 	// Pass node reference to accounts view for fund/impersonate side effects
 	if (node) accounts.setNode(node)
@@ -124,6 +128,7 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 		| "blocks"
 		| "transactions"
 		| "settings"
+		| "stateInspector"
 		| "placeholder" = "dashboard"
 
 	/** Remove whatever is currently in the content area. */
@@ -150,6 +155,9 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 			case "settings":
 				contentArea.remove(settings.container.id)
 				break
+			case "stateInspector":
+				contentArea.remove(stateInspector.container.id)
+				break
 			case "placeholder":
 				contentArea.remove(placeholderBox.id)
 				break
@@ -157,7 +165,7 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 	}
 
 	/** Set of tabs that have dedicated views (not placeholders). */
-	const IMPLEMENTED_TABS = new Set([0, 1, 2, 3, 4, 5, 6])
+	const IMPLEMENTED_TABS = new Set([0, 1, 2, 3, 4, 5, 6, 7])
 
 	const switchToView = (tab: number): void => {
 		if (tab === 0 && currentView !== "dashboard") {
@@ -188,6 +196,10 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 			removeCurrentView()
 			contentArea.add(settings.container)
 			currentView = "settings"
+		} else if (tab === 7 && currentView !== "stateInspector") {
+			removeCurrentView()
+			contentArea.add(stateInspector.container)
+			currentView = "stateInspector"
 		} else if (!IMPLEMENTED_TABS.has(tab) && currentView !== "placeholder") {
 			removeCurrentView()
 			contentArea.add(placeholderBox)
@@ -283,6 +295,17 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 		)
 	}
 
+	const refreshStateInspector = (): void => {
+		if (!node || state.activeTab !== 7) return
+		// Effect.runPromise at the application edge — acceptable per project rules
+		Effect.runPromise(getStateInspectorData(node)).then(
+			(data) => stateInspector.update(data),
+			(err) => {
+				console.error("[chop] state inspector refresh failed:", err)
+			},
+		)
+	}
+
 	// Initial dashboard data load
 	refreshDashboard()
 
@@ -329,7 +352,8 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 			(state.activeTab === 1 && callHistory.getState().filterActive) ||
 			(state.activeTab === 3 && accounts.getState().inputActive) ||
 			(state.activeTab === 5 && transactions.getState().filterActive) ||
-			(state.activeTab === 6 && settings.getState().inputActive)
+			(state.activeTab === 6 && settings.getState().inputActive) ||
+			(state.activeTab === 7 && (stateInspector.getState().searchActive || stateInspector.getState().editActive))
 		const action = keyToAction(keyName, isInputMode)
 		if (!action) return
 
@@ -448,6 +472,34 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 						)
 					}
 				}
+			} else if (state.activeTab === 7) {
+				const prevState = stateInspector.getState()
+				stateInspector.handleKey(action.key)
+				const nextState = stateInspector.getState()
+
+				// Handle edit side effect — storage value confirmed
+				if (nextState.editConfirmed && !prevState.editConfirmed && node) {
+					const flatTree = buildFlatTree(prevState)
+					const row = flatTree[prevState.selectedIndex]
+					if (row?.type === "storageSlot") {
+						const account = prevState.accounts[row.accountIndex]
+						const slotEntry = account?.storage[row.slotIndex ?? 0]
+						if (account && slotEntry) {
+							const editStr = prevState.editValue
+							try {
+								const value = BigInt(editStr.startsWith("0x") ? editStr : `0x${editStr}`)
+								Effect.runPromise(setStorageValue(node, account.address, slotEntry.slot, value)).then(
+									() => refreshStateInspector(),
+									(err) => {
+										console.error("[chop] set storage value failed:", err)
+									},
+								)
+							} catch {
+								// Invalid hex value, ignore
+							}
+						}
+					}
+				}
 			}
 			return
 		}
@@ -467,6 +519,7 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 		refreshBlocks()
 		refreshTransactions()
 		refreshSettings()
+		refreshStateInspector()
 	})
 
 	// -------------------------------------------------------------------------

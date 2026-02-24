@@ -459,11 +459,11 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - TUI test: change mining mode → takes effect
 
 ### T4.9 State Inspector View
-- [ ] Tree browser for accounts → storage
-- [ ] Expand/collapse with Enter or h/l
-- [ ] Hex/decimal toggle with `x`
-- [ ] Edit values with `e` (devnet only)
-- [ ] Search with `/`
+- [x] Tree browser for accounts → storage
+- [x] Expand/collapse with Enter or h/l
+- [x] Hex/decimal toggle with `x`
+- [x] Edit values with `e` (devnet only)
+- [x] Search with `/`
 
 **Validation**:
 - TUI test: expand account → shows balance, nonce, storage

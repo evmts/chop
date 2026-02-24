@@ -100,9 +100,17 @@ describe("TUI state", () => {
 
 		it.effect("invalid key returns null", () =>
 			Effect.sync(() => {
-				expect(keyToAction("x")).toBeNull()
 				expect(keyToAction("a")).toBeNull()
 				expect(keyToAction("")).toBeNull()
+			}),
+		)
+
+		it.effect("h/l/x/e are ViewKey actions", () =>
+			Effect.sync(() => {
+				expect(keyToAction("h")).toEqual({ _tag: "ViewKey", key: "h" })
+				expect(keyToAction("l")).toEqual({ _tag: "ViewKey", key: "l" })
+				expect(keyToAction("x")).toEqual({ _tag: "ViewKey", key: "x" })
+				expect(keyToAction("e")).toEqual({ _tag: "ViewKey", key: "e" })
 			}),
 		)
 
