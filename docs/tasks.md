@@ -413,10 +413,10 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - TUI test: select call → detail shows calldata
 
 ### T4.4 Contracts View
-- [ ] Contract list with addresses and code sizes
-- [ ] Disassembly view
-- [ ] Selector list with names
-- [ ] Storage browser
+- [x] Contract list with addresses and code sizes
+- [x] Disassembly view
+- [x] Selector list with names
+- [x] Storage browser
 
 **Validation**:
 - TUI test: deploy contract → appears in list
