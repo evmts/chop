@@ -451,8 +451,8 @@ Ordered task list with acceptance criteria and tests. All tasks satisfied = prod
 - TUI test: select → decoded calldata visible
 
 ### T4.8 Settings View
-- [ ] Displays all node settings
-- [ ] Editable settings (mining mode, gas limit)
+- [x] Displays all node settings
+- [x] Editable settings (mining mode, gas limit)
 
 **Validation**:
 - TUI test: shows chain ID, mining mode
