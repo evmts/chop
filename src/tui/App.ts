@@ -9,6 +9,7 @@
  * The Call History view (tab 1) shows a scrollable table of past EVM calls.
  * The Accounts view (tab 3) shows devnet accounts with fund/impersonate.
  * The Blocks view (tab 4) shows blockchain blocks with mine via m.
+ * The Settings view (tab 6) shows node configuration with editable mining mode and gas limit.
  */
 
 import { Effect } from "effect"
@@ -25,10 +26,12 @@ import { createAccounts } from "./views/Accounts.js"
 import { createBlocks } from "./views/Blocks.js"
 import { createCallHistory } from "./views/CallHistory.js"
 import { createDashboard } from "./views/Dashboard.js"
+import { createSettings } from "./views/Settings.js"
 import { getAccountDetails, fundAccount, impersonateAccount } from "./views/accounts-data.js"
 import { getBlocksData, mineBlock } from "./views/blocks-data.js"
 import { getCallHistory } from "./views/call-history-data.js"
 import { getDashboardData } from "./views/dashboard-data.js"
+import { cycleMiningMode, getSettingsData, setBlockGasLimit } from "./views/settings-data.js"
 
 /** Handle returned by createApp. */
 export interface AppHandle {
@@ -70,6 +73,7 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 	const callHistory = createCallHistory(renderer)
 	const accounts = createAccounts(renderer)
 	const blocks = createBlocks(renderer)
+	const settings = createSettings(renderer)
 
 	// Pass node reference to accounts view for fund/impersonate side effects
 	if (node) accounts.setNode(node)
@@ -104,7 +108,7 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 	// View switching
 	// -------------------------------------------------------------------------
 
-	let currentView: "dashboard" | "callHistory" | "accounts" | "blocks" | "placeholder" = "dashboard"
+	let currentView: "dashboard" | "callHistory" | "accounts" | "blocks" | "settings" | "placeholder" = "dashboard"
 
 	/** Remove whatever is currently in the content area. */
 	const removeCurrentView = (): void => {
@@ -121,11 +125,17 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 			case "blocks":
 				contentArea.remove(blocks.container.id)
 				break
+			case "settings":
+				contentArea.remove(settings.container.id)
+				break
 			case "placeholder":
 				contentArea.remove(placeholderBox.id)
 				break
 		}
 	}
+
+	/** Set of tabs that have dedicated views (not placeholders). */
+	const IMPLEMENTED_TABS = new Set([0, 1, 3, 4, 6])
 
 	const switchToView = (tab: number): void => {
 		if (tab === 0 && currentView !== "dashboard") {
@@ -144,13 +154,17 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 			removeCurrentView()
 			contentArea.add(blocks.container)
 			currentView = "blocks"
-		} else if (tab !== 0 && tab !== 1 && tab !== 3 && tab !== 4 && currentView !== "placeholder") {
+		} else if (tab === 6 && currentView !== "settings") {
+			removeCurrentView()
+			contentArea.add(settings.container)
+			currentView = "settings"
+		} else if (!IMPLEMENTED_TABS.has(tab) && currentView !== "placeholder") {
 			removeCurrentView()
 			contentArea.add(placeholderBox)
 			currentView = "placeholder"
 		}
 
-		if (tab !== 0 && tab !== 1 && tab !== 3 && tab !== 4) {
+		if (!IMPLEMENTED_TABS.has(tab)) {
 			const tabDef = TABS[tab]
 			if (tabDef) {
 				placeholderText.content = `[ ${tabDef.name} ]`
@@ -206,6 +220,17 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 		)
 	}
 
+	const refreshSettings = (): void => {
+		if (!node || state.activeTab !== 6) return
+		// Effect.runPromise at the application edge — acceptable per project rules
+		Effect.runPromise(getSettingsData(node)).then(
+			(data) => settings.update(data),
+			(err) => {
+				console.error("[chop] settings refresh failed:", err)
+			},
+		)
+	}
+
 	// Initial dashboard data load
 	refreshDashboard()
 
@@ -247,10 +272,11 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 	emitter.on("keypress", (key) => {
 		const keyName = key.name ?? key.sequence
 
-		// Check if active view is in input mode (e.g. filter text entry, fund prompt)
+		// Check if active view is in input mode (e.g. filter text entry, fund prompt, gas limit edit)
 		const isInputMode =
 			(state.activeTab === 1 && callHistory.getState().filterActive) ||
-			(state.activeTab === 3 && accounts.getState().inputActive)
+			(state.activeTab === 3 && accounts.getState().inputActive) ||
+			(state.activeTab === 6 && settings.getState().inputActive)
 		const action = keyToAction(keyName, isInputMode)
 		if (!action) return
 
@@ -318,6 +344,33 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 						},
 					)
 				}
+			} else if (state.activeTab === 6) {
+				settings.handleKey(action.key)
+				const settingsState = settings.getState()
+
+				// Handle mining mode toggle side effect
+				if (settingsState.miningModeToggled && node) {
+					Effect.runPromise(cycleMiningMode(node)).then(
+						() => refreshSettings(),
+						(err) => {
+							console.error("[chop] cycle mining mode failed:", err)
+						},
+					)
+				}
+
+				// Handle gas limit edit side effect
+				if (settingsState.gasLimitConfirmed && node) {
+					const limitStr = settingsState.gasLimitInput
+					const limitNum = Number.parseInt(limitStr, 10)
+					if (!Number.isNaN(limitNum) && limitNum >= 0) {
+						Effect.runPromise(setBlockGasLimit(node, BigInt(limitNum))).then(
+							() => refreshSettings(),
+							(err) => {
+								console.error("[chop] set block gas limit failed:", err)
+							},
+						)
+					}
+				}
 			}
 			return
 		}
@@ -334,6 +387,7 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 		refreshCallHistory()
 		refreshAccounts()
 		refreshBlocks()
+		refreshSettings()
 	})
 
 	// -------------------------------------------------------------------------
