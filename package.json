@@ -1,0 +1,72 @@
+{
+	"name": "chop",
+	"version": "0.1.0",
+	"description": "Ethereum Swiss Army knife - cast-compatible CLI, TUI, and MCP server",
+	"type": "module",
+	"license": "MIT",
+	"bin": {
+		"chop": "./dist/bin/chop.js",
+		"chop-mcp": "./dist/bin/chop-mcp.js"
+	},
+	"exports": {
+		".": {
+			"import": "./dist/src/index.js",
+			"types": "./dist/src/index.d.ts"
+		}
+	},
+	"keywords": [
+		"ethereum",
+		"evm",
+		"solidity",
+		"cli",
+		"devnet",
+		"anvil",
+		"mcp",
+		"abi",
+		"keccak"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/evmts/chop.git"
+	},
+	"files": [
+		"dist/",
+		"SKILL.md",
+		"AGENTS.md"
+	],
+	"scripts": {
+		"build": "tsup",
+		"prepublishOnly": "bun run build",
+		"dev": "bun run bin/chop.ts",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage",
+		"lint": "biome check src/ bin/ test/",
+		"lint:fix": "biome check --write src/ bin/ test/",
+		"format": "biome format --write src/ bin/ test/",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@effect/cli": "^0.73.0",
+		"@effect/platform": "^0.94.0",
+		"@effect/platform-node": "^0.104.0",
+		"@modelcontextprotocol/sdk": "^1.27.1",
+		"@opentui/core": "^0.1.80",
+		"effect": "^3.19.0",
+		"voltaire-effect": "^0.3.0",
+		"zod": "^4.3.6"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.0",
+		"@effect/vitest": "^0.27.0",
+		"@vitest/coverage-v8": "^3.2.0",
+		"tsup": "^8.4.0",
+		"typescript": "^5.7.0",
+		"vitest": "^3.2.0"
+	},
+	"engines": {
+		"node": ">=22.0.0",
+		"bun": ">=1.2.0"
+	},
+	"packageManager": "bun@1.2.0"
+}

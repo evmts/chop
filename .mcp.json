@@ -1,0 +1,9 @@
+{
+	"mcpServers": {
+		"chop": {
+			"command": "node",
+			"args": ["./dist/bin/chop-mcp.js"],
+			"env": {}
+		}
+	}
+}

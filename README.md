@@ -1,588 +1,249 @@
-# Chop - Guillotine EVM CLI
+# chop
 
-![CI](https://github.com/evmts/chop/workflows/CI/badge.svg)
-[![codecov](https://codecov.io/gh/evmts/chop/branch/main/graph/badge.svg)](https://codecov.io/gh/evmts/chop)
-[![Security](https://github.com/evmts/chop/workflows/Security/badge.svg)](https://github.com/evmts/chop/actions/workflows/security.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/evmts/chop)](https://goreportcard.com/report/github.com/evmts/chop)
-[![Release](https://img.shields.io/github/v/release/evmts/chop)](https://github.com/evmts/chop/releases)
+Ethereum Swiss Army knife -- CLI, TUI, and MCP server powered by an in-process EVM.
 
-A hybrid Zig/Go project that uses the guillotine-mini EVM for Ethereum transaction processing with a Bubble Tea-based TUI.
+Built with [Effect](https://effect.website), [voltaire-effect](https://github.com/evmts/voltaire-effect), and [guillotine-mini](https://github.com/evmts/guillotine-mini).
 
-## Project Structure
-
-```
-chop/
-├── build.zig                        # Unified build system (orchestrates everything)
-├── src/                             # Zig source code
-│   ├── main.zig                     # Zig entry point
-│   └── root.zig                     # Zig module root
-├── main.go                          # Go application entry point
-├── internal/                        # Go source code
-│   ├── app/                         # Application logic
-│   │   ├── model.go                 # Bubble Tea model
-│   │   ├── init.go                  # Initialization logic
-│   │   ├── update.go                # Update function
-│   │   ├── view.go                  # View rendering
-│   │   ├── handlers.go              # Event handlers & navigation
-│   │   ├── parameters.go            # Call parameter management
-│   │   └── table_helpers.go         # Table update helpers
-│   ├── config/                      # Configuration & constants
-│   │   └── config.go                # App config, colors, keys
-│   ├── core/                        # Core business logic
-│   │   ├── logs.go                  # Log helpers
-│   │   ├── bytecode/                # Bytecode analysis (stubbed)
-│   │   │   └── bytecode.go
-│   │   ├── evm/                     # EVM execution (stubbed)
-│   │   │   └── evm.go
-│   │   ├── history/                 # Call history management
-│   │   │   └── history.go
-│   │   ├── state/                   # State persistence
-│   │   │   └── state.go
-│   │   └── utils/                   # Utility functions
-│   │       └── utils.go
-│   ├── types/                       # Type definitions
-│   │   └── types.go
-│   └── ui/                          # UI components & rendering
-│       └── ui.go
-├── lib/
-│   └── guillotine-mini/             # Git submodule - EVM implementation in Zig
-├── zig-out/                         # Build artifacts
-│   └── bin/
-│       ├── chop                     # Zig executable
-│       ├── chop-go                  # Go executable
-│       └── guillotine_mini.wasm     # EVM WASM library
-├── go.mod
-├── go.sum
-└── .gitmodules                      # Git submodule configuration
-```
-
-## Features
-
-### Current (Stubbed)
-
-- **Interactive TUI**: Full-featured Bubble Tea interface
-- **Call Parameter Configuration**: Configure EVM calls with validation
-- **Call History**: View past call executions
-- **Contract Management**: Track deployed contracts
-- **State Persistence**: Save and restore session state
-- **Bytecode Disassembly**: View disassembled contract bytecode (stubbed)
-
-### Application States
-
-1. **Main Menu**: Navigate between features
-2. **Call Parameter List**: Configure call parameters
-3. **Call Parameter Edit**: Edit individual parameters
-4. **Call Execution**: Execute EVM calls
-5. **Call Results**: View execution results
-6. **Call History**: Browse past executions
-7. **Contracts**: View deployed contracts
-8. **Contract Details**: Detailed contract view with disassembly
-
-### Keyboard Shortcuts
-
-- `↑/↓` or `k/j`: Navigate
-- `←/→` or `h/l`: Navigate blocks (in disassembly)
-- `Enter`: Select/Confirm
-- `Esc`: Back/Cancel
-- `e`: Execute call
-- `r`: Reset parameter
-- `R`: Reset all parameters
-- `c`: Copy to clipboard
-- `ctrl+v`: Paste from clipboard
-- `q` or `ctrl+c`: Quit
-
-## Prerequisites
-
-- **Zig**: 0.15.1 or later (for building from source)
-- **Go**: 1.21 or later (for building from source)
-- **Git**: For submodule management (for building from source)
-
-## Installation
-
-### Pre-built Binaries (Recommended)
-
-Download pre-built binaries for your platform from the [GitHub Releases](https://github.com/evmts/chop/releases) page.
-
-#### macOS
+## Install
 
 ```bash
-# Intel Mac
-curl -LO https://github.com/evmts/chop/releases/latest/download/chop_latest_darwin_amd64.tar.gz
-tar -xzf chop_latest_darwin_amd64.tar.gz
-chmod +x chop
-sudo mv chop /usr/local/bin/
-
-# Apple Silicon Mac
-curl -LO https://github.com/evmts/chop/releases/latest/download/chop_latest_darwin_arm64.tar.gz
-tar -xzf chop_latest_darwin_arm64.tar.gz
-chmod +x chop
-sudo mv chop /usr/local/bin/
+npm install -g chop
+# or
+bun install -g chop
 ```
 
-#### Linux
+## Quick Start
 
 ```bash
-# AMD64
-curl -LO https://github.com/evmts/chop/releases/latest/download/chop_latest_linux_amd64.tar.gz
-tar -xzf chop_latest_linux_amd64.tar.gz
-chmod +x chop
-sudo mv chop /usr/local/bin/
+# Hash data
+chop keccak "transfer(address,uint256)"
 
-# ARM64
-curl -LO https://github.com/evmts/chop/releases/latest/download/chop_latest_linux_arm64.tar.gz
-tar -xzf chop_latest_linux_arm64.tar.gz
-chmod +x chop
-sudo mv chop /usr/local/bin/
+# Get a function selector
+chop sig "transfer(address,uint256)"
+# 0xa9059cbb
+
+# Encode calldata
+chop calldata "transfer(address,uint256)" 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045 1000
+
+# Decode calldata
+chop calldata-decode "transfer(address,uint256)" 0xa9059cbb...
+
+# Convert units
+chop from-wei 1000000000000000000
+# 1.000000000000000000
+
+chop to-hex 255
+# 0xff
+
+# Start a local devnet
+chop node
+# Listening on http://localhost:8545
+# Chain ID: 31337
+# 10 funded accounts...
+
+# Query the devnet (or any RPC)
+chop balance 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 -r http://localhost:8545
+chop block-number -r http://localhost:8545
 ```
 
-#### Windows
+## CLI Reference
 
-Download the appropriate `.zip` file for your architecture from the [releases page](https://github.com/evmts/chop/releases), extract it, and add the executable to your PATH.
-
-### Building from Source
-
-If you prefer to build from source, see the [Build System](#build-system) section below.
-
-## Setup
-
-Initialize the submodules:
-
-```bash
-git submodule update --init --recursive
-```
-
-## Build System
-
-The project uses Zig's build system as the primary orchestrator. All build commands go through `zig build`.
-
-### Available Commands
+### ABI Encoding
 
 | Command | Description |
 |---------|-------------|
-| `zig build` | Build everything (default: stub EVM, WASM library) |
-| `zig build all` | Explicitly build everything |
-| `zig build go` | Build Go binary with stub EVM (CGo disabled) |
-| `zig build go-cgo` | **Build Go binary with real EVM (CGo enabled)** |
-| `zig build run` | Run the Go application (stub EVM) |
-| `zig build run-cgo` | **Run the Go application with real EVM** |
-| `zig build guillotine` | Build guillotine-mini WASM library |
-| `zig build guillotine-lib` | Build guillotine-mini native library for CGo |
-| `zig build test` | Run all tests |
-| `zig build go-test` | Run only Go tests |
-| `zig build clean` | Remove all build artifacts |
+| `chop abi-encode <sig> [args...]` | ABI-encode values for a function signature |
+| `chop abi-encode --packed <sig> [args...]` | ABI-encode with packed encoding |
+| `chop calldata <sig> [args...]` | Encode function calldata (selector + args) |
+| `chop abi-decode <sig> <data>` | Decode ABI-encoded data |
+| `chop calldata-decode <sig> <data>` | Decode function calldata |
 
-### Quick Start
+### Cryptographic
 
-#### Option 1: Stub EVM (Fast, No CGo)
+| Command | Description |
+|---------|-------------|
+| `chop keccak <data>` | Keccak256 hash |
+| `chop sig <signature>` | 4-byte function selector |
+| `chop sig-event <signature>` | Event topic hash |
+| `chop hash-message <message>` | EIP-191 signed message hash |
+
+### Data Conversion
+
+| Command | Description |
+|---------|-------------|
+| `chop from-wei <amount> [unit]` | Wei to ether (or gwei, etc.) |
+| `chop to-wei <amount> [unit]` | Ether to wei |
+| `chop to-hex <decimal>` | Decimal to hex |
+| `chop to-dec <hex>` | Hex to decimal |
+| `chop to-base <value> --base-out <n>` | Convert between arbitrary bases |
+| `chop from-utf8 <string>` | UTF-8 to hex |
+| `chop to-utf8 <hex>` | Hex to UTF-8 |
+| `chop to-bytes32 <value>` | Pad value to bytes32 |
+| `chop from-rlp <hex>` | RLP-decode |
+| `chop to-rlp <values...>` | RLP-encode |
+| `chop shl <value> <bits>` | Shift left |
+| `chop shr <value> <bits>` | Shift right |
+
+### Address Utilities
+
+| Command | Description |
+|---------|-------------|
+| `chop to-check-sum-address <addr>` | EIP-55 checksum address |
+| `chop compute-address --deployer <addr> --nonce <n>` | Predict CREATE address |
+| `chop create2 --deployer <addr> --salt <hex> --init-code <hex>` | Predict CREATE2 address |
+
+### Bytecode Analysis
+
+| Command | Description |
+|---------|-------------|
+| `chop disassemble <bytecode>` | Disassemble EVM bytecode |
+| `chop 4byte <selector>` | Look up function selector |
+| `chop 4byte-event <topic>` | Look up event topic |
+
+### Chain Queries
+
+These commands require `-r <rpc-url>` (or a running `chop node`).
+
+| Command | Description |
+|---------|-------------|
+| `chop block-number` | Latest block number |
+| `chop chain-id` | Chain ID |
+| `chop balance <address>` | Account balance (wei) |
+| `chop nonce <address>` | Account nonce |
+| `chop code <address>` | Contract bytecode |
+| `chop storage <address> <slot>` | Storage slot value |
+| `chop block <number\|tag>` | Block details |
+| `chop tx <hash>` | Transaction details |
+| `chop receipt <hash>` | Transaction receipt |
+| `chop logs [--address <addr>] [--topic <t>]` | Event logs |
+| `chop gas-price` | Current gas price |
+| `chop base-fee` | Current base fee |
+| `chop call --to <addr> <sig> [args]` | Execute eth_call |
+| `chop estimate --to <addr> <sig> [args]` | Estimate gas |
+| `chop send --to <addr> --from <addr> <sig> [args]` | Send transaction |
+| `chop rpc <method> [params...]` | Raw JSON-RPC call |
+| `chop find-block <timestamp>` | Find block by timestamp |
+
+### ENS
+
+| Command | Description |
+|---------|-------------|
+| `chop namehash <name>` | Compute ENS namehash |
+| `chop resolve-name <name>` | Resolve ENS name to address |
+| `chop lookup-address <address>` | Reverse lookup address to ENS name |
+
+### Local Devnet
 
 ```bash
-# Build with stub EVM (no actual execution)
-zig build go
-
-# Run CLI (stub returns fake gas values)
-./zig-out/bin/chop-go call --bytecode 0x6001600101
-# Output: WARNING: CGo disabled - EVM execution stubbed
+chop node [options]
 ```
 
-#### Option 2: Real EVM (CGo Enabled) ⭐ RECOMMENDED
+| Option | Description |
+|--------|-------------|
+| `--port <n>` | HTTP port (default: 8545) |
+| `--chain-id <n>` | Chain ID (default: 31337) |
+| `--accounts <n>` | Number of funded accounts (default: 10) |
+| `--fork-url <url>` | Fork from an RPC endpoint |
+| `--fork-block-number <n>` | Pin fork to a specific block |
 
-```bash
-# Build with real EVM execution
-zig build go-cgo
+The devnet supports the full Anvil/Hardhat JSON-RPC API including `anvil_*`, `evm_*`, `debug_*`, `hardhat_*`, and `ganache_*` method namespaces.
 
-# Run CLI with actual EVM
-./zig-out/bin/chop call --bytecode 0x6001600101
-# Output: ExecutionResult{Status: SUCCESS, GasUsed: 9, ...}
+### Global Options
 
-# Or build and run directly
-zig build run-cgo -- call --bytecode 0x6000600055
+| Option | Description |
+|--------|-------------|
+| `--json, -j` | Output as JSON |
+| `--rpc-url, -r` | RPC endpoint URL |
+| `--help, -h` | Show help |
+| `--version` | Show version |
 
-# Run tests
-zig build test
+## TUI
+
+Running `chop` with no arguments (or `chop node`) launches an interactive terminal interface with 8 views:
+
+1. **Dashboard** -- Chain info, recent blocks, transactions, accounts
+2. **Call History** -- Scrollable RPC call log with filters
+3. **Contracts** -- Deployed contracts with disassembly and storage browser
+4. **Accounts** -- Account table with balances, fund and impersonate actions
+5. **Blocks** -- Block explorer with mine action
+6. **Transactions** -- Transaction list with decoded calldata
+7. **Settings** -- Node configuration (mining mode, gas limit, etc.)
+8. **State Inspector** -- Tree browser for account storage with edit support
+
+**Keyboard shortcuts**: Number keys switch tabs, `?` shows help, `/` filters, `q` quits.
+
+## MCP Server
+
+Chop includes an [MCP](https://modelcontextprotocol.io) server for AI tool integration. Add it to your `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "chop": {
+      "command": "node",
+      "args": ["./node_modules/chop/dist/bin/chop-mcp.js"]
+    }
+  }
+}
 ```
 
-### CGo vs Stub Builds
+Or if installed globally:
 
-The project supports two build modes:
+```json
+{
+  "mcpServers": {
+    "chop": {
+      "command": "chop-mcp"
+    }
+  }
+}
+```
 
-#### Stub Build (CGo Disabled)
-- **Command**: `zig build go`
-- **Output**: `zig-out/bin/chop-go`
-- **Pros**: Fast compilation, no C dependencies, portable
-- **Cons**: EVM execution is fake (returns mock values)
-- **Use for**: Development, testing UI/CLI without EVM
-
-#### CGo Build (Real EVM) ⭐
-- **Command**: `zig build go-cgo`
-- **Output**: `zig-out/bin/chop`
-- **Pros**: Actual EVM execution, real gas accounting, accurate results
-- **Cons**: Requires C compiler, longer build time (~10-20s)
-- **Use for**: Production, actual EVM testing, accurate gas measurements
-
-**Key Difference**: The CGo build links against the guillotine-mini native library (`libwasm.a`, `libblst.a`, `libc-kzg-4844.a`, `libbn254_wrapper.a`) and uses real Zig EVM implementation. The stub build has no external dependencies and returns fake execution results.
-
-## Components
-
-### Chop (Zig)
-
-The Zig application component.
-
-**Source**: `src/`
-**Output**: `zig-out/bin/chop`
-
-### Chop Go (TUI Application)
-
-The Go application with Bubble Tea TUI.
-
-**Source**: `internal/`, `main.go`
-**Output**: `zig-out/bin/chop-go`
-
-### Guillotine-mini
-
-The EVM implementation, built as a WASM library.
-
-**Source**: `lib/guillotine-mini/` (submodule)
-**Output**: `lib/guillotine-mini/zig-out/bin/guillotine_mini.wasm`
-
-## Guillotine Integration Status
-
-### ✅ Completed
-
-1. **EVM Execution** (`evm/` package) - **WORKING**
-   - Full CGo bindings to guillotine-mini native library
-   - Real EVM execution with accurate gas accounting
-   - Support for all call types (CALL, STATICCALL, CREATE, etc.)
-   - Async execution with state injection
-   - Build system integration (`zig build go-cgo`)
-
-### 🚧 TODO
-
-1. **Bytecode Analysis** (`core/bytecode/bytecode.go`)
-   - Implement real EVM opcode disassembly
-   - Add control flow analysis
-   - Generate basic blocks
-
-2. **State Replay** (`core/state/state.go`)
-   - Implement state replay through VM
-
-3. **Clipboard Support** (`tui/ui.go`)
-   - Implement actual clipboard read/write operations
-
-4. **TUI Integration**
-   - Wire up TUI to use real EVM execution (currently uses stub)
-   - Update call results view to show real execution data
+The MCP server exposes 33 tools, 6 resources, and 4 prompts covering all CLI functionality plus devnet control. See [SKILL.md](./SKILL.md) for the full tool list.
 
 ## Development
 
-The codebase is organized into clear layers:
-
-- **Presentation Layer**: `internal/ui/` and `internal/app/view.go`
-- **Application Layer**: `internal/app/` (handlers, navigation, state management)
-- **Domain Layer**: `internal/core/` (EVM, history, bytecode analysis)
-- **Infrastructure Layer**: `internal/core/state/` (persistence)
-
-All EVM-related functionality is stubbed with clear TODO markers for easy integration with Guillotine.
-
-### Making Changes
-
-1. Edit your code in `src/` (Zig) or `internal/`, `main.go` (Go)
-2. Run `zig build` to rebuild
-3. Run `zig build test` to verify tests pass
-
-### Working with Guillotine-mini
-
-The `guillotine-mini` submodule is a separate Zig project with its own build system.
-
 ```bash
-# Build the WASM library through the main build system
-zig build guillotine
+# Install dependencies
+bun install
 
-# Or build it directly in the submodule
-cd lib/guillotine-mini
-zig build wasm
+# Run CLI in dev mode
+bun run dev -- keccak "hello"
+
+# Run tests
+bun run test
+
+# Type-check
+bun run typecheck
+
+# Lint
+bun run lint
+
+# Build
+bun run build
 ```
 
-See `lib/guillotine-mini/README.md` or `lib/guillotine-mini/CLAUDE.md` for detailed documentation on the EVM implementation.
+### Architecture
 
-### Cleaning Build Artifacts
-
-```bash
-zig build clean
+```
+bin/
+  chop.ts          CLI entry point (Effect CLI)
+  chop-mcp.ts      MCP server entry point (stdio transport)
+src/
+  cli/             Command definitions and CLI framework
+  handlers/        Pure business logic (Effect-based)
+  evm/             WASM EVM integration (guillotine-mini)
+  state/           World state, journal, account management
+  blockchain/      Block store, chain management
+  node/            TevmNode service layer composition
+  rpc/             JSON-RPC server and method routing
+  tui/             Terminal UI (OpenTUI + Dracula theme)
+  mcp/             MCP server (tools, resources, prompts)
+  shared/          Shared types and errors
 ```
 
-This removes:
-- `zig-out/` (main project artifacts)
-- `zig-cache/` (Zig build cache)
-- `lib/guillotine-mini/zig-out/` (submodule artifacts)
-- `lib/guillotine-mini/zig-cache/` (submodule cache)
+Handlers are pure Effect programs that take parameters and return results. They are shared across CLI, RPC, and MCP surfaces. The `TevmNode` service composes all state, blockchain, and EVM services into a single layer.
 
-## Go TUI Usage (Chop)
+## License
 
-Build and run the Go TUI directly:
-
-```bash
-CGO_ENABLED=0 go build -o chop .
-./chop
-```
-
-Tabs:
-- [1] Dashboard: Stats, recent blocks/txs (auto-refresh status shown)
-- [2] Accounts: Enter to view; 'p' to reveal private key
-- [3] Blocks: Enter to view block detail
-- [4] Transactions: Enter for transaction detail; in detail view press 'b' to open block
-- [5] Contracts: Enter to view details; 'c' copies address
-- [6] State Inspector: Type/paste address (ctrl+v), Enter to inspect
-- [7] Settings: 'r' reset blockchain, 'g' regenerate accounts (confirmation), 't' toggle auto-refresh
-
-Global:
-- Number keys 1–7 switch tabs; esc goes back; q or ctrl+c quits
-- 'c' in detail views copies the primary identifier (e.g., tx hash)
-
-## Testing
-
-### Running Tests
-
-```bash
-# Run all Go tests
-go test ./...
-
-# Run tests with verbose output
-go test ./... -v
-
-# Run tests with race detector (recommended for development)
-go test ./... -race
-
-# Run tests with coverage report
-go test ./... -cover
-
-# Generate detailed coverage report
-go test ./... -coverprofile=coverage.txt -covermode=atomic
-go tool cover -html=coverage.txt -o coverage.html
-```
-
-### Running Tests via Zig Build
-
-```bash
-# Run all tests (Zig and Go)
-zig build test
-
-# Run only Go tests
-zig build go-test
-```
-
-### Security Scanning
-
-The project includes automated security scanning that runs on every push and pull request.
-
-#### Running Security Scans Locally
-
-```bash
-# Install gosec (security scanner)
-go install github.com/securego/gosec/v2/cmd/gosec@latest
-
-# Run gosec security scan
-gosec ./...
-
-# Run gosec with detailed output
-gosec -fmt=json -out=results.json ./...
-
-# Install govulncheck (vulnerability scanner)
-go install golang.org/x/vuln/cmd/govulncheck@latest
-
-# Run vulnerability check
-govulncheck ./...
-```
-
-#### What Gets Scanned
-
-- **gosec**: Static security analysis checking for:
-  - Hardcoded credentials (G101)
-  - SQL injection vulnerabilities (G201-G202)
-  - File permission issues (G301-G304)
-  - Weak cryptography (G401-G404)
-  - Unsafe operations and more
-
-- **govulncheck**: Checks dependencies against the Go vulnerability database
-  - Scans both direct and indirect dependencies
-  - Reports known CVEs in your dependency tree
-
-- **Dependabot**: Automated dependency updates
-  - Weekly checks for Go module updates
-  - Weekly checks for GitHub Actions updates
-  - Automatic security patch PRs
-
-Configuration files:
-- `.gosec.yml` - gosec scanner configuration
-- `.github/dependabot.yml` - Dependabot configuration
-- `.github/workflows/security.yml` - Security workflow
-
-### Code Quality and Linting
-
-The project uses `golangci-lint` for comprehensive code quality checks and linting.
-
-#### Running Linters Locally
-
-```bash
-# Install golangci-lint (macOS)
-brew install golangci-lint
-
-# Or install via go install
-go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-
-# Run all linters
-golangci-lint run ./...
-
-# Run linters with timeout
-golangci-lint run ./... --timeout=5m
-
-# Run linters and automatically fix issues (where possible)
-golangci-lint run ./... --fix
-```
-
-#### Enabled Linters
-
-The project uses `.golangci.yml` for configuration with the following categories of linters:
-
-**Code Correctness:**
-- `errcheck` - Check for unchecked errors
-- `govet` - Official Go static analyzer
-- `staticcheck` - Go static analysis
-- `typecheck` - Type-check Go code
-- `ineffassign` - Detect ineffectual assignments
-- `unused` - Check for unused code
-
-**Code Style:**
-- `gofmt` - Check code formatting
-- `goimports` - Check import formatting
-- `revive` - Fast, configurable linter
-- `gocritic` - Comprehensive Go source code linter
-
-**Code Quality:**
-- `gosimple` - Simplify code suggestions
-- `gocyclo` - Check cyclomatic complexity
-- `dupl` - Check for code duplication
-- `unconvert` - Remove unnecessary type conversions
-- `unparam` - Check for unused function parameters
-
-**Security:**
-- `gosec` - Inspect for security issues
-
-**Performance:**
-- `prealloc` - Find slice declarations that could be preallocated
-
-**Common Errors:**
-- `misspell` - Check for commonly misspelled words
-- `goconst` - Find repeated strings that could be constants
-- `nilerr` - Find code that returns nil incorrectly
-- `bodyclose` - Check HTTP response body is closed
-
-#### Current Linting Status
-
-As of the last check, the codebase has approximately 89 linting issues across the following categories:
-- `gocritic` (34 issues) - Code style suggestions
-- `gofmt` (13 issues) - Formatting issues
-- `goimports` (11 issues) - Import organization
-- `gocyclo` (8 issues) - High cyclomatic complexity
-- `goconst` (7 issues) - Repeated strings
-- `gosec` (4 issues) - Security warnings
-- `errcheck` (4 issues) - Unchecked errors
-- `revive` (4 issues) - Style violations
-- Other minor issues (4 issues)
-
-Most issues are style-related and can be automatically fixed with `golangci-lint run --fix`. The linter is configured to be reasonable for existing code while maintaining good practices.
-
-Configuration file: `.golangci.yml`
-
-### Continuous Integration
-
-All pull requests and commits to `main` automatically run:
-- **Tests** on Go versions 1.22, 1.24 and platforms Ubuntu (Linux), macOS
-- **Linting** with golangci-lint for code quality checks
-- **Security scans** with gosec and govulncheck
-- **Dependency review** for known vulnerabilities
-- **Code coverage** reporting to Codecov
-
-You can view the CI status in the [GitHub Actions](https://github.com/evmts/chop/actions) tab.
-
-## Why Zig Build?
-
-We use Zig's build system as the orchestrator because:
-
-1. **Unified Interface**: Single command (`zig build`) for all components
-2. **Cross-Platform**: Works consistently across macOS, Linux, Windows
-3. **Dependency Management**: Properly tracks dependencies between components
-4. **Parallelization**: Automatically parallelizes independent build steps
-5. **Caching**: Only rebuilds what changed
-
-## Release Process (Maintainers)
-
-The release process is fully automated using GitHub Actions and GoReleaser.
-
-### Creating a New Release
-
-1. **Ensure all changes are committed and pushed to `main`**
-   ```bash
-   git checkout main
-   git pull origin main
-   ```
-
-2. **Create and push a version tag** (following [Semantic Versioning](https://semver.org/))
-   ```bash
-   # For a new feature release
-   git tag -a v0.1.0 -m "Release v0.1.0: Initial release with TUI"
-
-   # For a bug fix release
-   git tag -a v0.1.1 -m "Release v0.1.1: Fix state persistence bug"
-
-   # For a major release with breaking changes
-   git tag -a v1.0.0 -m "Release v1.0.0: First stable release"
-
-   # Push the tag to trigger the release workflow
-   git push origin v0.1.0
-   ```
-
-3. **GitHub Actions will automatically**:
-   - Run all tests
-   - Build binaries for all platforms (Linux, macOS, Windows) and architectures (amd64, arm64)
-   - Generate checksums
-   - Create a GitHub Release with:
-     - Release notes from commit messages
-     - Downloadable binaries for all platforms
-     - Installation instructions
-
-4. **Monitor the release**:
-   - Visit the [Actions tab](https://github.com/evmts/chop/actions) to watch the release workflow
-   - Once complete, check the [Releases page](https://github.com/evmts/chop/releases)
-
-### Testing Releases Locally
-
-You can test the release process locally without publishing:
-
-```bash
-# Install goreleaser (macOS)
-brew install goreleaser
-
-# Or download from https://github.com/goreleaser/goreleaser/releases
-
-# Run goreleaser in snapshot mode (won't publish)
-goreleaser release --snapshot --clean
-
-# Built artifacts will be in dist/
-ls -la dist/
-```
-
-### Release Checklist
-
-Before creating a release, ensure:
-- [ ] All tests pass: `go test ./...`
-- [ ] Code builds successfully: `CGO_ENABLED=0 go build -o chop .`
-- [ ] Documentation is up to date (README.md, DOCS.md)
-- [ ] CHANGELOG or commit messages clearly describe changes
-- [ ] Version follows [Semantic Versioning](https://semver.org/)
-- [ ] No breaking changes in minor/patch releases
-
-### Version Numbering Guide
-
-- **Major version (v1.0.0)**: Breaking changes, incompatible API changes
-- **Minor version (v0.1.0)**: New features, backwards-compatible
-- **Patch version (v0.0.1)**: Bug fixes, backwards-compatible
+MIT

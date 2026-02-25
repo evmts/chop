@@ -1,0 +1,166 @@
+chop
+
+chop 0.1.0
+
+USAGE
+
+$ chop [(-j, --json)] [(-r, --rpc-url text)]
+
+DESCRIPTION
+
+Ethereum Swiss Army knife
+
+OPTIONS
+
+(-j, --json)
+
+  A true or false value.
+
+  Output results as JSON
+
+  This setting is optional.
+
+(-r, --rpc-url text)
+
+  A user-defined piece of text.
+
+  Ethereum JSON-RPC endpoint URL
+
+  This setting is optional.
+
+--completions sh | bash | fish | zsh
+
+  One of the following: sh, bash, fish, zsh
+
+  Generate a completion script for a specific shell.
+
+  This setting is optional.
+
+--log-level all | trace | debug | info | warning | error | fatal | none
+
+  One of the following: all, trace, debug, info, warning, error, fatal, none
+
+  Sets the minimum log level for a command.
+
+  This setting is optional.
+
+(-h, --help)
+
+  A true or false value.
+
+  Show the help documentation for a command.
+
+  This setting is optional.
+
+--wizard
+
+  A true or false value.
+
+  Start wizard mode for a command.
+
+  This setting is optional.
+
+--version
+
+  A true or false value.
+
+  Show the version of the application.
+
+  This setting is optional.
+
+COMMANDS
+
+  - abi-encode [--packed] [(-j, --json)] <sig> <args>...                                                                               ABI-encode values according to a function signature
+
+  - calldata [(-j, --json)] <sig> <args>...                                                                                            Encode function calldata (selector + ABI args)
+
+  - abi-decode [(-j, --json)] <sig> <data>                                                                                             Decode ABI-encoded data
+
+  - calldata-decode [(-j, --json)] <sig> <data>                                                                                        Decode function calldata
+
+  - to-check-sum-address [(-j, --json)] <addr>                                                                                         Convert address to EIP-55 checksummed form
+
+  - compute-address --deployer text --nonce text [(-j, --json)]                                                                        Compute CREATE contract address from deployer + nonce
+
+  - create2 --deployer text --salt text --init-code text [(-j, --json)]                                                                Compute CREATE2 contract address
+
+  - disassemble [(-j, --json)] <bytecode>                                                                                              Disassemble EVM bytecode into opcode listing
+
+  - 4byte [(-j, --json)] <selector>                                                                                                    Look up 4-byte function selector
+
+  - 4byte-event [(-j, --json)] <topic>                                                                                                 Look up event topic signature
+
+  - block (-r, --rpc-url text) [(-j, --json)] <block-id>                                                                               Get a block by number, tag, or hash
+
+  - tx (-r, --rpc-url text) [(-j, --json)] <hash>                                                                                      Get a transaction by hash
+
+  - receipt (-r, --rpc-url text) [(-j, --json)] <hash>                                                                                 Get a transaction receipt by hash
+
+  - logs [(-a, --address text)] [(-t, --topic text)] [--from-block text] [--to-block text] (-r, --rpc-url text) [(-j, --json)]         Get logs matching a filter
+
+  - gas-price (-r, --rpc-url text) [(-j, --json)]                                                                                      Get the current gas price (wei)
+
+  - base-fee (-r, --rpc-url text) [(-j, --json)]                                                                                       Get the current base fee per gas (wei)
+
+  - find-block (-r, --rpc-url text) [(-j, --json)] <timestamp>                                                                         Find the block closest to a Unix timestamp
+
+  - from-wei [(-j, --json)] <amount> [<unit>]                                                                                          Convert wei to ether (or specified unit)
+
+  - to-wei [(-j, --json)] <amount> [<unit>]                                                                                            Convert ether (or specified unit) to wei
+
+  - to-hex [(-j, --json)] <decimal>                                                                                                    Convert decimal to hexadecimal
+
+  - to-dec [(-j, --json)] <hex>                                                                                                        Convert hexadecimal to decimal
+
+  - to-base [--base-in integer] --base-out integer [(-j, --json)] <value>                                                              Convert between arbitrary bases (2-36)
+
+  - from-utf8 [(-j, --json)] <string>                                                                                                  Convert UTF-8 string to hex
+
+  - to-utf8 [(-j, --json)] <hex>                                                                                                       Convert hex to UTF-8 string
+
+  - to-bytes32 [(-j, --json)] <value>                                                                                                  Pad/convert value to bytes32
+
+  - from-rlp [(-j, --json)] <hex>                                                                                                      RLP-decode hex data
+
+  - to-rlp [(-j, --json)] <values>...                                                                                                  RLP-encode hex values
+
+  - shl [(-j, --json)] <value> <bits>                                                                                                  Bitwise shift left
+
+  - shr [(-j, --json)] <value> <bits>                                                                                                  Bitwise shift right
+
+  - keccak [(-j, --json)] <data>                                                                                                       Compute keccak256 hash of data
+
+  - sig [(-j, --json)] <signature>                                                                                                     Compute 4-byte function selector from signature
+
+  - sig-event [(-j, --json)] <signature>                                                                                               Compute event topic hash from event signature
+
+  - hash-message [(-j, --json)] <message>                                                                                              Compute EIP-191 signed message hash
+
+  - namehash [(-j, --json)] <name>                                                                                                     Compute ENS namehash of a name
+
+  - resolve-name (-r, --rpc-url text) [(-j, --json)] <name>                                                                            Resolve an ENS name to an Ethereum address
+
+  - lookup-address (-r, --rpc-url text) [(-j, --json)] <address>                                                                       Reverse lookup an address to an ENS name
+
+  - chain-id (-r, --rpc-url text) [(-j, --json)]                                                                                       Get the chain ID from an RPC endpoint
+
+  - block-number (-r, --rpc-url text) [(-j, --json)]                                                                                   Get the latest block number from an RPC endpoint
+
+  - balance (-r, --rpc-url text) [(-j, --json)] <address>                                                                              Get the balance of an address (wei)
+
+  - nonce (-r, --rpc-url text) [(-j, --json)] <address>                                                                                Get the nonce of an address
+
+  - code (-r, --rpc-url text) [(-j, --json)] <address>                                                                                 Get the bytecode at an address
+
+  - storage (-r, --rpc-url text) [(-j, --json)] <address> <slot>                                                                       Get storage value at a slot
+
+  - call --to text (-r, --rpc-url text) [(-j, --json)] [<sig>] <args>...                                                               Execute an eth_call against a contract
+
+  - estimate --to text (-r, --rpc-url text) [(-j, --json)] [<sig>] <args>...                                                           Estimate gas for a transaction
+
+  - send --to text --from text [--value text] (-r, --rpc-url text) [(-j, --json)] [<sig>] <args>...                                    Send a transaction
+
+  - rpc (-r, --rpc-url text) [(-j, --json)] <method> <params>...                                                                       Execute a raw JSON-RPC call
+
+  - node [(-p, --port integer)] [--chain-id integer] [(-a, --accounts integer)] [(-f, --fork-url text)] [--fork-block-number integer]  Start a local Ethereum devnet
+

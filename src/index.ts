@@ -1,0 +1,42 @@
+/**
+ * Chop — Ethereum Swiss Army knife
+ *
+ * Public API re-exports.
+ */
+
+// Shared types (voltaire-effect branded primitives)
+export type { AddressType, HashType, HexType } from "./shared/types.js"
+export { Abi, Address, Bytes32, Hash, Hex, Rlp, Selector, Signature } from "./shared/types.js"
+
+// Shared errors
+export { ChopError } from "./shared/errors.js"
+
+// CLI
+export { cli, root } from "./cli/index.js"
+export { CliError } from "./cli/errors.js"
+export { VERSION } from "./cli/version.js"
+
+// Handlers (business logic layer)
+export {
+	blockNumberHandler,
+	callHandler,
+	chainIdHandler,
+	getAccountsHandler,
+	getBalanceHandler,
+	getCodeHandler,
+	getStorageAtHandler,
+	getTransactionCountHandler,
+	HandlerError,
+} from "./handlers/index.js"
+export type {
+	CallParams,
+	CallResult,
+	GetBalanceParams,
+	GetCodeParams,
+	GetStorageAtParams,
+	GetTransactionCountParams,
+} from "./handlers/index.js"
+
+// Node (composition root)
+export type { TestAccount } from "./node/accounts.js"
+export { getTestAccounts, DEFAULT_BALANCE } from "./node/accounts.js"
