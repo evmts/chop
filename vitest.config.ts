@@ -8,7 +8,7 @@ export default defineConfig({
 	test: {
 		pool: "forks",
 
-		include: ["src/**/*.test.ts", "test/**/*.test.ts"],
+		include: ["src/**/*.test.ts", "test/**/*.test.ts", "tests/**/*.test.ts"],
 
 		exclude: ["test/e2e/**", "node_modules/**"],
 

@@ -35,6 +35,6 @@
 			"#shared/*": ["./src/shared/*"]
 		}
 	},
-	"include": ["src/**/*.ts", "src/**/*.tsx", "bin/**/*.ts", "test/**/*.ts"],
+	"include": ["src/**/*.ts", "src/**/*.tsx", "bin/**/*.ts", "test/**/*.ts", "tests/**/*.ts"],
 	"exclude": ["node_modules", "dist"]
 }

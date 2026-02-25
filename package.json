@@ -5,7 +5,8 @@
 	"type": "module",
 	"license": "MIT",
 	"bin": {
-		"chop": "./dist/bin/chop.js"
+		"chop": "./dist/bin/chop.js",
+		"chop-mcp": "./dist/bin/chop-mcp.js"
 	},
 	"exports": {
 		".": {
@@ -13,11 +14,29 @@
 			"types": "./dist/src/index.d.ts"
 		}
 	},
+	"keywords": [
+		"ethereum",
+		"evm",
+		"solidity",
+		"cli",
+		"devnet",
+		"anvil",
+		"mcp",
+		"abi",
+		"keccak"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/evmts/chop.git"
+	},
 	"files": [
-		"dist/"
+		"dist/",
+		"SKILL.md",
+		"AGENTS.md"
 	],
 	"scripts": {
 		"build": "tsup",
+		"prepublishOnly": "bun run build",
 		"dev": "bun run bin/chop.ts",
 		"test": "vitest run",
 		"test:watch": "vitest",
@@ -31,9 +50,11 @@
 		"@effect/cli": "^0.73.0",
 		"@effect/platform": "^0.94.0",
 		"@effect/platform-node": "^0.104.0",
+		"@modelcontextprotocol/sdk": "^1.27.1",
 		"@opentui/core": "^0.1.80",
 		"effect": "^3.19.0",
-		"voltaire-effect": "^0.3.0"
+		"voltaire-effect": "^0.3.0",
+		"zod": "^4.3.6"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.0",
