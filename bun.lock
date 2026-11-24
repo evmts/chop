@@ -12,7 +12,7 @@
         "@effect/printer-ansi": "0.47.0",
         "@modelcontextprotocol/sdk": "^1.27.1",
         "@opentui/core": "0.3.0",
-        "@tevm/voltaire": "0.2.28",
+        "@tevm/voltaire": "0.4.0",
         "effect": "^3.19.0",
         "solc": "0.8.39",
         "voltaire-effect": "^0.3.0",
@@ -339,7 +339,7 @@
 
     "@tevm/chains": ["@tevm/chains@0.0.1", "", { "peerDependencies": { "typescript": "^5" } }, "sha512-1/+/pasF8CZkLJkBnebmgkBHDEJ5vtpJXQ2S8B7rqM4bLQhbmOWva+J9CiKc56C2Z++Gvy07W7XQpc4dUk1X3A=="],
 
-    "@tevm/voltaire": ["@tevm/voltaire@0.2.28", "", { "dependencies": { "@adraffy/ens-normalize": "^1.11.1", "@codesandbox/sandpack-react": "^2.20.0", "@noble/ciphers": "^2.1.1", "@scure/bip32": "^2.0.1", "@scure/bip39": "^2.0.1", "@shazow/whatsabi": "^0.25.0", "@tevm/chains": "^0.0.1", "modern-monaco": "^0.3.6" }, "optionalDependencies": { "effect": "^3.19.13" }, "peerDependencies": { "abitype": "^1.1.1" }, "optionalPeers": ["abitype"] }, "sha512-VL48ZdCn7db8U0iWTk+lZniwkDxL4mex511481PNn/fjCcIDoIqMU5+4wmQKUGfi2R/ubiDSXgJJpExArRDNrQ=="],
+    "@tevm/voltaire": ["@tevm/voltaire@0.4.0", "", { "dependencies": { "@adraffy/ens-normalize": "^1.11.1", "@codesandbox/sandpack-react": "^2.20.0", "@noble/ciphers": "^2.1.1", "@scure/bip32": "^2.0.1", "@scure/bip39": "^2.0.1", "@shazow/whatsabi": "^0.25.0", "@tevm/chains": "^0.0.1", "modern-monaco": "^0.3.6" }, "optionalDependencies": { "effect": "^3.19.13" }, "peerDependencies": { "abitype": "^1.1.1" }, "optionalPeers": ["abitype"] }, "sha512-JiEXnFXvMTZIXrX3uXxcimBlsiFTFLqOHnkjzjOqegJhrfr716KSZDkhPC/7FOgmH2ITLnahn/aHoZo1onRVsg=="],
 
     "@types/chai": ["@types/chai@5.2.3", "", { "dependencies": { "@types/deep-eql": "*", "assertion-error": "^2.0.1" } }, "sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA=="],
 
