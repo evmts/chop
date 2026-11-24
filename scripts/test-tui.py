@@ -55,7 +55,8 @@ def check_tui(directory):
             (b"g", b"invalidate snapshots"),
             (b"y", b"10 funded"),
             (b"9", b"Counter.sol"),
-            (b"\r", b"contract(s) with solc"),
+            # The bytecode pane is newly drawn. Status lines are incremental.
+            (b"\r", b"0x60806040"),
         ]:
             os.write(master, key)
             expect(master, text)
