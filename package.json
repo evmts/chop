@@ -1,5 +1,5 @@
 {
-	"name": "chop",
+	"name": "@tevm/chop",
 	"version": "0.1.0",
 	"description": "Ethereum Swiss Army knife - cast-compatible CLI, TUI, and MCP server",
 	"type": "module",
@@ -10,8 +10,8 @@
 	},
 	"exports": {
 		".": {
-			"import": "./dist/src/index.js",
-			"types": "./dist/src/index.d.ts"
+			"types": "./dist/src/index.d.ts",
+			"import": "./dist/src/index.js"
 		}
 	},
 	"keywords": [
@@ -38,12 +38,15 @@
 		"build": "tsup",
 		"prepublishOnly": "bun run build",
 		"dev": "bun run bin/chop.ts",
-		"test": "vitest run",
+		"test": "vitest run src/",
 		"test:watch": "vitest",
-		"test:coverage": "vitest run --coverage",
-		"lint": "biome check src/ bin/ test/",
-		"lint:fix": "biome check --write src/ bin/ test/",
-		"format": "biome format --write src/ bin/ test/",
+		"test:coverage": "vitest run src/ --coverage",
+		"test:property": "vitest run tests/properties.test.ts",
+		"test:bench": "vitest run tests/benchmarks.test.ts",
+		"test:e2e": "bun run build && bash scripts/test-golden.sh && vitest run tests/packaged.e2e.test.ts && python3 scripts/test-tui.py",
+		"lint": "biome check src/ bin/ tests/",
+		"lint:fix": "biome check --write src/ bin/ tests/",
+		"format": "biome format --write src/ bin/ tests/",
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
@@ -51,15 +54,19 @@
 		"@effect/platform": "^0.94.0",
 		"@effect/platform-node": "^0.104.0",
 		"@modelcontextprotocol/sdk": "^1.27.1",
-		"@opentui/core": "^0.1.80",
+		"@opentui/core": "0.3.0",
+		"@tevm/voltaire": "0.2.28",
 		"effect": "^3.19.0",
+		"solc": "0.8.39",
 		"voltaire-effect": "^0.3.0",
-		"zod": "^4.3.6"
+		"zod": "4.6.7"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.0",
 		"@effect/vitest": "^0.27.0",
+		"@types/node": "^22.0.0",
 		"@vitest/coverage-v8": "^3.2.0",
+		"fast-check": "^4.0.0",
 		"tsup": "^8.4.0",
 		"typescript": "^5.7.0",
 		"vitest": "^3.2.0"
@@ -68,5 +75,11 @@
 		"node": ">=22.0.0",
 		"bun": ">=1.2.0"
 	},
-	"packageManager": "bun@1.2.0"
+	"packageManager": "bun@1.4.1",
+	"overrides": {
+		"tinypool": "2.2.0",
+		"toml": "5.0.1",
+		"zod": "4.6.7",
+		"tmp": "0.2.7"
+	}
 }

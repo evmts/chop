@@ -7,14 +7,6 @@
  * Creates a local TevmNode (test mode) to provide live chain data
  * to the Dashboard view.
  *
- * TODO(T4-E2E): Integration-level acceptance tests are not yet implemented.
- *   The following scenarios need E2E coverage once a headless TUI test
- *   harness is available:
- *   - launch -> tab bar visible with 8 tabs
- *   - press 2 -> Call History active
- *   - press ? -> help overlay visible
- *   - press q -> exits
- *   Current coverage: unit tests for state/tabs/theme (see *.test.ts files).
  */
 
 import { Effect } from "effect"
@@ -39,7 +31,7 @@ import { DRACULA } from "./theme.js"
  * - Renderer initialization fails
  * - Runtime error during TUI operation
  */
-export const startTui = (node?: TevmNodeShape): Effect.Effect<void, TuiError> =>
+export const startTui = (node?: TevmNodeShape, compilerRpcUrl?: string): Effect.Effect<void, TuiError> =>
 	Effect.gen(function* () {
 		// Resolve node — use provided node or create a local test node
 		const resolvedNode = node ?? (yield* resolveDefaultNode())
@@ -58,7 +50,7 @@ export const startTui = (node?: TevmNodeShape): Effect.Effect<void, TuiError> =>
 				opentui.createCliRenderer({
 					exitOnCtrlC: true,
 					targetFps: 30,
-					useAlternateScreen: true,
+					screenMode: "alternate-screen",
 					backgroundColor: DRACULA.background,
 				}),
 			catch: (e) =>
@@ -79,7 +71,7 @@ export const startTui = (node?: TevmNodeShape): Effect.Effect<void, TuiError> =>
 						}),
 				})
 
-				const app = appModule.createApp(renderer, resolvedNode)
+				const app = appModule.createApp(renderer, resolvedNode, compilerRpcUrl)
 
 				yield* Effect.tryPromise({
 					try: () => app.waitForQuit,

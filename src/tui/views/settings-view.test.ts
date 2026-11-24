@@ -278,3 +278,17 @@ describe("Settings view reducer", () => {
 		)
 	})
 })
+
+describe("account regeneration confirmation", () => {
+	it.effect("requires confirmation and handles cancellation", () =>
+		Effect.sync(() => {
+			const confirm = settingsReduce(initialSettingsState, "g")
+			expect(confirm.accountRegeneration).toBe("confirm")
+			expect(settingsReduce(confirm, "n").accountRegeneration).toBeNull()
+			expect(settingsReduce(confirm, "escape").accountRegeneration).toBeNull()
+			const pending = settingsReduce(confirm, "y")
+			expect(pending.accountRegeneration).toBe("pending")
+			expect(settingsReduce(pending, "y")).toBe(pending)
+		}),
+	)
+})

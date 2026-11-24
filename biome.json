@@ -56,7 +56,7 @@
 		}
 	},
 	"files": {
-		"include": ["src/**", "bin/**", "test/**"],
+		"include": ["src/**", "bin/**", "tests/**/*.test.ts"],
 		"ignore": ["dist/**", "node_modules/**", "wasm/**", "**/*.zig", "*.md"]
 	}
 }

@@ -1,5 +1,7 @@
 # Chop Architecture
 
+This document describes the historical Zig/Go implementation. See the [README](./README.md#development) for the current TypeScript package.
+
 This document provides a comprehensive overview of Chop's architecture, design decisions, and implementation details.
 
 ## Table of Contents

@@ -3,6 +3,7 @@ import { defineConfig } from "tsup"
 export default defineConfig({
 	entry: {
 		"bin/chop": "bin/chop.ts",
+		"bin/chop-mcp": "bin/chop-mcp.ts",
 		"src/index": "src/index.ts",
 		"src/cli/index": "src/cli/index.ts",
 	},

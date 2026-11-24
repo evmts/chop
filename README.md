@@ -1,15 +1,19 @@
 # chop
 
-Ethereum Swiss Army knife -- CLI, TUI, and MCP server powered by an in-process EVM.
+Ethereum development CLI, terminal UI, and MCP server. Chop provides ABI and bytecode tools, a Solidity compiler, and an experimental in-process development node.
 
-Built with [Effect](https://effect.website), [voltaire-effect](https://github.com/evmts/voltaire-effect), and [guillotine-mini](https://github.com/evmts/guillotine-mini).
+[![CI](https://github.com/evmts/chop/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/evmts/chop/actions/workflows/ci.yml)
+[![Security](https://github.com/evmts/chop/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/evmts/chop/actions/workflows/security.yml)
 
 ## Install
 
+Use Node.js 22 or later for the CLI and MCP server. The terminal UI requires Bun. Install a package archive from [GitHub Releases](https://github.com/evmts/chop/releases), or build one from a checkout.
+
 ```bash
-npm install -g chop
-# or
-bun install -g chop
+bun install --frozen-lockfile --ignore-scripts
+bun run build
+npm pack --ignore-scripts
+npm install -g ./tevm-chop-0.1.0.tgz
 ```
 
 ## Quick Start
@@ -37,7 +41,7 @@ chop to-hex 255
 
 # Start a local devnet
 chop node
-# Listening on http://localhost:8545
+# Listening on http://127.0.0.1:8545
 # Chain ID: 31337
 # 10 funded accounts...
 
@@ -146,7 +150,32 @@ chop node [options]
 | `--fork-url <url>` | Fork from an RPC endpoint |
 | `--fork-block-number <n>` | Pin fork to a specific block |
 
-The devnet supports the full Anvil/Hardhat JSON-RPC API including `anvil_*`, `evm_*`, `debug_*`, `hardhat_*`, and `ganache_*` method namespaces.
+The node binds to loopback and uses well-known development keys by default. It rejects browser-originated requests and request bodies over 1 MiB. It supports account funding, balance and block queries, transaction bookkeeping, snapshots, and selected Anvil-compatible methods. Its execution engine implements a limited opcode set, and contract creation transactions do not install runtime bytecode. Use a local Anvil instance for full Solidity contract execution and deployment.
+
+### Solidity Compiler
+
+```bash
+chop compile Counter.sol --format json --optimize --optimizer-runs 200 --evm-version prague
+chop compile --source 'pragma solidity ^0.8.0; contract Counter {}' --format hex
+chop compile Counter.sol --watch
+```
+
+The bundled solc-js compiler builds file or inline sources without a separate compiler install. File imports must resolve within the entry file's directory. Watch mode follows the entry file and its imports, including files saved by atomic rename. Compiler warnings and errors are printed to stderr. JSON output in watch mode contains one object per successful build.
+
+| Option | Description |
+|--------|-------------|
+| `--format json\|hex\|combined` | Structured compiler output, creation bytecode, or readable ABI and bytecode |
+| `--contract <name>` | Select a contract when an entry file defines several |
+| `--optimize`, `--optimizer-runs <n>` | Enable the optimizer and set its runs (default 200) |
+| `--evm-version <version>` | EVM target (default Prague) |
+| `--watch` | Recompile changed sources until interrupted |
+| `--deploy <url> --from <address>` | Submit creation bytecode from an unlocked account on a loopback development RPC after each successful compile |
+
+Automatic deployment requires linked bytecode and a constructor with no arguments. For example, start Anvil and use one of the unlocked addresses in its startup output.
+
+```bash
+chop compile Counter.sol --contract Counter --watch --deploy http://127.0.0.1:8545 --from <address>
+```
 
 ### Global Options
 
@@ -159,7 +188,7 @@ The devnet supports the full Anvil/Hardhat JSON-RPC API including `anvil_*`, `ev
 
 ## TUI
 
-Running `chop` with no arguments (or `chop node`) launches an interactive terminal interface with 8 views:
+Run `bun dist/bin/chop.js` in a source checkout or `bun run --bun "$(command -v chop)"` after installation to open the terminal interface.
 
 1. **Dashboard** -- Chain info, recent blocks, transactions, accounts
 2. **Call History** -- Scrollable RPC call log with filters
@@ -170,7 +199,9 @@ Running `chop` with no arguments (or `chop node`) launches an interactive termin
 7. **Settings** -- Node configuration (mining mode, gas limit, etc.)
 8. **State Inspector** -- Tree browser for account storage with edit support
 
-**Keyboard shortcuts**: Number keys switch tabs, `?` shows help, `/` filters, `q` quits.
+9. **Compiler** — Select a Solidity file in the current directory, compile it, and inspect diagnostics, ABI, and bytecode.
+
+Press `1`–`9` to switch tabs, `?` for help, and `q` to quit. In Settings, press `g`, then `y`, to replace the ten funded test accounts and invalidate saved snapshots. Press `4` to see the new address list. In Compiler, use `j/k` to select a file and Enter to compile. Supply `--rpc-url http://127.0.0.1:8545` at TUI startup to enable `d` followed by Enter to submit the selected contract from the first unlocked account.
 
 ## MCP Server
 
@@ -181,7 +212,7 @@ Chop includes an [MCP](https://modelcontextprotocol.io) server for AI tool integ
   "mcpServers": {
     "chop": {
       "command": "node",
-      "args": ["./node_modules/chop/dist/bin/chop-mcp.js"]
+      "args": ["./node_modules/@tevm/chop/dist/bin/chop-mcp.js"]
     }
   }
 }
@@ -205,13 +236,18 @@ The MCP server exposes 33 tools, 6 resources, and 4 prompts covering all CLI fun
 
 ```bash
 # Install dependencies
-bun install
+bun install --frozen-lockfile --ignore-scripts
 
 # Run CLI in dev mode
 bun run dev -- keccak "hello"
 
-# Run tests
-bun run test
+# Run unit and integration tests with coverage
+bun run test:coverage --maxWorkers=3
+
+# Run generated properties, process-level tests, and benchmark budgets
+bun run test:property
+bun run test:e2e      # needs Anvil 1.5.1 and Python 3 on PATH
+bun run test:bench
 
 # Type-check
 bun run typecheck
@@ -231,8 +267,9 @@ bin/
   chop-mcp.ts      MCP server entry point (stdio transport)
 src/
   cli/             Command definitions and CLI framework
+  compiler/        Solidity compilation, watch mode, and loopback deployment
   handlers/        Pure business logic (Effect-based)
-  evm/             WASM EVM integration (guillotine-mini)
+  evm/             Test interpreter and optional WASM adapter
   state/           World state, journal, account management
   blockchain/      Block store, chain management
   node/            TevmNode service layer composition

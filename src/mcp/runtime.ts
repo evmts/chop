@@ -44,7 +44,7 @@ export const bigintReplacer = (_key: string, value: unknown) =>
 // ---------------------------------------------------------------------------
 
 /**
- * Create an McpRuntime. By default uses TevmNode.Local() for production.
+ * Create an McpRuntime. Uses the same development EVM as the CLI by default.
  * Pass a custom nodeLayer (e.g. TevmNode.LocalTest()) for testing.
  */
 export const createRuntime = (nodeLayer?: Layer.Layer<TevmNodeService, unknown>): McpRuntime => {
@@ -52,7 +52,7 @@ export const createRuntime = (nodeLayer?: Layer.Layer<TevmNodeService, unknown>)
 
 	const getRuntime = () => {
 		if (!managedRuntime) {
-			managedRuntime = ManagedRuntime.make(nodeLayer ?? TevmNode.Local())
+			managedRuntime = ManagedRuntime.make(nodeLayer ?? TevmNode.LocalTest())
 		}
 		return managedRuntime
 	}

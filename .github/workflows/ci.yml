@@ -1,143 +1,45 @@
 name: CI
 
-# Run CI on pushes to main and on all pull requests
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  test:
-    name: Test
+  checks:
+    name: Checks (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        go-version: ['1.22', '1.24']
-
     steps:
-      # Checkout the repository
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
-          submodules: recursive  # Include guillotine-mini submodule
-
-      # Set up Go environment
-      - name: Set up Go
-        uses: actions/setup-go@v5
+          persist-credentials: false
+      - uses: actions/setup-node@v5
         with:
-          go-version: ${{ matrix.go-version }}
-          cache: true
-
-      # Download dependencies
-      - name: Download dependencies
-        run: go mod download
-
-      # Verify go.mod and go.sum are up to date
-      - name: Verify go.mod and go.sum
-        run: |
-          go mod tidy
-          git diff --exit-code go.mod go.sum
-
-      # Run go vet to check for common issues
-      - name: Run go vet
-        run: go vet ./...
-
-      # Run tests with race detector and coverage
-      - name: Run tests
-        run: go test ./... -v -race -coverprofile=coverage.txt -covermode=atomic
-
-      # Upload coverage report to Codecov
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
         with:
-          files: ./coverage.txt
-          flags: unittests,${{ matrix.os }},go${{ matrix.go-version }}
-          name: codecov-${{ matrix.os }}-go${{ matrix.go-version }}
-          fail_ci_if_error: false
-          verbose: true
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
-      # Also upload coverage as artifact for debugging
-      - name: Upload coverage to artifact
-        uses: actions/upload-artifact@v4
+          bun-version: 1.4.1
+      - uses: foundry-rs/foundry-toolchain@v1
         with:
-          name: coverage-${{ matrix.os }}-go${{ matrix.go-version }}
-          path: coverage.txt
-          retention-days: 7
-
-  build:
-    name: Build
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-
-    steps:
-      # Checkout the repository
-      - name: Checkout code
-        uses: actions/checkout@v4
+          version: v1.5.1
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - run: bun run lint
+      - run: bun run typecheck
+      - run: bun run test:coverage --maxWorkers=3
+      - run: bun run test:property
+      - run: bun run test:e2e
+      - run: bun run test:bench
+      - uses: actions/upload-artifact@v5
         with:
-          submodules: recursive
-
-      # Set up Go environment with latest stable version
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.24'
-          cache: true
-
-      # Build the binary with CGO disabled for static linking
-      - name: Build binary
-        run: CGO_ENABLED=0 go build -o chop .
-
-      # Verify the binary was created
-      - name: Verify binary exists
-        run: |
-          if [ ! -f ./chop ]; then
-            echo "Error: Binary not found"
-            exit 1
-          fi
-          echo "Binary built successfully"
-          ls -lh ./chop
-
-      # Test that the binary can be executed
-      - name: Test binary execution
-        run: |
-          ./chop --version || echo "Binary runs successfully (no version flag yet)"
-
-      # Upload the binary as an artifact
-      - name: Upload binary artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: chop-${{ matrix.os }}
-          path: chop
-          retention-days: 7
-
-  # Lint job using golangci-lint
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.24'
-          cache: true
-
-      # Run golangci-lint with .golangci.yml configuration
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: latest
-          args: --timeout=5m
+          name: coverage-${{ matrix.os }}
+          path: coverage/lcov.info
+          if-no-files-found: error

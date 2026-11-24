@@ -23,11 +23,11 @@ import { createStatusBar } from "./components/StatusBar.js"
 import { createTabBar } from "./components/TabBar.js"
 import { getOpenTui } from "./opentui.js"
 import { type TuiState, initialState, keyToAction, reduce } from "./state.js"
-import { TABS } from "./tabs.js"
 import { DRACULA } from "./theme.js"
 import { createAccounts } from "./views/Accounts.js"
 import { createBlocks } from "./views/Blocks.js"
 import { createCallHistory } from "./views/CallHistory.js"
+import { createCompiler } from "./views/Compiler.js"
 import { createContracts } from "./views/Contracts.js"
 import { createDashboard } from "./views/Dashboard.js"
 import { createSettings } from "./views/Settings.js"
@@ -53,17 +53,17 @@ export interface AppHandle {
  *
  * Sets up:
  * - Tab bar (top)
- * - Content area (middle, flex-grow) — Dashboard on tab 0, placeholders for others
+ * - Content area (middle, flex-grow) — Dashboard on tab 0, dedicated views for each tab
  * - Status bar (bottom)
  * - Help overlay (absolute, toggled with ?)
- * - Keyboard handler (1-8 tabs, q quit, ? help)
+ * - Keyboard handler (1-9 tabs, q quit, ? help)
  *
  * @param renderer - An initialized OpenTUI CliRenderer
  * @param node - Optional TevmNodeShape for live dashboard data
  * @returns AppHandle with `waitForQuit` promise
  */
-export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandle => {
-	const { BoxRenderable: Box, TextRenderable: Text } = getOpenTui()
+export const createApp = (renderer: CliRenderer, node?: TevmNodeShape, compilerRpcUrl?: string): AppHandle => {
+	const { BoxRenderable: Box } = getOpenTui()
 
 	// -------------------------------------------------------------------------
 	// State
@@ -86,11 +86,12 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 	const transactions = createTransactions(renderer)
 	const settings = createSettings(renderer)
 	const stateInspector = createStateInspector(renderer)
+	const compiler = createCompiler(renderer, compilerRpcUrl)
 
 	// Pass node reference to accounts view for fund/impersonate side effects
 	if (node) accounts.setNode(node)
 
-	// Content area — holds Dashboard or placeholder per tab
+	// Content area — holds the active view
 	const contentArea = new Box(renderer, {
 		width: "100%",
 		flexGrow: 1,
@@ -98,120 +99,17 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 		backgroundColor: DRACULA.background,
 	})
 
-	// Placeholder text for non-dashboard tabs
-	const placeholderBox = new Box(renderer, {
-		width: "100%",
-		flexGrow: 1,
-		flexDirection: "column",
-		backgroundColor: DRACULA.background,
-		justifyContent: "center",
-		alignItems: "center",
-	})
-	const placeholderText = new Text(renderer, {
-		content: `[ ${TABS[0]?.name} ]`,
-		fg: DRACULA.comment,
-	})
-	placeholderBox.add(placeholderText)
-
-	// Start with Dashboard visible
-	contentArea.add(dashboard.container)
-
-	// -------------------------------------------------------------------------
-	// View switching
-	// -------------------------------------------------------------------------
-
-	let currentView:
-		| "dashboard"
-		| "callHistory"
-		| "contracts"
-		| "accounts"
-		| "blocks"
-		| "transactions"
-		| "settings"
-		| "stateInspector"
-		| "placeholder" = "dashboard"
-
-	/** Remove whatever is currently in the content area. */
-	const removeCurrentView = (): void => {
-		switch (currentView) {
-			case "dashboard":
-				contentArea.remove(dashboard.container.id)
-				break
-			case "callHistory":
-				contentArea.remove(callHistory.container.id)
-				break
-			case "contracts":
-				contentArea.remove(contracts.container.id)
-				break
-			case "accounts":
-				contentArea.remove(accounts.container.id)
-				break
-			case "blocks":
-				contentArea.remove(blocks.container.id)
-				break
-			case "transactions":
-				contentArea.remove(transactions.container.id)
-				break
-			case "settings":
-				contentArea.remove(settings.container.id)
-				break
-			case "stateInspector":
-				contentArea.remove(stateInspector.container.id)
-				break
-			case "placeholder":
-				contentArea.remove(placeholderBox.id)
-				break
-		}
-	}
-
-	/** Set of tabs that have dedicated views (not placeholders). */
-	const IMPLEMENTED_TABS = new Set([0, 1, 2, 3, 4, 5, 6, 7])
+	const views = [dashboard, callHistory, contracts, accounts, blocks, transactions, settings, stateInspector, compiler]
+	let currentView = dashboard.container
+	contentArea.add(currentView)
 
 	const switchToView = (tab: number): void => {
-		if (tab === 0 && currentView !== "dashboard") {
-			removeCurrentView()
-			contentArea.add(dashboard.container)
-			currentView = "dashboard"
-		} else if (tab === 1 && currentView !== "callHistory") {
-			removeCurrentView()
-			contentArea.add(callHistory.container)
-			currentView = "callHistory"
-		} else if (tab === 2 && currentView !== "contracts") {
-			removeCurrentView()
-			contentArea.add(contracts.container)
-			currentView = "contracts"
-		} else if (tab === 3 && currentView !== "accounts") {
-			removeCurrentView()
-			contentArea.add(accounts.container)
-			currentView = "accounts"
-		} else if (tab === 4 && currentView !== "blocks") {
-			removeCurrentView()
-			contentArea.add(blocks.container)
-			currentView = "blocks"
-		} else if (tab === 5 && currentView !== "transactions") {
-			removeCurrentView()
-			contentArea.add(transactions.container)
-			currentView = "transactions"
-		} else if (tab === 6 && currentView !== "settings") {
-			removeCurrentView()
-			contentArea.add(settings.container)
-			currentView = "settings"
-		} else if (tab === 7 && currentView !== "stateInspector") {
-			removeCurrentView()
-			contentArea.add(stateInspector.container)
-			currentView = "stateInspector"
-		} else if (!IMPLEMENTED_TABS.has(tab) && currentView !== "placeholder") {
-			removeCurrentView()
-			contentArea.add(placeholderBox)
-			currentView = "placeholder"
-		}
-
-		if (!IMPLEMENTED_TABS.has(tab)) {
-			const tabDef = TABS[tab]
-			if (tabDef) {
-				placeholderText.content = `[ ${tabDef.name} ]`
-			}
-		}
+		const next = views[tab]?.container
+		if (!next || next === currentView) return
+		contentArea.remove(currentView.id)
+		contentArea.add(next)
+		currentView = next
+		if (tab === 8) compiler.refresh()
 	}
 
 	// -------------------------------------------------------------------------
@@ -352,8 +250,10 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 			(state.activeTab === 1 && callHistory.getState().filterActive) ||
 			(state.activeTab === 3 && accounts.getState().inputActive) ||
 			(state.activeTab === 5 && transactions.getState().filterActive) ||
-			(state.activeTab === 6 && settings.getState().inputActive) ||
-			(state.activeTab === 7 && (stateInspector.getState().searchActive || stateInspector.getState().editActive))
+			(state.activeTab === 6 &&
+				(settings.getState().inputActive || settings.getState().accountRegeneration === "confirm")) ||
+			(state.activeTab === 7 && (stateInspector.getState().searchActive || stateInspector.getState().editActive)) ||
+			(state.activeTab === 8 && compiler.isConfirming())
 		const action = keyToAction(keyName, isInputMode)
 		if (!action) return
 
@@ -446,8 +346,22 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 			} else if (state.activeTab === 5) {
 				transactions.handleKey(action.key)
 			} else if (state.activeTab === 6) {
+				const wasConfirming = settings.getState().accountRegeneration === "confirm"
 				settings.handleKey(action.key)
 				const settingsState = settings.getState()
+				if (wasConfirming && settingsState.accountRegeneration === "pending") {
+					if (!node) {
+						settings.finishRegeneration(" Local node unavailable")
+					} else {
+						Effect.runPromise(Effect.either(node.regenerateAccounts())).then(
+							(result) =>
+								settings.finishRegeneration(
+									result._tag === "Right" ? " Regenerated 10 funded test accounts" : result.left.message,
+								),
+							() => settings.finishRegeneration(" Account regeneration failed"),
+						)
+					}
+				}
 
 				// Handle mining mode toggle side effect
 				if (settingsState.miningModeToggled && node) {
@@ -472,6 +386,8 @@ export const createApp = (renderer: CliRenderer, node?: TevmNodeShape): AppHandl
 						)
 					}
 				}
+			} else if (state.activeTab === 8) {
+				compiler.handleKey(action.key)
 			} else if (state.activeTab === 7) {
 				const prevState = stateInspector.getState()
 				stateInspector.handleKey(action.key)

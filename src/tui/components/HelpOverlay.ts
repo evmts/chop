@@ -20,7 +20,7 @@ export interface HelpOverlayHandle {
 const HELP_TEXT = [
 	"Keyboard Shortcuts",
 	"",
-	"  1-8    Switch tabs",
+	"  1-9    Switch tabs",
 	"  ?      Toggle this help",
 	"  q      Quit",
 	"  Ctrl+C Quit",

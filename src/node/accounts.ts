@@ -1,6 +1,8 @@
 // Deterministic test accounts — same as Hardhat/Anvil defaults.
-// Pure data + a single Effect function for funding.
+// Shared funding for deterministic and randomly generated development accounts.
 
+import { randomBytes } from "node:crypto"
+import { Address } from "@tevm/voltaire/Address"
 import { Effect } from "effect"
 import { hexToBytes } from "../evm/conversions.js"
 import type { HostAdapterShape } from "../evm/host-adapter.js"
@@ -88,8 +90,30 @@ export const getTestAccounts = (n = 10): readonly TestAccount[] => {
 }
 
 // ---------------------------------------------------------------------------
-// Effect function — fund accounts on the host adapter
+// Generated accounts and funding
 // ---------------------------------------------------------------------------
+
+/** Generate ten fresh secp256k1 keypairs without reusing an existing address. */
+const SECP256K1_ORDER = BigInt("0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141")
+
+export const generateTestAccounts = (previous: readonly TestAccount[]): readonly TestAccount[] => {
+	const seen = new Set(previous.map(({ address }) => address.toLowerCase()))
+	const accounts: TestAccount[] = []
+
+	while (accounts.length < HARDHAT_ACCOUNTS.length) {
+		const key = randomBytes(32)
+		const privateKey = `0x${key.toString("hex")}`
+		const scalar = BigInt(privateKey)
+		if (scalar === 0n || scalar >= SECP256K1_ORDER) continue
+		const address = Address.toChecksummed(Address.fromPrivateKey(key))
+		const canonical = address.toLowerCase()
+		if (seen.has(canonical)) continue
+		seen.add(canonical)
+		accounts.push({ address, privateKey })
+	}
+
+	return accounts
+}
 
 /**
  * Fund test accounts with DEFAULT_BALANCE on the host adapter.

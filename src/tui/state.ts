@@ -13,7 +13,7 @@ import { TAB_COUNT } from "./tabs.js"
 
 /** Immutable TUI state. */
 export interface TuiState {
-	/** Index of the active tab (0..7). */
+	/** Index of the active tab (0..8). */
 	readonly activeTab: number
 	/** Whether the help overlay is visible. */
 	readonly helpVisible: boolean
@@ -62,12 +62,30 @@ export const reduce = (state: TuiState, action: TuiAction): TuiState => {
 // ---------------------------------------------------------------------------
 
 /** Keys that map to ViewKey actions (dispatched to the active view). */
-const VIEW_KEYS = new Set(["j", "k", "return", "escape", "/", "f", "i", "m", "space", "d", "s", "h", "l", "x", "e"])
+const VIEW_KEYS = new Set([
+	"j",
+	"k",
+	"return",
+	"escape",
+	"/",
+	"f",
+	"i",
+	"m",
+	"space",
+	"d",
+	"s",
+	"h",
+	"l",
+	"x",
+	"e",
+	"g",
+	"r",
+])
 
 /**
  * Maps a key name (from keyboard event) to a TuiAction, or `null` if unmapped.
  *
- * - "1".."8"          → SetTab(0..7)
+ * - "1".."9"          → SetTab(0..8)
  * - "?"               → ToggleHelp
  * - "q"               → Quit
  * - "j","k","return","escape","/" → ViewKey (dispatched to active view)
@@ -90,7 +108,7 @@ export const keyToAction = (keyName: string, inputMode = false): TuiAction | nul
 		return { _tag: "ViewKey", key: keyName }
 	}
 
-	// Tab switching via number keys 1-8
+	// Tab switching via number keys 1-9
 	const num = Number(keyName)
 	if (Number.isInteger(num) && num >= 1 && num <= TAB_COUNT) {
 		return { _tag: "SetTab", tab: num - 1 }

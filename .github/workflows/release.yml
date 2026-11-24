@@ -1,48 +1,32 @@
 name: Release
 
-# Trigger on version tags (e.g., v0.1.0, v1.2.3)
 on:
   push:
-    tags:
-      - 'v*.*.*'
+    tags: ['v*.*.*']
 
-# Permissions required for creating releases
 permissions:
   contents: write
 
 jobs:
-  goreleaser:
-    name: GoReleaser
+  release:
     runs-on: ubuntu-latest
-
     steps:
-      # Checkout with full history for changelog generation
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
-          fetch-depth: 0
-          submodules: recursive
-
-      # Set up Go environment
-      - name: Set up Go
-        uses: actions/setup-go@v5
+          persist-credentials: false
+      - uses: actions/setup-node@v5
         with:
-          go-version: '1.24'
-          cache: true
-
-      # Run GoReleaser to build and create release
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
         with:
-          distribution: goreleaser
-          version: latest
-          args: release --clean
+          bun-version: 1.4.1
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Verify package version
+        run: test "$GITHUB_REF_NAME" = "v$(node -p 'require("./package.json").version')"
+      - run: bun run build
+      - name: Create GitHub release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # Optional: Upload release assets summary
-      - name: Upload release summary
-        if: always()
+          GH_TOKEN: ${{ github.token }}
         run: |
-          echo "Release created for tag: ${{ github.ref_name }}"
-          echo "View release at: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
+          package="$(npm pack --ignore-scripts --silent)"
+          gh release create "$GITHUB_REF_NAME" "$package" --verify-tag --generate-notes

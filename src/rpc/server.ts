@@ -53,14 +53,36 @@ export const startRpcServer = (config: RpcServerConfig, node: TevmNodeShape): Ef
 				return
 			}
 
-			// Read request body
-			let body = ""
+			// A local node exposes unlocked accounts and state mutations.
+			if (req.headers.origin !== undefined) {
+				res.writeHead(403, { "Content-Type": "application/json" })
+				res.end(
+					JSON.stringify({
+						jsonrpc: "2.0",
+						error: { code: -32600, message: "Browser requests are disabled" },
+						id: null,
+					}),
+				)
+				return
+			}
+
+			const maxRequestBytes = 1024 * 1024
+			let size = 0
+			const chunks: Buffer[] = []
 			req.on("data", (chunk: Buffer) => {
-				body += chunk.toString()
+				size += chunk.length
+				if (size <= maxRequestBytes) chunks.push(chunk)
+				else if (!res.headersSent) {
+					res.writeHead(413, { "Content-Type": "application/json", Connection: "close" })
+					res.end(
+						JSON.stringify({ jsonrpc: "2.0", error: { code: -32600, message: "Request body too large" }, id: null }),
+					)
+				}
 			})
 
 			req.on("end", () => {
-				// Application edge — Effect.runPromise is appropriate here
+				if (res.headersSent) return
+				const body = Buffer.concat(chunks).toString("utf8")
 				Effect.runPromise(handleRequest(node)(body)).then(
 					(result) => {
 						res.writeHead(200, { "Content-Type": "application/json" })

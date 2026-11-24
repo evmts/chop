@@ -4,24 +4,24 @@ import { expect } from "vitest"
 import { TABS, TAB_COUNT } from "./tabs.js"
 
 describe("tabs", () => {
-	it.effect("has exactly 8 tabs", () =>
+	it.effect("has exactly 9 tabs", () =>
 		Effect.sync(() => {
-			expect(TABS).toHaveLength(8)
-			expect(TAB_COUNT).toBe(8)
+			expect(TABS).toHaveLength(9)
+			expect(TAB_COUNT).toBe(9)
 		}),
 	)
 
-	it.effect("keys are '1' through '8'", () =>
+	it.effect("keys are '1' through '9'", () =>
 		Effect.sync(() => {
-			for (let i = 0; i < 8; i++) {
+			for (let i = 0; i < TAB_COUNT; i++) {
 				expect(TABS[i]?.key).toBe(String(i + 1))
 			}
 		}),
 	)
 
-	it.effect("indices are 0 through 7", () =>
+	it.effect("indices are 0 through 8", () =>
 		Effect.sync(() => {
-			for (let i = 0; i < 8; i++) {
+			for (let i = 0; i < TAB_COUNT; i++) {
 				expect(TABS[i]?.index).toBe(i)
 			}
 		}),

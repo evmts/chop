@@ -24,6 +24,8 @@ export interface SnapshotManagerApi {
 	readonly take: () => Effect.Effect<number>
 	/** Revert to a snapshot. Returns true on success. Invalidates all later snapshots. */
 	readonly revert: (snapshotId: number) => Effect.Effect<boolean, UnknownSnapshotError>
+	/** Invalidate saved snapshots after changing the funded account set. */
+	readonly invalidate: () => Effect.Effect<void>
 }
 
 // ---------------------------------------------------------------------------
@@ -42,6 +44,7 @@ export const makeSnapshotManager = (hostAdapter: HostAdapterShape): SnapshotMana
 	const snapshots = new Map<number, WorldStateSnapshot>()
 
 	return {
+		invalidate: () => Effect.sync(() => snapshots.clear()),
 		take: () =>
 			Effect.gen(function* () {
 				const wsSnap = yield* hostAdapter.snapshot()

@@ -1,9 +1,10 @@
 // Node module — composition root for local-mode and fork-mode EVM devnet
 
-import { Context, Effect, Layer } from "effect"
+import { Context, Data, Effect, Layer } from "effect"
 import type { Block } from "../blockchain/block-store.js"
 import { BlockStoreLive, BlockchainLive, BlockchainService } from "../blockchain/index.js"
 import type { BlockchainApi } from "../blockchain/index.js"
+import { hexToBytes } from "../evm/conversions.js"
 import type { WasmLoadError } from "../evm/errors.js"
 import { HostAdapterLive, HostAdapterService } from "../evm/host-adapter.js"
 import type { HostAdapterShape } from "../evm/host-adapter.js"
@@ -13,7 +14,7 @@ import { EvmWasmLive, EvmWasmService, EvmWasmTest } from "../evm/wasm.js"
 import type { EvmWasmShape } from "../evm/wasm.js"
 import { JournalLive } from "../state/journal.js"
 import { WorldStateLive } from "../state/world-state.js"
-import { type TestAccount, fundAccounts, getTestAccounts } from "./accounts.js"
+import { type TestAccount, fundAccounts, generateTestAccounts, getTestAccounts } from "./accounts.js"
 import { type FilterManagerApi, makeFilterManager } from "./filter-manager.js"
 import type { ForkDataError } from "./fork/errors.js"
 import { resolveForkConfig } from "./fork/fork-config.js"
@@ -56,6 +57,8 @@ export interface TevmNodeShape {
 	readonly chainId: bigint
 	/** Pre-funded test accounts (deterministic Hardhat/Anvil defaults). */
 	readonly accounts: readonly TestAccount[]
+	/** Replace the funded local accounts and invalidate existing snapshots. */
+	readonly regenerateAccounts: () => Effect.Effect<void, AccountRegenerationError>
 	/** Mutable node configuration (gas, coinbase, timestamps, etc.). */
 	readonly nodeConfig: NodeConfig
 }
@@ -88,6 +91,10 @@ export interface ForkNodeOptions extends NodeOptions {
 // Service tag
 // ---------------------------------------------------------------------------
 
+export class AccountRegenerationError extends Data.TaggedError("AccountRegenerationError")<{
+	readonly message: string
+}> {}
+
 /** Context tag for the TevmNode service. */
 export class TevmNodeService extends Context.Tag("TevmNode")<TevmNodeService, TevmNodeShape>() {}
 
@@ -97,6 +104,7 @@ export class TevmNodeService extends Context.Tag("TevmNode")<TevmNodeService, Te
 
 const TevmNodeLive = (
 	options: NodeOptions = {},
+	isFork = false,
 ): Layer.Layer<
 	TevmNodeService,
 	never,
@@ -141,8 +149,35 @@ const TevmNodeLive = (
 			const nodeConfig = yield* makeNodeConfig({ chainId })
 
 			// Create and fund deterministic test accounts
-			const accounts = getTestAccounts(options.accounts ?? 10)
+			let accounts = getTestAccounts(options.accounts ?? 10)
 			yield* fundAccounts(hostAdapter, accounts)
+			const accountLock = yield* Effect.makeSemaphore(1)
+
+			const regenerateAccounts = () =>
+				accountLock.withPermits(1)(
+					Effect.uninterruptible(
+						Effect.gen(function* () {
+							if (isFork) {
+								return yield* Effect.fail(
+									new AccountRegenerationError({
+										message: "Account regeneration is available on local nodes only",
+									}),
+								)
+							}
+							const next = yield* Effect.try({
+								try: () => generateTestAccounts(accounts),
+								catch: () => new AccountRegenerationError({ message: "Failed to generate development keys" }),
+							})
+							for (const { address } of accounts) {
+								yield* hostAdapter.deleteAccount(hexToBytes(address))
+								yield* impersonationManager.stopImpersonating(address)
+							}
+							yield* fundAccounts(hostAdapter, next)
+							yield* snapshotManager.invalidate()
+							accounts = next
+						}),
+					),
+				)
 
 			return {
 				evm,
@@ -155,7 +190,10 @@ const TevmNodeLive = (
 				impersonationManager,
 				filterManager,
 				chainId,
-				accounts,
+				get accounts() {
+					return accounts
+				},
+				regenerateAccounts,
 				nodeConfig,
 			} satisfies TevmNodeShape
 		}),
@@ -252,7 +290,7 @@ export const TevmNode = {
 				...(options.wasmPath !== undefined ? { wasmPath: options.wasmPath } : {}),
 			}
 
-			return TevmNodeLive(nodeOpts).pipe(
+			return TevmNodeLive(nodeOpts, true).pipe(
 				Layer.provide(forkSharedSubLayers(nodeOpts, config.blockNumber)),
 				Layer.provide(transportLayer),
 				Layer.provide(EvmWasmLive(options.wasmPath, options.hardfork)),
@@ -289,7 +327,7 @@ export const TevmNode = {
 				...(options.accounts !== undefined ? { accounts: options.accounts } : {}),
 			}
 
-			return TevmNodeLive(nodeOpts).pipe(
+			return TevmNodeLive(nodeOpts, true).pipe(
 				Layer.provide(forkSharedSubLayers(nodeOpts, config.blockNumber)),
 				Layer.provide(transportLayer),
 				Layer.provide(EvmWasmTest),
@@ -304,7 +342,7 @@ export const TevmNode = {
 		options: NodeOptions & { readonly blockNumber: bigint },
 		transportLayer: Layer.Layer<HttpTransportService>,
 	): Layer.Layer<TevmNodeService> =>
-		TevmNodeLive(options).pipe(
+		TevmNodeLive(options, true).pipe(
 			Layer.provide(forkSharedSubLayers(options, options.blockNumber)),
 			Layer.provide(transportLayer),
 			Layer.provide(EvmWasmTest),

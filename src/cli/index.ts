@@ -6,11 +6,12 @@
  */
 
 import { Command, Options } from "@effect/cli"
-import { Console, Effect } from "effect"
+import { Console, Effect, Option } from "effect"
 import { abiCommands } from "./commands/abi.js"
 import { addressCommands } from "./commands/address.js"
 import { bytecodeCommands } from "./commands/bytecode.js"
 import { chainCommands } from "./commands/chain.js"
+import { compileCommand } from "./commands/compile.js"
 import { convertCommands } from "./commands/convert.js"
 import { cryptoCommands } from "./commands/crypto.js"
 import { ensCommands } from "./commands/ens.js"
@@ -39,30 +40,29 @@ const optionalRpcUrl = rpcUrlOption.pipe(Options.optional)
  *
  * Global options (--json, --rpc-url) are available to all subcommands.
  */
-export const root = Command.make(
-	"chop",
-	{ json: jsonOption, rpcUrl: optionalRpcUrl },
-	({ json: _json, rpcUrl: _rpcUrl }) =>
-		Effect.gen(function* () {
-			// Non-interactive terminal — print fallback message
-			if (!process.stdout.isTTY) {
-				yield* Console.log("chop: TUI requires an interactive terminal. Use --help for CLI usage.")
-				return
-			}
+export const root = Command.make("chop", { json: jsonOption, rpcUrl: optionalRpcUrl }, ({ json: _json, rpcUrl }) =>
+	Effect.gen(function* () {
+		// Non-interactive terminal — print fallback message
+		if (!process.stdout.isTTY) {
+			yield* Console.log("chop: TUI requires an interactive terminal. Use --help for CLI usage.")
+			return
+		}
 
-			// Attempt to launch TUI via dynamic import (avoids loading OpenTUI in tests/CI)
-			const tuiModule = yield* Effect.tryPromise({
-				try: () => import("../tui/index.js"),
-				catch: () => null,
-			})
+		// Attempt to launch TUI via dynamic import (avoids loading OpenTUI in tests/CI)
+		const tuiModule = yield* Effect.tryPromise({
+			try: () => import("../tui/index.js"),
+			catch: () => null,
+		})
 
-			if (!tuiModule) {
-				yield* Console.log("chop: TUI requires Bun runtime. Install Bun from https://bun.sh")
-				return
-			}
+		if (!tuiModule) {
+			yield* Console.log("chop: TUI requires Bun runtime. Install Bun from https://bun.sh")
+			return
+		}
 
-			yield* tuiModule.startTui().pipe(Effect.catchTag("TuiError", (e) => Console.error(`TUI error: ${e.message}`)))
-		}),
+		yield* tuiModule
+			.startTui(undefined, Option.getOrUndefined(rpcUrl))
+			.pipe(Effect.catchTag("TuiError", (e) => Console.error(`TUI error: ${e.message}`)))
+	}),
 ).pipe(
 	Command.withDescription("Ethereum Swiss Army knife"),
 	Command.withSubcommands([
@@ -70,6 +70,7 @@ export const root = Command.make(
 		...addressCommands,
 		...bytecodeCommands,
 		...chainCommands,
+		compileCommand,
 		...convertCommands,
 		...cryptoCommands,
 		...ensCommands,

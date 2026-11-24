@@ -17,8 +17,8 @@ import { Effect, ManagedRuntime } from "effect"
 import { describe, expect, it } from "vitest"
 import { abiDecodeHandler, abiEncodeHandler } from "../src/cli/commands/abi.js"
 import { keccakHandler } from "../src/cli/commands/crypto.js"
-import { callHandler } from "../src/handlers/call.js"
 import { bytesToHex } from "../src/evm/conversions.js"
+import { callHandler } from "../src/handlers/call.js"
 import { TevmNode, TevmNodeService } from "../src/node/index.js"
 
 // ---------------------------------------------------------------------------
@@ -34,9 +34,9 @@ const ITERATIONS = 10
 const medianOf = async (n: number, fn: () => Promise<void> | void): Promise<number> => {
 	const times: number[] = []
 	for (let i = 0; i < n; i++) {
-		const start = Date.now()
+		const start = performance.now()
 		await fn()
-		times.push(Date.now() - start)
+		times.push(performance.now() - start)
 	}
 	times.sort((a, b) => a - b)
 	// biome-ignore lint/style/noNonNullAssertion: array length is always n > 0
@@ -66,27 +66,23 @@ const dirSize = (dir: string): number => {
 // imports) while not flaking on normal subprocess/load variance.
 
 describe("CLI startup time", () => {
-	it(
-		"bun run bin/chop.ts --version completes in < 1500ms (median of 10)",
-		async () => {
-			// Warm up once so bun caches the transpilation
+	it("bun run bin/chop.ts --version completes in < 1500ms (median of 10)", async () => {
+		// Warm up once so bun caches the transpilation
+		execSync("bun run bin/chop.ts --version", {
+			cwd: PROJECT_ROOT,
+			stdio: "pipe",
+		})
+
+		const median = await medianOf(ITERATIONS, () => {
 			execSync("bun run bin/chop.ts --version", {
 				cwd: PROJECT_ROOT,
 				stdio: "pipe",
 			})
+		})
 
-			const median = await medianOf(ITERATIONS, () => {
-				execSync("bun run bin/chop.ts --version", {
-					cwd: PROJECT_ROOT,
-					stdio: "pipe",
-				})
-			})
-
-			console.log(`  CLI startup median: ${median.toFixed(2)}ms`)
-			expect(median).toBeLessThan(1500)
-		},
-		30_000,
-	)
+		console.log(`  CLI startup median: ${median.toFixed(2)}ms`)
+		expect(median).toBeLessThan(1500)
+	}, 30_000)
 })
 
 // ---------------------------------------------------------------------------
@@ -95,10 +91,7 @@ describe("CLI startup time", () => {
 
 describe("ABI encode/decode performance", () => {
 	const SIG = "(address,uint256)"
-	const VALUES = [
-		"0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
-		"1000000000000000000",
-	] as const
+	const VALUES = ["0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045", "1000000000000000000"] as const
 	// Pre-computed encoded data for the decode path
 	const ENCODED_DATA =
 		"0x000000000000000000000000d8da6bf26964af9d7eed9e03e53415d37aa960450000000000000000000000000000000000000000000000000de0b6b3a7640000"
@@ -188,22 +181,18 @@ describe("Local eth_call performance", () => {
 // ---------------------------------------------------------------------------
 
 describe("npm package size", () => {
-	it(
-		"dist/ directory is smaller than 5MB after build",
-		() => {
-			// Run the build
-			execSync("bun run build", {
-				cwd: PROJECT_ROOT,
-				stdio: "pipe",
-			})
+	it("dist/ directory is smaller than 5MB after build", () => {
+		// Run the build
+		execSync("bun run build", {
+			cwd: PROJECT_ROOT,
+			stdio: "pipe",
+		})
 
-			const distPath = join(PROJECT_ROOT, "dist")
-			const totalBytes = dirSize(distPath)
-			const totalMB = totalBytes / (1024 * 1024)
+		const distPath = join(PROJECT_ROOT, "dist")
+		const totalBytes = dirSize(distPath)
+		const totalMB = totalBytes / (1024 * 1024)
 
-			console.log(`  dist/ size: ${totalMB.toFixed(2)}MB (${totalBytes} bytes)`)
-			expect(totalMB).toBeLessThan(5)
-		},
-		60_000,
-	)
+		console.log(`  dist/ size: ${totalMB.toFixed(2)}MB (${totalBytes} bytes)`)
+		expect(totalMB).toBeLessThan(5)
+	}, 60_000)
 })

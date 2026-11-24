@@ -120,15 +120,15 @@ describe("TUI state", () => {
 			}),
 		)
 
-		it.effect("'9' is not a valid tab key", () =>
+		it.effect("'9' selects the compiler tab", () =>
 			Effect.sync(() => {
-				expect(keyToAction("9")).toBeNull()
+				expect(keyToAction("9")).toEqual({ _tag: "SetTab", tab: 8 })
 			}),
 		)
 
-		it.effect("all keys 1-8 produce valid SetTab actions", () =>
+		it.effect("all keys 1-9 produce valid SetTab actions", () =>
 			Effect.sync(() => {
-				for (let i = 1; i <= 8; i++) {
+				for (let i = 1; i <= 9; i++) {
 					const action = keyToAction(String(i))
 					expect(action).toEqual({ _tag: "SetTab", tab: i - 1 })
 				}

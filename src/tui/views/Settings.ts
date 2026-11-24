@@ -71,6 +71,8 @@ export interface SettingsViewState {
 	readonly miningModeToggled: boolean
 	/** Signal: gas limit was confirmed (consumed by App.ts). */
 	readonly gasLimitConfirmed: boolean
+	readonly accountRegeneration: "confirm" | "pending" | null
+	readonly regenerationStatus: string | null
 	/** Current settings data (null = not yet loaded). */
 	readonly data: SettingsViewData | null
 }
@@ -82,6 +84,8 @@ export const initialSettingsState: SettingsViewState = {
 	gasLimitInput: "",
 	miningModeToggled: false,
 	gasLimitConfirmed: false,
+	accountRegeneration: null,
+	regenerationStatus: null,
 	data: null,
 }
 
@@ -127,8 +131,16 @@ export const settingsReduce = (state: SettingsViewState, key: string): SettingsV
 		}
 	}
 
-	// Normal mode
+	if (state.accountRegeneration === "pending") return state
+	if (state.accountRegeneration === "confirm") {
+		if (key === "y") return { ...state, accountRegeneration: "pending", regenerationStatus: null }
+		if (key === "n" || key === "escape") return { ...state, accountRegeneration: null }
+		return state
+	}
+
 	switch (key) {
+		case "g":
+			return { ...state, accountRegeneration: "confirm", regenerationStatus: null }
 		case "j": {
 			const maxIndex = SETTINGS_FIELDS.length - 1
 			return { ...state, selectedIndex: Math.min(state.selectedIndex + 1, maxIndex) }
@@ -167,6 +179,7 @@ export interface SettingsHandle {
 	readonly update: (data: SettingsViewData) => void
 	/** Get current view state (for testing/inspection). */
 	readonly getState: () => SettingsViewState
+	readonly finishRegeneration: (message: string) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -387,10 +400,15 @@ export const createSettings = (renderer: CliRenderer): SettingsHandle => {
 		const statusIdx = TOTAL_LINES - 1
 		const statusLine = lines[statusIdx]
 		if (statusLine) {
-			if (viewState.inputActive) {
+			if (viewState.accountRegeneration === "confirm") {
+				statusLine.content = " Replace all test accounts and invalidate snapshots? [y] Confirm [n/Esc] Cancel"
+			} else if (viewState.accountRegeneration === "pending") {
+				statusLine.content = " Regenerating test accounts..."
+			} else if (viewState.inputActive) {
 				statusLine.content = " Type gas limit, [Enter] Confirm  [Esc] Cancel"
 			} else {
-				statusLine.content = " [j/k] Navigate  [Space/Enter] Edit  [?] Help"
+				statusLine.content =
+					viewState.regenerationStatus ?? " [j/k] Navigate  [Space/Enter] Edit  [g] Regenerate accounts"
 			}
 			statusLine.fg = DRACULA.comment
 		}
@@ -410,10 +428,15 @@ export const createSettings = (renderer: CliRenderer): SettingsHandle => {
 		render()
 	}
 
+	const finishRegeneration = (message: string): void => {
+		viewState = { ...viewState, accountRegeneration: null, regenerationStatus: message }
+		render()
+	}
+
 	const getState = (): SettingsViewState => viewState
 
 	// Initial render
 	render()
 
-	return { container, handleKey, update, getState }
+	return { container, handleKey, update, getState, finishRegeneration }
 }
