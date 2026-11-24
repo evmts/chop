@@ -27,6 +27,7 @@ export function createCompiler(renderer: CliRenderer, rpcUrl?: string) {
 	let busy = false
 	let feedback = ""
 	let confirming = false
+	let deploymentUrl: URL | undefined
 
 	const render = () => {
 		const artifact = artifacts[contractIndex]
@@ -35,7 +36,7 @@ export function createCompiler(renderer: CliRenderer, rpcUrl?: string) {
 				? "No .sol files in the current directory"
 				: `File: ${files[fileIndex]} (${fileIndex + 1}/${files.length})`
 		status.content = confirming
-			? `Submit ${artifact?.name} to ${rpcUrl}? [Enter] Confirm  [Esc] Cancel`
+			? `Submit ${artifact?.name} to ${deploymentUrl?.origin}? [Enter] Confirm  [Esc] Cancel`
 			: feedback || "[j/k] Select file  [Enter] Compile  [h/l] Select contract  [s/m] Scroll  [r] Refresh"
 		detail.content = artifact
 			? `${artifact.name} (${contractIndex + 1}/${artifacts.length})${rpcUrl ? "  [d] Deploy" : ""}\n\n${diagnostics}\n\nABI\n${JSON.stringify(artifact.abi, null, 2)}\n\nBytecode\n${artifact.bytecode}`
@@ -82,23 +83,40 @@ export function createCompiler(renderer: CliRenderer, rpcUrl?: string) {
 		}
 	}
 
-	const handleKey = (key: string) => {
-		if (busy) return
-
-		const current = artifacts[contractIndex]
-		if (confirming) {
-			if (key === "escape") {
-				confirming = false
-				render()
-			} else if (key === "return" && current && rpcUrl) {
-				confirming = false
-				void run("Submitting deployment...", async () => {
-					const hash = await deployContract(localRpcUrl(rpcUrl), current)
-					feedback = `Deployment submitted: ${hash}`
-				})
-			}
+	const confirmDeployment = (key: string) => {
+		if (key === "escape") {
+			confirming = false
+			render()
 			return
 		}
+
+		const contract = artifacts[contractIndex]
+		const url = deploymentUrl
+		if (key === "return" && contract && url) {
+			confirming = false
+			void run("Submitting deployment...", async () => {
+				const hash = await deployContract(url, contract)
+				feedback = `Deployment submitted: ${hash}`
+			})
+		}
+	}
+
+	const compileFile = (path: string) => {
+		clear()
+		void run(`Compiling ${path}...`, async () => {
+			const result = await compileSolidity({ path }, { optimize: false, runs: 200 })
+			diagnostics = result.diagnostics.map(({ formattedMessage }) => formattedMessage).join("\n")
+			if (!result.diagnostics.some(({ severity }) => severity === "error")) artifacts = result.contracts
+			feedback =
+				artifacts.length > 0
+					? `Compiled ${artifacts.length} contract(s) with solc ${result.version}`
+					: "No contracts emitted"
+		})
+	}
+
+	const handleKey = (key: string) => {
+		if (busy) return
+		if (confirming) return confirmDeployment(key)
 
 		const path = files[fileIndex]
 		switch (key) {
@@ -121,20 +139,17 @@ export function createCompiler(renderer: CliRenderer, rpcUrl?: string) {
 				output.scrollBy(key === "m" ? 5 : -5)
 				return
 			case "return":
-				if (!path) return
-				clear()
-				void run(`Compiling ${path}...`, async () => {
-					const result = await compileSolidity({ path }, { optimize: false, runs: 200 })
-					diagnostics = result.diagnostics.map(({ formattedMessage }) => formattedMessage).join("\n")
-					if (!result.diagnostics.some(({ severity }) => severity === "error")) artifacts = result.contracts
-					feedback =
-						artifacts.length > 0
-							? `Compiled ${artifacts.length} contract(s) with solc ${result.version}`
-							: "No contracts emitted"
-				})
+				if (path) compileFile(path)
 				return
 			case "d":
-				if (current && rpcUrl) confirming = true
+				if (artifacts[contractIndex] && rpcUrl) {
+					try {
+						deploymentUrl = localRpcUrl(rpcUrl)
+						confirming = true
+					} catch (error) {
+						feedback = error instanceof Error ? error.message : String(error)
+					}
+				}
 				break
 		}
 		render()

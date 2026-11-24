@@ -150,7 +150,7 @@ chop node [options]
 | `--fork-url <url>` | Fork from an RPC endpoint |
 | `--fork-block-number <n>` | Pin fork to a specific block |
 
-The node binds to loopback and uses well-known development keys by default. It rejects browser-originated requests and request bodies over 1 MiB. It supports account funding, balance and block queries, transaction bookkeeping, snapshots, and selected Anvil-compatible methods. Its execution engine implements a limited opcode set, and contract creation transactions do not install runtime bytecode. Use a local Anvil instance for full Solidity contract execution and deployment.
+The node binds to loopback and uses well-known development keys by default. It rejects browser-originated requests and request bodies over 1 MiB. It supports account funding, balance and block queries, transaction bookkeeping, snapshots, and selected Anvil-compatible methods. Its execution engine implements a limited opcode set, and contract creation transactions do not install runtime bytecode. Use a local Anvil instance for full Solidity contract execution and deployment. Full in-process execution is tracked in [#30](https://github.com/evmts/chop/issues/30).
 
 ### Solidity Compiler
 

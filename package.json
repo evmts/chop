@@ -43,7 +43,7 @@
 		"test:coverage": "vitest run src/ --coverage",
 		"test:property": "vitest run tests/properties.test.ts",
 		"test:bench": "vitest run tests/benchmarks.test.ts",
-		"test:e2e": "bun run build && bash scripts/test-golden.sh && vitest run tests/packaged.e2e.test.ts && python3 scripts/test-tui.py",
+		"test:e2e": "bun run build && bash scripts/test-golden.sh && vitest run tests/packaged.e2e.test.ts && python3 scripts/test-tui.py && node scripts/check-package.mjs",
 		"lint": "biome check src/ bin/ tests/",
 		"lint:fix": "biome check --write src/ bin/ tests/",
 		"format": "biome format --write src/ bin/ tests/",
@@ -53,6 +53,8 @@
 		"@effect/cli": "^0.73.0",
 		"@effect/platform": "^0.94.0",
 		"@effect/platform-node": "^0.104.0",
+		"@effect/printer": "0.47.0",
+		"@effect/printer-ansi": "0.47.0",
 		"@modelcontextprotocol/sdk": "^1.27.1",
 		"@opentui/core": "0.3.0",
 		"@tevm/voltaire": "0.2.28",
@@ -81,5 +83,9 @@
 		"toml": "5.0.1",
 		"zod": "4.6.7",
 		"tmp": "0.2.7"
-	}
+	},
+	"bundleDependencies": [
+		"@effect/cli",
+		"solc"
+	]
 }
