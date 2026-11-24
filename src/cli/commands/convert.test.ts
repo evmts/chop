@@ -789,72 +789,72 @@ describe("convertCommands", () => {
 // ============================================================================
 
 describe("chop from-wei (E2E)", () => {
-	it("converts 1e18 wei to 1 ether", () => {
-		const result = runCli("from-wei 1000000000000000000")
+	it("converts 1e18 wei to 1 ether", async () => {
+		const result = await runCli("from-wei 1000000000000000000")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("1.000000000000000000")
 	})
 
-	it("converts with gwei unit", () => {
-		const result = runCli("from-wei 1000000000 gwei")
+	it("converts with gwei unit", async () => {
+		const result = await runCli("from-wei 1000000000 gwei")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("1.000000000")
 	})
 
-	it("outputs JSON with --json flag", () => {
-		const result = runCli("from-wei 1000000000000000000 --json")
+	it("outputs JSON with --json flag", async () => {
+		const result = await runCli("from-wei 1000000000000000000 --json")
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed).toEqual({ result: "1.000000000000000000" })
 	})
 
-	it("exits non-zero on invalid number", () => {
-		const result = runCli("from-wei abc")
+	it("exits non-zero on invalid number", async () => {
+		const result = await runCli("from-wei abc")
 		expect(result.exitCode).not.toBe(0)
 	})
 })
 
 describe("chop to-wei (E2E)", () => {
-	it("converts 1.5 ether to wei", () => {
-		const result = runCli("to-wei 1.5")
+	it("converts 1.5 ether to wei", async () => {
+		const result = await runCli("to-wei 1.5")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("1500000000000000000")
 	})
 
-	it("converts integer ether to wei", () => {
-		const result = runCli("to-wei 1")
+	it("converts integer ether to wei", async () => {
+		const result = await runCli("to-wei 1")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("1000000000000000000")
 	})
 
-	it("outputs JSON with --json flag", () => {
-		const result = runCli("to-wei 1.5 --json")
+	it("outputs JSON with --json flag", async () => {
+		const result = await runCli("to-wei 1.5 --json")
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed).toEqual({ result: "1500000000000000000" })
 	})
 
-	it("exits non-zero on invalid input", () => {
-		const result = runCli("to-wei abc")
+	it("exits non-zero on invalid input", async () => {
+		const result = await runCli("to-wei abc")
 		expect(result.exitCode).not.toBe(0)
 	})
 })
 
 describe("chop to-hex (E2E)", () => {
-	it("converts 255 to 0xff", () => {
-		const result = runCli("to-hex 255")
+	it("converts 255 to 0xff", async () => {
+		const result = await runCli("to-hex 255")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0xff")
 	})
 
-	it("converts 0 to 0x0", () => {
-		const result = runCli("to-hex 0")
+	it("converts 0 to 0x0", async () => {
+		const result = await runCli("to-hex 0")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0x0")
 	})
 
-	it("outputs JSON with --json flag", () => {
-		const result = runCli("to-hex 255 --json")
+	it("outputs JSON with --json flag", async () => {
+		const result = await runCli("to-hex 255 --json")
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed).toEqual({ result: "0xff" })
@@ -862,46 +862,46 @@ describe("chop to-hex (E2E)", () => {
 })
 
 describe("chop to-dec (E2E)", () => {
-	it("converts 0xff to 255", () => {
-		const result = runCli("to-dec 0xff")
+	it("converts 0xff to 255", async () => {
+		const result = await runCli("to-dec 0xff")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("255")
 	})
 
-	it("converts 0x0 to 0", () => {
-		const result = runCli("to-dec 0x0")
+	it("converts 0x0 to 0", async () => {
+		const result = await runCli("to-dec 0x0")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0")
 	})
 
-	it("outputs JSON with --json flag", () => {
-		const result = runCli("to-dec 0xff --json")
+	it("outputs JSON with --json flag", async () => {
+		const result = await runCli("to-dec 0xff --json")
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed).toEqual({ result: "255" })
 	})
 
-	it("exits non-zero on missing 0x prefix", () => {
-		const result = runCli("to-dec ff")
+	it("exits non-zero on missing 0x prefix", async () => {
+		const result = await runCli("to-dec ff")
 		expect(result.exitCode).not.toBe(0)
 	})
 })
 
 describe("chop to-base (E2E)", () => {
-	it("converts 255 decimal to binary", () => {
-		const result = runCli("to-base 255 --base-out 2")
+	it("converts 255 decimal to binary", async () => {
+		const result = await runCli("to-base 255 --base-out 2")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("11111111")
 	})
 
-	it("converts with both base-in and base-out", () => {
-		const result = runCli("to-base ff --base-in 16 --base-out 10")
+	it("converts with both base-in and base-out", async () => {
+		const result = await runCli("to-base ff --base-in 16 --base-out 10")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("255")
 	})
 
-	it("outputs JSON with --json flag", () => {
-		const result = runCli("to-base 255 --base-out 2 --json")
+	it("outputs JSON with --json flag", async () => {
+		const result = await runCli("to-base 255 --base-out 2 --json")
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed).toEqual({ result: "11111111" })
@@ -909,14 +909,14 @@ describe("chop to-base (E2E)", () => {
 })
 
 describe("chop from-utf8 (E2E)", () => {
-	it("converts hello to hex", () => {
-		const result = runCli("from-utf8 hello")
+	it("converts hello to hex", async () => {
+		const result = await runCli("from-utf8 hello")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0x68656c6c6f")
 	})
 
-	it("outputs JSON with --json flag", () => {
-		const result = runCli("from-utf8 hello --json")
+	it("outputs JSON with --json flag", async () => {
+		const result = await runCli("from-utf8 hello --json")
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed).toEqual({ result: "0x68656c6c6f" })
@@ -924,14 +924,14 @@ describe("chop from-utf8 (E2E)", () => {
 })
 
 describe("chop to-utf8 (E2E)", () => {
-	it("converts hex to hello", () => {
-		const result = runCli("to-utf8 0x68656c6c6f")
+	it("converts hex to hello", async () => {
+		const result = await runCli("to-utf8 0x68656c6c6f")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("hello")
 	})
 
-	it("outputs JSON with --json flag", () => {
-		const result = runCli("to-utf8 0x68656c6c6f --json")
+	it("outputs JSON with --json flag", async () => {
+		const result = await runCli("to-utf8 0x68656c6c6f --json")
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed).toEqual({ result: "hello" })
@@ -939,14 +939,14 @@ describe("chop to-utf8 (E2E)", () => {
 })
 
 describe("chop to-bytes32 (E2E)", () => {
-	it("pads hex to bytes32", () => {
-		const result = runCli("to-bytes32 0xff")
+	it("pads hex to bytes32", async () => {
+		const result = await runCli("to-bytes32 0xff")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0x00000000000000000000000000000000000000000000000000000000000000ff")
 	})
 
-	it("outputs JSON with --json flag", () => {
-		const result = runCli("to-bytes32 0xff --json")
+	it("outputs JSON with --json flag", async () => {
+		const result = await runCli("to-bytes32 0xff --json")
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed).toEqual({ result: "0x00000000000000000000000000000000000000000000000000000000000000ff" })
@@ -954,18 +954,18 @@ describe("chop to-bytes32 (E2E)", () => {
 })
 
 describe("chop to-rlp / from-rlp (E2E)", () => {
-	it("RLP encodes and decodes round-trip", () => {
-		const encodeResult = runCli("to-rlp 0x010203")
+	it("RLP encodes and decodes round-trip", async () => {
+		const encodeResult = await runCli("to-rlp 0x010203")
 		expect(encodeResult.exitCode).toBe(0)
 		const encoded = encodeResult.stdout.trim()
 
-		const decodeResult = runCli(`from-rlp ${encoded}`)
+		const decodeResult = await runCli(`from-rlp ${encoded}`)
 		expect(decodeResult.exitCode).toBe(0)
 		expect(decodeResult.stdout.trim()).toBe("0x010203")
 	})
 
-	it("to-rlp outputs JSON with --json flag", () => {
-		const result = runCli("to-rlp 0x01 --json")
+	it("to-rlp outputs JSON with --json flag", async () => {
+		const result = await runCli("to-rlp 0x01 --json")
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed.result).toMatch(/^0x/)
@@ -973,14 +973,14 @@ describe("chop to-rlp / from-rlp (E2E)", () => {
 })
 
 describe("chop shl (E2E)", () => {
-	it("shifts 1 left by 8 bits", () => {
-		const result = runCli("shl 1 8")
+	it("shifts 1 left by 8 bits", async () => {
+		const result = await runCli("shl 1 8")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0x100")
 	})
 
-	it("outputs JSON with --json flag", () => {
-		const result = runCli("shl 1 8 --json")
+	it("outputs JSON with --json flag", async () => {
+		const result = await runCli("shl 1 8 --json")
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed).toEqual({ result: "0x100" })
@@ -988,14 +988,14 @@ describe("chop shl (E2E)", () => {
 })
 
 describe("chop shr (E2E)", () => {
-	it("shifts 256 right by 8 bits", () => {
-		const result = runCli("shr 256 8")
+	it("shifts 256 right by 8 bits", async () => {
+		const result = await runCli("shr 256 8")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0x1")
 	})
 
-	it("outputs JSON with --json flag", () => {
-		const result = runCli("shr 256 8 --json")
+	it("outputs JSON with --json flag", async () => {
+		const result = await runCli("shr 256 8 --json")
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed).toEqual({ result: "0x1" })

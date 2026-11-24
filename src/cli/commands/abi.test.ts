@@ -497,8 +497,8 @@ describe("error handling", () => {
 // ---------------------------------------------------------------------------
 
 describe("chop abi-encode (E2E)", () => {
-	it("encodes transfer(address,uint256) correctly", () => {
-		const result = runCli(
+	it("encodes transfer(address,uint256) correctly", async () => {
+		const result = await runCli(
 			"abi-encode 'transfer(address,uint256)' 0x0000000000000000000000000000000000001234 1000000000000000000",
 		)
 		expect(result.exitCode).toBe(0)
@@ -507,8 +507,8 @@ describe("chop abi-encode (E2E)", () => {
 		)
 	})
 
-	it("produces JSON output with --json flag", () => {
-		const result = runCli(
+	it("produces JSON output with --json flag", async () => {
+		const result = await runCli(
 			"abi-encode --json 'transfer(address,uint256)' 0x0000000000000000000000000000000000001234 1000000000000000000",
 		)
 		expect(result.exitCode).toBe(0)
@@ -518,26 +518,26 @@ describe("chop abi-encode (E2E)", () => {
 		)
 	})
 
-	it("exits 1 on invalid signature", () => {
-		const result = runCli("abi-encode 'notvalid' 0x1234")
+	it("exits 1 on invalid signature", async () => {
+		const result = await runCli("abi-encode 'notvalid' 0x1234")
 		expect(result.exitCode).not.toBe(0)
 	})
 
-	it("exits 1 on wrong arg count", () => {
-		const result = runCli("abi-encode 'transfer(address,uint256)' 0x0000000000000000000000000000000000001234")
+	it("exits 1 on wrong arg count", async () => {
+		const result = await runCli("abi-encode 'transfer(address,uint256)' 0x0000000000000000000000000000000000001234")
 		expect(result.exitCode).not.toBe(0)
 	})
 
-	it("encodes with --packed flag", () => {
-		const result = runCli("abi-encode --packed '(uint16,bool)' 1 true")
+	it("encodes with --packed flag", async () => {
+		const result = await runCli("abi-encode --packed '(uint16,bool)' 1 true")
 		expect(result.exitCode).toBe(0)
 		const output = result.stdout.trim()
 		// packed encoding: uint16(1) = 0x0001, bool(true) = 0x01
 		expect(output).toBe("0x000101")
 	})
 
-	it("produces JSON output with --packed --json flags", () => {
-		const result = runCli("abi-encode --packed --json '(uint16,bool)' 1 true")
+	it("produces JSON output with --packed --json flags", async () => {
+		const result = await runCli("abi-encode --packed --json '(uint16,bool)' 1 true")
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed.result).toBe("0x000101")
@@ -545,8 +545,8 @@ describe("chop abi-encode (E2E)", () => {
 })
 
 describe("chop calldata (E2E)", () => {
-	it("produces correct selector + encoded args", () => {
-		const result = runCli(
+	it("produces correct selector + encoded args", async () => {
+		const result = await runCli(
 			"calldata 'transfer(address,uint256)' 0x0000000000000000000000000000000000001234 1000000000000000000",
 		)
 		expect(result.exitCode).toBe(0)
@@ -557,8 +557,8 @@ describe("chop calldata (E2E)", () => {
 		)
 	})
 
-	it("produces JSON output with --json flag", () => {
-		const result = runCli(
+	it("produces JSON output with --json flag", async () => {
+		const result = await runCli(
 			"calldata --json 'transfer(address,uint256)' 0x0000000000000000000000000000000000001234 1000000000000000000",
 		)
 		expect(result.exitCode).toBe(0)
@@ -568,8 +568,8 @@ describe("chop calldata (E2E)", () => {
 })
 
 describe("chop abi-decode (E2E)", () => {
-	it("decodes ABI data correctly", () => {
-		const result = runCli(
+	it("decodes ABI data correctly", async () => {
+		const result = await runCli(
 			"abi-decode 'transfer(address,uint256)' 0x00000000000000000000000000000000000000000000000000000000000012340000000000000000000000000000000000000000000000000de0b6b3a7640000",
 		)
 		expect(result.exitCode).toBe(0)
@@ -578,8 +578,8 @@ describe("chop abi-decode (E2E)", () => {
 		expect(lines[1]).toBe("1000000000000000000")
 	})
 
-	it("produces JSON output with --json flag", () => {
-		const result = runCli(
+	it("produces JSON output with --json flag", async () => {
+		const result = await runCli(
 			"abi-decode --json 'transfer(address,uint256)' 0x00000000000000000000000000000000000000000000000000000000000012340000000000000000000000000000000000000000000000000de0b6b3a7640000",
 		)
 		expect(result.exitCode).toBe(0)
@@ -589,15 +589,15 @@ describe("chop abi-decode (E2E)", () => {
 		expect(parsed.result[1]).toBe("1000000000000000000")
 	})
 
-	it("exits 1 on invalid hex data", () => {
-		const result = runCli("abi-decode 'transfer(address,uint256)' not-hex-data")
+	it("exits 1 on invalid hex data", async () => {
+		const result = await runCli("abi-decode 'transfer(address,uint256)' not-hex-data")
 		expect(result.exitCode).not.toBe(0)
 	})
 })
 
 describe("chop calldata-decode (E2E)", () => {
-	it("decodes calldata correctly", () => {
-		const result = runCli(
+	it("decodes calldata correctly", async () => {
+		const result = await runCli(
 			"calldata-decode 'transfer(address,uint256)' 0xa9059cbb00000000000000000000000000000000000000000000000000000000000012340000000000000000000000000000000000000000000000000de0b6b3a7640000",
 		)
 		expect(result.exitCode).toBe(0)
@@ -607,8 +607,8 @@ describe("chop calldata-decode (E2E)", () => {
 		expect(output).toContain("1000000000000000000")
 	})
 
-	it("produces JSON output with --json flag", () => {
-		const result = runCli(
+	it("produces JSON output with --json flag", async () => {
+		const result = await runCli(
 			"calldata-decode --json 'transfer(address,uint256)' 0xa9059cbb00000000000000000000000000000000000000000000000000000000000012340000000000000000000000000000000000000000000000000de0b6b3a7640000",
 		)
 		expect(result.exitCode).toBe(0)
@@ -617,8 +617,8 @@ describe("chop calldata-decode (E2E)", () => {
 		expect(parsed.args).toBeInstanceOf(Array)
 	})
 
-	it("exits 1 on invalid hex data", () => {
-		const result = runCli("calldata-decode 'transfer(address,uint256)' not-hex-data")
+	it("exits 1 on invalid hex data", async () => {
+		const result = await runCli("calldata-decode 'transfer(address,uint256)' not-hex-data")
 		expect(result.exitCode).not.toBe(0)
 	})
 })
@@ -994,45 +994,45 @@ describe("toParams", () => {
 // ---------------------------------------------------------------------------
 
 describe("chop abi-encode (E2E) — edge cases", () => {
-	it("encodes zero-arg function signature", () => {
-		const result = runCli("abi-encode '()'")
+	it("encodes zero-arg function signature", async () => {
+		const result = await runCli("abi-encode '()'")
 		expect(result.exitCode).toBe(0)
 		// No args, no output
 		expect(result.stdout.trim()).toBe("0x")
 	})
 
-	it("encodes single bool correctly via CLI", () => {
-		const result = runCli("abi-encode '(bool)' true")
+	it("encodes single bool correctly via CLI", async () => {
+		const result = await runCli("abi-encode '(bool)' true")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0x0000000000000000000000000000000000000000000000000000000000000001")
 	})
 
-	it("encodes zero value uint256", () => {
-		const result = runCli("abi-encode '(uint256)' 0")
+	it("encodes zero value uint256", async () => {
+		const result = await runCli("abi-encode '(uint256)' 0")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0x0000000000000000000000000000000000000000000000000000000000000000")
 	})
 
-	it("encodes string type correctly", () => {
-		const result = runCli("abi-encode '(string)' hello")
+	it("encodes string type correctly", async () => {
+		const result = await runCli("abi-encode '(string)' hello")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim().startsWith("0x")).toBe(true)
 	})
 
-	it("errors on too many arguments", () => {
-		const result = runCli("abi-encode '(uint256)' 1 2 3")
+	it("errors on too many arguments", async () => {
+		const result = await runCli("abi-encode '(uint256)' 1 2 3")
 		expect(result.exitCode).not.toBe(0)
 	})
 })
 
 describe("chop calldata (E2E) — edge cases", () => {
-	it("errors when signature has no function name", () => {
-		const result = runCli("calldata '(uint256)' 42")
+	it("errors when signature has no function name", async () => {
+		const result = await runCli("calldata '(uint256)' 42")
 		expect(result.exitCode).not.toBe(0)
 	})
 
-	it("encodes function with no args", () => {
-		const result = runCli("calldata 'totalSupply()'")
+	it("encodes function with no args", async () => {
+		const result = await runCli("calldata 'totalSupply()'")
 		expect(result.exitCode).toBe(0)
 		const output = result.stdout.trim()
 		// Should be just the 4-byte selector
@@ -1042,33 +1042,33 @@ describe("chop calldata (E2E) — edge cases", () => {
 })
 
 describe("chop abi-decode (E2E) — edge cases", () => {
-	it("decodes using output types when specified", () => {
+	it("decodes using output types when specified", async () => {
 		// balanceOf(address)(uint256) — decode with output type uint256
 		const encoded = "0x0000000000000000000000000000000000000000000000000de0b6b3a7640000"
-		const result = runCli(`abi-decode 'balanceOf(address)(uint256)' ${encoded}`)
+		const result = await runCli(`abi-decode 'balanceOf(address)(uint256)' ${encoded}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("1000000000000000000")
 	})
 
-	it("exits 1 on hex without 0x prefix", () => {
-		const result = runCli("abi-decode '(uint256)' deadbeef")
+	it("exits 1 on hex without 0x prefix", async () => {
+		const result = await runCli("abi-decode '(uint256)' deadbeef")
 		expect(result.exitCode).not.toBe(0)
 	})
 
-	it("exits 1 on odd-length hex", () => {
-		const result = runCli("abi-decode '(uint256)' 0xabc")
+	it("exits 1 on odd-length hex", async () => {
+		const result = await runCli("abi-decode '(uint256)' 0xabc")
 		expect(result.exitCode).not.toBe(0)
 	})
 
-	it("exits 1 on hex with invalid characters", () => {
-		const result = runCli("abi-decode '(uint256)' 0xGGHH")
+	it("exits 1 on hex with invalid characters", async () => {
+		const result = await runCli("abi-decode '(uint256)' 0xGGHH")
 		expect(result.exitCode).not.toBe(0)
 	})
 })
 
 describe("chop calldata-decode (E2E) — edge cases", () => {
-	it("errors when signature has no function name", () => {
-		const result = runCli(
+	it("errors when signature has no function name", async () => {
+		const result = await runCli(
 			"calldata-decode '(uint256)' 0xa9059cbb0000000000000000000000000000000000000000000000000000000000000001",
 		)
 		expect(result.exitCode).not.toBe(0)
@@ -2751,8 +2751,8 @@ describe("abiEncodeHandler — additional boundary conditions", () => {
 // ---------------------------------------------------------------------------
 
 describe("chop abi-encode --json (E2E)", () => {
-	it("produces valid JSON output with result key", () => {
-		const result = runCli("abi-encode --json '(uint256)' 42")
+	it("produces valid JSON output with result key", async () => {
+		const result = await runCli("abi-encode --json '(uint256)' 42")
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed).toHaveProperty("result")
@@ -2760,15 +2760,15 @@ describe("chop abi-encode --json (E2E)", () => {
 		expect(parsed.result.startsWith("0x")).toBe(true)
 	})
 
-	it("produces valid JSON output for multiple params", () => {
-		const result = runCli("abi-encode --json '(address,uint256)' 0x0000000000000000000000000000000000001234 42")
+	it("produces valid JSON output for multiple params", async () => {
+		const result = await runCli("abi-encode --json '(address,uint256)' 0x0000000000000000000000000000000000001234 42")
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed.result.startsWith("0x")).toBe(true)
 	})
 
-	it("produces valid JSON output for zero params", () => {
-		const result = runCli("abi-encode --json '()'")
+	it("produces valid JSON output for zero params", async () => {
+		const result = await runCli("abi-encode --json '()'")
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed.result).toBe("0x")
@@ -2776,8 +2776,8 @@ describe("chop abi-encode --json (E2E)", () => {
 })
 
 describe("chop calldata --json (E2E)", () => {
-	it("produces valid JSON output with result key", () => {
-		const result = runCli(
+	it("produces valid JSON output with result key", async () => {
+		const result = await runCli(
 			"calldata --json 'transfer(address,uint256)' 0x0000000000000000000000000000000000001234 1000000000000000000",
 		)
 		expect(result.exitCode).toBe(0)
@@ -2786,8 +2786,8 @@ describe("chop calldata --json (E2E)", () => {
 		expect(parsed.result.startsWith("0xa9059cbb")).toBe(true)
 	})
 
-	it("produces valid JSON output for no-arg function", () => {
-		const result = runCli("calldata --json 'totalSupply()'")
+	it("produces valid JSON output for no-arg function", async () => {
+		const result = await runCli("calldata --json 'totalSupply()'")
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed.result.startsWith("0x")).toBe(true)
@@ -2796,8 +2796,8 @@ describe("chop calldata --json (E2E)", () => {
 })
 
 describe("chop abi-decode --json (E2E)", () => {
-	it("produces valid JSON with result array", () => {
-		const result = runCli(
+	it("produces valid JSON with result array", async () => {
+		const result = await runCli(
 			"abi-decode --json '(uint256)' 0x000000000000000000000000000000000000000000000000000000000000002a",
 		)
 		expect(result.exitCode).toBe(0)
@@ -2807,8 +2807,8 @@ describe("chop abi-decode --json (E2E)", () => {
 		expect(parsed.result[0]).toBe("42")
 	})
 
-	it("produces valid JSON with multiple decoded values", () => {
-		const result = runCli(
+	it("produces valid JSON with multiple decoded values", async () => {
+		const result = await runCli(
 			"abi-decode --json '(address,uint256)' 0x00000000000000000000000000000000000000000000000000000000000012340000000000000000000000000000000000000000000000000de0b6b3a7640000",
 		)
 		expect(result.exitCode).toBe(0)
@@ -2818,8 +2818,8 @@ describe("chop abi-decode --json (E2E)", () => {
 })
 
 describe("chop calldata-decode --json (E2E)", () => {
-	it("produces valid JSON with name and args", () => {
-		const result = runCli(
+	it("produces valid JSON with name and args", async () => {
+		const result = await runCli(
 			"calldata-decode --json 'transfer(address,uint256)' 0xa9059cbb00000000000000000000000000000000000000000000000000000000000012340000000000000000000000000000000000000000000000000de0b6b3a7640000",
 		)
 		expect(result.exitCode).toBe(0)
@@ -2831,13 +2831,13 @@ describe("chop calldata-decode --json (E2E)", () => {
 		expect(parsed.args.length).toBe(2)
 	})
 
-	it("produces valid JSON for no-arg function decode", () => {
+	it("produces valid JSON for no-arg function decode", async () => {
 		// First encode totalSupply calldata, then decode it
-		const encResult = runCli("calldata 'totalSupply()'")
+		const encResult = await runCli("calldata 'totalSupply()'")
 		expect(encResult.exitCode).toBe(0)
 		const calldata = encResult.stdout.trim()
 
-		const result = runCli(`calldata-decode --json 'totalSupply()' ${calldata}`)
+		const result = await runCli(`calldata-decode --json 'totalSupply()' ${calldata}`)
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed.name).toBe("totalSupply")

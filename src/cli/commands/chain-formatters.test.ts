@@ -38,45 +38,45 @@ const ZERO_ADDR = "0x0000000000000000000000000000000000000000"
 // ============================================================================
 
 describe("formatBlock — non-JSON block output", () => {
-	it("includes Block number, Hash, and Timestamp for genesis", () => {
-		const result = runCli(`block 0 -r ${rpcUrl()}`)
+	it("includes Block number, Hash, and Timestamp for genesis", async () => {
+		const result = await runCli(`block 0 -r ${rpcUrl()}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout).toContain("Block:")
 		expect(result.stdout).toContain("Hash:")
 		expect(result.stdout).toContain("Timestamp:")
 	})
 
-	it("includes Gas Limit for genesis block", () => {
-		const result = runCli(`block 0 -r ${rpcUrl()}`)
+	it("includes Gas Limit for genesis block", async () => {
+		const result = await runCli(`block 0 -r ${rpcUrl()}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout).toContain("Gas Limit:")
 	})
 
-	it("includes Parent Hash for latest block", () => {
-		const result = runCli(`block latest -r ${rpcUrl()}`)
+	it("includes Parent Hash for latest block", async () => {
+		const result = await runCli(`block latest -r ${rpcUrl()}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout).toContain("Parent Hash:")
 	})
 
-	it("includes Transactions count in block with transactions", () => {
+	it("includes Transactions count in block with transactions", async () => {
 		// Send a transaction to create a block with txs
-		const sendResult = runCli(`send --to ${ZERO_ADDR} --from ${FROM} -r ${rpcUrl()} --json`)
+		const sendResult = await runCli(`send --to ${ZERO_ADDR} --from ${FROM} -r ${rpcUrl()} --json`)
 		expect(sendResult.exitCode).toBe(0)
 
-		const result = runCli(`block latest -r ${rpcUrl()}`)
+		const result = await runCli(`block latest -r ${rpcUrl()}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout).toContain("Transactions:")
 	})
 
-	it("includes Base Fee field when block has baseFeePerGas", () => {
-		const result = runCli(`block latest -r ${rpcUrl()}`)
+	it("includes Base Fee field when block has baseFeePerGas", async () => {
+		const result = await runCli(`block latest -r ${rpcUrl()}`)
 		expect(result.exitCode).toBe(0)
 		// EIP-1559 blocks should have Base Fee in formatted output
 		expect(result.stdout).toContain("Base Fee:")
 	})
 
-	it("displays numeric values as decimals, not hex", () => {
-		const result = runCli(`block latest -r ${rpcUrl()}`)
+	it("displays numeric values as decimals, not hex", async () => {
+		const result = await runCli(`block latest -r ${rpcUrl()}`)
 		expect(result.exitCode).toBe(0)
 		// Block number should appear as a decimal integer, not a hex string
 		const blockLine = result.stdout.split("\n").find((l: string) => l.trimStart().startsWith("Block:"))
@@ -97,48 +97,48 @@ describe("formatBlock — non-JSON block output", () => {
 describe("formatTx — non-JSON transaction output", () => {
 	let txHash: string
 
-	beforeAll(() => {
-		const sendResult = runCli(`send --to ${ZERO_ADDR} --from ${FROM} --value 0x1 -r ${rpcUrl()} --json`)
+	beforeAll(async () => {
+		const sendResult = await runCli(`send --to ${ZERO_ADDR} --from ${FROM} --value 0x1 -r ${rpcUrl()} --json`)
 		expect(sendResult.exitCode).toBe(0)
 		txHash = JSON.parse(sendResult.stdout.trim()).txHash
 		expect(txHash).toBeDefined()
 	})
 
-	it("includes Hash field", () => {
-		const result = runCli(`tx ${txHash} -r ${rpcUrl()}`)
+	it("includes Hash field", async () => {
+		const result = await runCli(`tx ${txHash} -r ${rpcUrl()}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout).toContain("Hash:")
 		expect(result.stdout).toContain(txHash)
 	})
 
-	it("includes From field with sender address", () => {
-		const result = runCli(`tx ${txHash} -r ${rpcUrl()}`)
+	it("includes From field with sender address", async () => {
+		const result = await runCli(`tx ${txHash} -r ${rpcUrl()}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout).toContain("From:")
 	})
 
-	it("includes To field", () => {
-		const result = runCli(`tx ${txHash} -r ${rpcUrl()}`)
+	it("includes To field", async () => {
+		const result = await runCli(`tx ${txHash} -r ${rpcUrl()}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout).toContain("To:")
 	})
 
-	it("includes Value field in wei", () => {
-		const result = runCli(`tx ${txHash} -r ${rpcUrl()}`)
+	it("includes Value field in wei", async () => {
+		const result = await runCli(`tx ${txHash} -r ${rpcUrl()}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout).toContain("Value:")
 		expect(result.stdout).toContain("wei")
 	})
 
-	it("includes Gas and Block fields", () => {
-		const result = runCli(`tx ${txHash} -r ${rpcUrl()}`)
+	it("includes Gas and Block fields", async () => {
+		const result = await runCli(`tx ${txHash} -r ${rpcUrl()}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout).toContain("Gas:")
 		expect(result.stdout).toContain("Block:")
 	})
 
-	it("includes Input field", () => {
-		const result = runCli(`tx ${txHash} -r ${rpcUrl()}`)
+	it("includes Input field", async () => {
+		const result = await runCli(`tx ${txHash} -r ${rpcUrl()}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout).toContain("Input:")
 	})
@@ -151,53 +151,53 @@ describe("formatTx — non-JSON transaction output", () => {
 describe("formatReceipt — non-JSON receipt output", () => {
 	let txHash: string
 
-	beforeAll(() => {
-		const sendResult = runCli(`send --to ${ZERO_ADDR} --from ${FROM} -r ${rpcUrl()} --json`)
+	beforeAll(async () => {
+		const sendResult = await runCli(`send --to ${ZERO_ADDR} --from ${FROM} -r ${rpcUrl()} --json`)
 		expect(sendResult.exitCode).toBe(0)
 		txHash = JSON.parse(sendResult.stdout.trim()).txHash
 		expect(txHash).toBeDefined()
 	})
 
-	it("includes Tx Hash field", () => {
-		const result = runCli(`receipt ${txHash} -r ${rpcUrl()}`)
+	it("includes Tx Hash field", async () => {
+		const result = await runCli(`receipt ${txHash} -r ${rpcUrl()}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout).toContain("Tx Hash:")
 		expect(result.stdout).toContain(txHash)
 	})
 
-	it("includes Status field showing Success", () => {
-		const result = runCli(`receipt ${txHash} -r ${rpcUrl()}`)
+	it("includes Status field showing Success", async () => {
+		const result = await runCli(`receipt ${txHash} -r ${rpcUrl()}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout).toContain("Status:")
 		expect(result.stdout).toContain("Success")
 	})
 
-	it("includes Block number field", () => {
-		const result = runCli(`receipt ${txHash} -r ${rpcUrl()}`)
+	it("includes Block number field", async () => {
+		const result = await runCli(`receipt ${txHash} -r ${rpcUrl()}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout).toContain("Block:")
 	})
 
-	it("includes From field", () => {
-		const result = runCli(`receipt ${txHash} -r ${rpcUrl()}`)
+	it("includes From field", async () => {
+		const result = await runCli(`receipt ${txHash} -r ${rpcUrl()}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout).toContain("From:")
 	})
 
-	it("includes To field", () => {
-		const result = runCli(`receipt ${txHash} -r ${rpcUrl()}`)
+	it("includes To field", async () => {
+		const result = await runCli(`receipt ${txHash} -r ${rpcUrl()}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout).toContain("To:")
 	})
 
-	it("includes Gas Used field", () => {
-		const result = runCli(`receipt ${txHash} -r ${rpcUrl()}`)
+	it("includes Gas Used field", async () => {
+		const result = await runCli(`receipt ${txHash} -r ${rpcUrl()}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout).toContain("Gas Used:")
 	})
 
-	it("includes Logs count", () => {
-		const result = runCli(`receipt ${txHash} -r ${rpcUrl()}`)
+	it("includes Logs count", async () => {
+		const result = await runCli(`receipt ${txHash} -r ${rpcUrl()}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout).toContain("Logs:")
 	})
@@ -208,8 +208,8 @@ describe("formatReceipt — non-JSON receipt output", () => {
 // ============================================================================
 
 describe("formatLogs — non-JSON logs output (empty)", () => {
-	it("prints 'No logs found' for devnet with no events", () => {
-		const result = runCli(`logs --from-block 0x0 --to-block latest -r ${rpcUrl()}`)
+	it("prints 'No logs found' for devnet with no events", async () => {
+		const result = await runCli(`logs --from-block 0x0 --to-block latest -r ${rpcUrl()}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout).toContain("No logs found")
 	})
@@ -220,8 +220,8 @@ describe("formatLogs — non-JSON logs output (empty)", () => {
 // ============================================================================
 
 describe("gas-price — non-JSON output", () => {
-	it("prints a plain decimal number (not JSON)", () => {
-		const result = runCli(`gas-price -r ${rpcUrl()}`)
+	it("prints a plain decimal number (not JSON)", async () => {
+		const result = await runCli(`gas-price -r ${rpcUrl()}`)
 		expect(result.exitCode).toBe(0)
 		const value = result.stdout.trim()
 		// Should be a plain number, not wrapped in JSON
@@ -236,8 +236,8 @@ describe("gas-price — non-JSON output", () => {
 // ============================================================================
 
 describe("baseFeeCommand — CLI wiring", () => {
-	it("non-JSON: prints a plain decimal number", () => {
-		const result = runCli(`base-fee -r ${rpcUrl()}`)
+	it("non-JSON: prints a plain decimal number", async () => {
+		const result = await runCli(`base-fee -r ${rpcUrl()}`)
 		expect(result.exitCode).toBe(0)
 		const value = result.stdout.trim()
 		// Should be a plain decimal number
@@ -248,8 +248,8 @@ describe("baseFeeCommand — CLI wiring", () => {
 		expect(value).not.toContain("baseFee")
 	})
 
-	it("--json: outputs { baseFee: <string> }", () => {
-		const result = runCli(`base-fee -r ${rpcUrl()} --json`)
+	it("--json: outputs { baseFee: <string> }", async () => {
+		const result = await runCli(`base-fee -r ${rpcUrl()} --json`)
 		expect(result.exitCode).toBe(0)
 		const json = JSON.parse(result.stdout.trim())
 		expect(json).toHaveProperty("baseFee")
@@ -263,8 +263,8 @@ describe("baseFeeCommand — CLI wiring", () => {
 // ============================================================================
 
 describe("findBlockCommand — CLI wiring", () => {
-	it("non-JSON: prints a plain block number for timestamp 0", () => {
-		const result = runCli(`find-block 0 -r ${rpcUrl()}`)
+	it("non-JSON: prints a plain block number for timestamp 0", async () => {
+		const result = await runCli(`find-block 0 -r ${rpcUrl()}`)
 		expect(result.exitCode).toBe(0)
 		const value = result.stdout.trim()
 		expect(value).toBe("0")
@@ -273,15 +273,15 @@ describe("findBlockCommand — CLI wiring", () => {
 		expect(value).not.toContain("blockNumber")
 	})
 
-	it("--json: outputs { blockNumber: <string> } for timestamp 0", () => {
-		const result = runCli(`find-block 0 -r ${rpcUrl()} --json`)
+	it("--json: outputs { blockNumber: <string> } for timestamp 0", async () => {
+		const result = await runCli(`find-block 0 -r ${rpcUrl()} --json`)
 		expect(result.exitCode).toBe(0)
 		const json = JSON.parse(result.stdout.trim())
 		expect(json).toEqual({ blockNumber: "0" })
 	})
 
-	it("non-JSON: prints block number for very large timestamp", () => {
-		const result = runCli(`find-block 9999999999 -r ${rpcUrl()}`)
+	it("non-JSON: prints block number for very large timestamp", async () => {
+		const result = await runCli(`find-block 9999999999 -r ${rpcUrl()}`)
 		expect(result.exitCode).toBe(0)
 		const value = result.stdout.trim()
 		// With only genesis block, should return "0" or a small number
@@ -289,21 +289,21 @@ describe("findBlockCommand — CLI wiring", () => {
 		expect(Number(value)).toBeGreaterThanOrEqual(0)
 	})
 
-	it("--json: outputs structured JSON for large timestamp", () => {
-		const result = runCli(`find-block 9999999999 -r ${rpcUrl()} --json`)
+	it("--json: outputs structured JSON for large timestamp", async () => {
+		const result = await runCli(`find-block 9999999999 -r ${rpcUrl()} --json`)
 		expect(result.exitCode).toBe(0)
 		const json = JSON.parse(result.stdout.trim())
 		expect(json).toHaveProperty("blockNumber")
 		expect(typeof json.blockNumber).toBe("string")
 	})
 
-	it("invalid timestamp exits non-zero", () => {
-		const result = runCli(`find-block abc -r ${rpcUrl()}`)
+	it("invalid timestamp exits non-zero", async () => {
+		const result = await runCli(`find-block abc -r ${rpcUrl()}`)
 		expect(result.exitCode).not.toBe(0)
 	})
 
-	it("negative timestamp exits non-zero", () => {
-		const result = runCli(`find-block -- -1 -r ${rpcUrl()}`)
+	it("negative timestamp exits non-zero", async () => {
+		const result = await runCli(`find-block -- -1 -r ${rpcUrl()}`)
 		expect(result.exitCode).not.toBe(0)
 	})
 })

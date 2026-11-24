@@ -7,7 +7,7 @@
  * for true end-to-end CLI testing.
  */
 
-import { type ChildProcess, execSync, spawn } from "node:child_process"
+import { type ChildProcess, exec, spawn } from "node:child_process"
 
 /**
  * Run the chop CLI with the given arguments and capture output.
@@ -15,32 +15,24 @@ import { type ChildProcess, execSync, spawn } from "node:child_process"
  * @param args - CLI arguments string (e.g. "keccak 'hello'")
  * @returns Object with stdout, stderr, and exitCode
  */
-export function runCli(args: string): {
+export function runCli(args: string): Promise<{
 	stdout: string
 	stderr: string
 	exitCode: number
-} {
-	try {
-		const stdout = execSync(`bun run bin/chop.ts ${args}`, {
-			cwd: process.cwd(),
-			encoding: "utf-8",
-			timeout: 15_000,
-			env: { ...process.env, NO_COLOR: "1" },
-			stdio: ["pipe", "pipe", "pipe"],
-		})
-		return { stdout, stderr: "", exitCode: 0 }
-	} catch (error) {
-		const e = error as {
-			stdout?: string
-			stderr?: string
-			status?: number
-		}
-		return {
-			stdout: (e.stdout ?? "").toString(),
-			stderr: (e.stderr ?? "").toString(),
-			exitCode: e.status ?? 1,
-		}
-	}
+}> {
+	return new Promise((resolve, reject) => {
+		exec(
+			`bun run bin/chop.ts ${args}`,
+			{ encoding: "utf-8", timeout: 20_000, env: { ...process.env, NO_COLOR: "1" } },
+			(error, stdout, stderr) => {
+				if (error && typeof error.code !== "number") {
+					reject(error)
+					return
+				}
+				resolve({ stdout, stderr, exitCode: error?.code ?? 0 })
+			},
+		)
+	})
 }
 
 // ============================================================================

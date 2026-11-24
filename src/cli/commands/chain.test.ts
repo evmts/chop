@@ -220,38 +220,38 @@ describe("findBlockHandler", () => {
 // ============================================================================
 
 describe("CLI E2E — chain commands error handling", () => {
-	it("block with invalid URL exits non-zero", () => {
-		const result = runCli("block latest -r http://127.0.0.1:1")
+	it("block with invalid URL exits non-zero", async () => {
+		const result = await runCli("block latest -r http://127.0.0.1:1")
 		expect(result.exitCode).not.toBe(0)
 	})
 
-	it("tx with invalid URL exits non-zero", () => {
-		const result = runCli(`tx 0x${"00".repeat(32)} -r http://127.0.0.1:1`)
+	it("tx with invalid URL exits non-zero", async () => {
+		const result = await runCli(`tx 0x${"00".repeat(32)} -r http://127.0.0.1:1`)
 		expect(result.exitCode).not.toBe(0)
 	})
 
-	it("receipt with invalid URL exits non-zero", () => {
-		const result = runCli(`receipt 0x${"00".repeat(32)} -r http://127.0.0.1:1`)
+	it("receipt with invalid URL exits non-zero", async () => {
+		const result = await runCli(`receipt 0x${"00".repeat(32)} -r http://127.0.0.1:1`)
 		expect(result.exitCode).not.toBe(0)
 	})
 
-	it("logs with invalid URL exits non-zero", () => {
-		const result = runCli("logs -r http://127.0.0.1:1")
+	it("logs with invalid URL exits non-zero", async () => {
+		const result = await runCli("logs -r http://127.0.0.1:1")
 		expect(result.exitCode).not.toBe(0)
 	})
 
-	it("gas-price with invalid URL exits non-zero", () => {
-		const result = runCli("gas-price -r http://127.0.0.1:1")
+	it("gas-price with invalid URL exits non-zero", async () => {
+		const result = await runCli("gas-price -r http://127.0.0.1:1")
 		expect(result.exitCode).not.toBe(0)
 	})
 
-	it("base-fee with invalid URL exits non-zero", () => {
-		const result = runCli("base-fee -r http://127.0.0.1:1")
+	it("base-fee with invalid URL exits non-zero", async () => {
+		const result = await runCli("base-fee -r http://127.0.0.1:1")
 		expect(result.exitCode).not.toBe(0)
 	})
 
-	it("find-block with invalid URL exits non-zero", () => {
-		const result = runCli("find-block 0 -r http://127.0.0.1:1")
+	it("find-block with invalid URL exits non-zero", async () => {
+		const result = await runCli("find-block 0 -r http://127.0.0.1:1")
 		expect(result.exitCode).not.toBe(0)
 	})
 })
@@ -271,21 +271,21 @@ describe("CLI E2E — chain commands success", () => {
 		server?.kill()
 	})
 
-	it("chop block latest returns block data", () => {
-		const result = runCli(`block latest -r http://127.0.0.1:${server.port}`)
+	it("chop block latest returns block data", async () => {
+		const result = await runCli(`block latest -r http://127.0.0.1:${server.port}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout).toContain("Block:")
 		expect(result.stdout).toContain("Hash:")
 	})
 
-	it("chop block 0 returns genesis block", () => {
-		const result = runCli(`block 0 -r http://127.0.0.1:${server.port}`)
+	it("chop block 0 returns genesis block", async () => {
+		const result = await runCli(`block 0 -r http://127.0.0.1:${server.port}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout).toContain("Block:")
 	})
 
-	it("chop block --json outputs structured JSON", () => {
-		const result = runCli(`block latest -r http://127.0.0.1:${server.port} --json`)
+	it("chop block --json outputs structured JSON", async () => {
+		const result = await runCli(`block latest -r http://127.0.0.1:${server.port} --json`)
 		expect(result.exitCode).toBe(0)
 		const json = JSON.parse(result.stdout.trim())
 		expect(json).toHaveProperty("number")
@@ -293,117 +293,117 @@ describe("CLI E2E — chain commands success", () => {
 		expect(json).toHaveProperty("timestamp")
 	})
 
-	it("chop gas-price returns a number", () => {
-		const result = runCli(`gas-price -r http://127.0.0.1:${server.port}`)
+	it("chop gas-price returns a number", async () => {
+		const result = await runCli(`gas-price -r http://127.0.0.1:${server.port}`)
 		expect(result.exitCode).toBe(0)
 		expect(Number(result.stdout.trim())).toBeGreaterThanOrEqual(0)
 	})
 
-	it("chop gas-price --json outputs structured JSON", () => {
-		const result = runCli(`gas-price -r http://127.0.0.1:${server.port} --json`)
+	it("chop gas-price --json outputs structured JSON", async () => {
+		const result = await runCli(`gas-price -r http://127.0.0.1:${server.port} --json`)
 		expect(result.exitCode).toBe(0)
 		const json = JSON.parse(result.stdout.trim())
 		expect(json).toHaveProperty("gasPrice")
 	})
 
-	it("chop base-fee returns a number", () => {
-		const result = runCli(`base-fee -r http://127.0.0.1:${server.port}`)
+	it("chop base-fee returns a number", async () => {
+		const result = await runCli(`base-fee -r http://127.0.0.1:${server.port}`)
 		expect(result.exitCode).toBe(0)
 		expect(Number(result.stdout.trim())).toBeGreaterThanOrEqual(0)
 	})
 
-	it("chop base-fee --json outputs structured JSON", () => {
-		const result = runCli(`base-fee -r http://127.0.0.1:${server.port} --json`)
+	it("chop base-fee --json outputs structured JSON", async () => {
+		const result = await runCli(`base-fee -r http://127.0.0.1:${server.port} --json`)
 		expect(result.exitCode).toBe(0)
 		const json = JSON.parse(result.stdout.trim())
 		expect(json).toHaveProperty("baseFee")
 	})
 
-	it("chop logs returns empty result for devnet", () => {
-		const result = runCli(`logs --from-block 0x0 --to-block latest -r http://127.0.0.1:${server.port}`)
+	it("chop logs returns empty result for devnet", async () => {
+		const result = await runCli(`logs --from-block 0x0 --to-block latest -r http://127.0.0.1:${server.port}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout).toContain("No logs found")
 	})
 
-	it("chop logs --json returns empty array", () => {
-		const result = runCli(`logs --from-block 0x0 --to-block latest -r http://127.0.0.1:${server.port} --json`)
+	it("chop logs --json returns empty array", async () => {
+		const result = await runCli(`logs --from-block 0x0 --to-block latest -r http://127.0.0.1:${server.port} --json`)
 		expect(result.exitCode).toBe(0)
 		const json = JSON.parse(result.stdout.trim())
 		expect(json).toEqual([])
 	})
 
-	it("chop find-block 0 returns block 0", () => {
-		const result = runCli(`find-block 0 -r http://127.0.0.1:${server.port}`)
+	it("chop find-block 0 returns block 0", async () => {
+		const result = await runCli(`find-block 0 -r http://127.0.0.1:${server.port}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0")
 	})
 
-	it("chop find-block --json outputs structured JSON", () => {
-		const result = runCli(`find-block 0 -r http://127.0.0.1:${server.port} --json`)
+	it("chop find-block --json outputs structured JSON", async () => {
+		const result = await runCli(`find-block 0 -r http://127.0.0.1:${server.port} --json`)
 		expect(result.exitCode).toBe(0)
 		const json = JSON.parse(result.stdout.trim())
 		expect(json).toEqual({ blockNumber: "0" })
 	})
 
-	it("chop find-block with invalid timestamp exits non-zero", () => {
-		const result = runCli(`find-block abc -r http://127.0.0.1:${server.port}`)
+	it("chop find-block with invalid timestamp exits non-zero", async () => {
+		const result = await runCli(`find-block abc -r http://127.0.0.1:${server.port}`)
 		expect(result.exitCode).not.toBe(0)
 	})
 
-	it("chop tx returns transaction data after sending", () => {
+	it("chop tx returns transaction data after sending", async () => {
 		const from = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
 		// First send a transaction to create one
-		const sendResult = runCli(
+		const sendResult = await runCli(
 			`send --to 0x0000000000000000000000000000000000000000 --from ${from} -r http://127.0.0.1:${server.port} --json`,
 		)
 		expect(sendResult.exitCode).toBe(0)
 		const { txHash } = JSON.parse(sendResult.stdout.trim())
 
 		// Now query the transaction
-		const result = runCli(`tx ${txHash} -r http://127.0.0.1:${server.port}`)
+		const result = await runCli(`tx ${txHash} -r http://127.0.0.1:${server.port}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout).toContain("Hash:")
 		expect(result.stdout).toContain("From:")
 	})
 
-	it("chop tx --json outputs structured JSON", () => {
+	it("chop tx --json outputs structured JSON", async () => {
 		const from = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
-		const sendResult = runCli(
+		const sendResult = await runCli(
 			`send --to 0x0000000000000000000000000000000000000000 --from ${from} -r http://127.0.0.1:${server.port} --json`,
 		)
 		expect(sendResult.exitCode).toBe(0)
 		const { txHash } = JSON.parse(sendResult.stdout.trim())
 
-		const result = runCli(`tx ${txHash} -r http://127.0.0.1:${server.port} --json`)
+		const result = await runCli(`tx ${txHash} -r http://127.0.0.1:${server.port} --json`)
 		expect(result.exitCode).toBe(0)
 		const json = JSON.parse(result.stdout.trim())
 		expect(json).toHaveProperty("hash")
 		expect(json).toHaveProperty("from")
 	})
 
-	it("chop receipt returns receipt data after sending", () => {
+	it("chop receipt returns receipt data after sending", async () => {
 		const from = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
-		const sendResult = runCli(
+		const sendResult = await runCli(
 			`send --to 0x0000000000000000000000000000000000000000 --from ${from} -r http://127.0.0.1:${server.port} --json`,
 		)
 		expect(sendResult.exitCode).toBe(0)
 		const { txHash } = JSON.parse(sendResult.stdout.trim())
 
-		const result = runCli(`receipt ${txHash} -r http://127.0.0.1:${server.port}`)
+		const result = await runCli(`receipt ${txHash} -r http://127.0.0.1:${server.port}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout).toContain("Tx Hash:")
 		expect(result.stdout).toContain("Status:")
 	})
 
-	it("chop receipt --json outputs structured JSON", () => {
+	it("chop receipt --json outputs structured JSON", async () => {
 		const from = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
-		const sendResult = runCli(
+		const sendResult = await runCli(
 			`send --to 0x0000000000000000000000000000000000000000 --from ${from} -r http://127.0.0.1:${server.port} --json`,
 		)
 		expect(sendResult.exitCode).toBe(0)
 		const { txHash } = JSON.parse(sendResult.stdout.trim())
 
-		const result = runCli(`receipt ${txHash} -r http://127.0.0.1:${server.port} --json`)
+		const result = await runCli(`receipt ${txHash} -r http://127.0.0.1:${server.port} --json`)
 		expect(result.exitCode).toBe(0)
 		const json = JSON.parse(result.stdout.trim())
 		expect(json).toHaveProperty("transactionHash")

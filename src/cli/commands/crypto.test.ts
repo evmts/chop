@@ -319,35 +319,35 @@ describe("sigEventHandler — error cases", () => {
 // ---------------------------------------------------------------------------
 
 describe("chop keccak (E2E)", () => {
-	it("hashes 'transfer(address,uint256)' correctly", () => {
-		const result = runCli("keccak 'transfer(address,uint256)'")
+	it("hashes 'transfer(address,uint256)' correctly", async () => {
+		const result = await runCli("keccak 'transfer(address,uint256)'")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0xa9059cbb2ab09eb219583f4a59a5d0623ade346d962bcd4e46b11da047c9049b")
 	})
 
-	it("produces JSON output with --json flag", () => {
-		const result = runCli("keccak --json 'transfer(address,uint256)'")
+	it("produces JSON output with --json flag", async () => {
+		const result = await runCli("keccak --json 'transfer(address,uint256)'")
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed.result).toBe("0xa9059cbb2ab09eb219583f4a59a5d0623ade346d962bcd4e46b11da047c9049b")
 	})
 
-	it("hashes hex input with 0x prefix", () => {
-		const result = runCli("keccak 0xdeadbeef")
+	it("hashes hex input with 0x prefix", async () => {
+		const result = await runCli("keccak 0xdeadbeef")
 		expect(result.exitCode).toBe(0)
 		const output = result.stdout.trim()
 		expect(output.startsWith("0x")).toBe(true)
 		expect(output.length).toBe(66)
 	})
 
-	it("hashes plain string input", () => {
-		const result = runCli("keccak hello")
+	it("hashes plain string input", async () => {
+		const result = await runCli("keccak hello")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0x1c8aff950685c2ed4bc3174f3472287b56d9517b9c948127319a09a7a36deac8")
 	})
 
-	it("exits 1 on invalid hex input (0xZZZZ)", () => {
-		const result = runCli("keccak 0xZZZZ")
+	it("exits 1 on invalid hex input (0xZZZZ)", async () => {
+		const result = await runCli("keccak 0xZZZZ")
 		expect(result.exitCode).not.toBe(0)
 	})
 })
@@ -357,27 +357,27 @@ describe("chop keccak (E2E)", () => {
 // ---------------------------------------------------------------------------
 
 describe("chop sig (E2E)", () => {
-	it("computes transfer selector", () => {
-		const result = runCli("sig 'transfer(address,uint256)'")
+	it("computes transfer selector", async () => {
+		const result = await runCli("sig 'transfer(address,uint256)'")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0xa9059cbb")
 	})
 
-	it("computes balanceOf selector", () => {
-		const result = runCli("sig 'balanceOf(address)'")
+	it("computes balanceOf selector", async () => {
+		const result = await runCli("sig 'balanceOf(address)'")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0x70a08231")
 	})
 
-	it("produces JSON output with --json flag", () => {
-		const result = runCli("sig --json 'transfer(address,uint256)'")
+	it("produces JSON output with --json flag", async () => {
+		const result = await runCli("sig --json 'transfer(address,uint256)'")
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed.result).toBe("0xa9059cbb")
 	})
 
-	it("computes totalSupply selector", () => {
-		const result = runCli("sig 'totalSupply()'")
+	it("computes totalSupply selector", async () => {
+		const result = await runCli("sig 'totalSupply()'")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0x18160ddd")
 	})
@@ -388,20 +388,20 @@ describe("chop sig (E2E)", () => {
 // ---------------------------------------------------------------------------
 
 describe("chop sig-event (E2E)", () => {
-	it("computes Transfer event topic", () => {
-		const result = runCli("sig-event 'Transfer(address,address,uint256)'")
+	it("computes Transfer event topic", async () => {
+		const result = await runCli("sig-event 'Transfer(address,address,uint256)'")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
 	})
 
-	it("computes Approval event topic", () => {
-		const result = runCli("sig-event 'Approval(address,address,uint256)'")
+	it("computes Approval event topic", async () => {
+		const result = await runCli("sig-event 'Approval(address,address,uint256)'")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925")
 	})
 
-	it("produces JSON output with --json flag", () => {
-		const result = runCli("sig-event --json 'Transfer(address,address,uint256)'")
+	it("produces JSON output with --json flag", async () => {
+		const result = await runCli("sig-event --json 'Transfer(address,address,uint256)'")
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed.result).toBe("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
@@ -413,21 +413,21 @@ describe("chop sig-event (E2E)", () => {
 // ---------------------------------------------------------------------------
 
 describe("chop hash-message (E2E)", () => {
-	it("hashes 'hello world' with EIP-191", () => {
-		const result = runCli("hash-message 'hello world'")
+	it("hashes 'hello world' with EIP-191", async () => {
+		const result = await runCli("hash-message 'hello world'")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0xd9eba16ed0ecae432b71fe008c98cc872bb4cc214d3220a36f365326cf807d68")
 	})
 
-	it("produces JSON output with --json flag", () => {
-		const result = runCli("hash-message --json 'hello world'")
+	it("produces JSON output with --json flag", async () => {
+		const result = await runCli("hash-message --json 'hello world'")
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed.result).toBe("0xd9eba16ed0ecae432b71fe008c98cc872bb4cc214d3220a36f365326cf807d68")
 	})
 
-	it("hashes single word message", () => {
-		const result = runCli("hash-message test")
+	it("hashes single word message", async () => {
+		const result = await runCli("hash-message test")
 		expect(result.exitCode).toBe(0)
 		const output = result.stdout.trim()
 		expect(output.startsWith("0x")).toBe(true)
@@ -1031,17 +1031,17 @@ describe("keccakHandler — more hex with leading zeros", () => {
 // ---------------------------------------------------------------------------
 
 describe("chop keccak (E2E) — additional edge cases", () => {
-	it("handles hex with leading zeros", () => {
-		const result = runCli("keccak 0x0001")
+	it("handles hex with leading zeros", async () => {
+		const result = await runCli("keccak 0x0001")
 		expect(result.exitCode).toBe(0)
 		const output = result.stdout.trim()
 		expect(output).toMatch(/^0x[0-9a-f]{64}$/)
 		expect(output.length).toBe(66)
 	})
 
-	it("handles very long string input (500 chars)", () => {
+	it("handles very long string input (500 chars)", async () => {
 		const longInput = "a".repeat(500)
-		const result = runCli(`keccak ${longInput}`)
+		const result = await runCli(`keccak ${longInput}`)
 		expect(result.exitCode).toBe(0)
 		const output = result.stdout.trim()
 		expect(output).toMatch(/^0x[0-9a-f]{64}$/)
@@ -1049,22 +1049,22 @@ describe("chop keccak (E2E) — additional edge cases", () => {
 })
 
 describe("chop sig (E2E) — additional edge cases", () => {
-	it("handles no-arg function signature", () => {
-		const result = runCli("sig 'totalSupply()'")
+	it("handles no-arg function signature", async () => {
+		const result = await runCli("sig 'totalSupply()'")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0x18160ddd")
 	})
 
-	it("handles complex multi-arg signature", () => {
-		const result = runCli("sig 'transferFrom(address,address,uint256)'")
+	it("handles complex multi-arg signature", async () => {
+		const result = await runCli("sig 'transferFrom(address,address,uint256)'")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0x23b872dd")
 	})
 })
 
 describe("chop sig-event (E2E) — additional edge cases", () => {
-	it("handles single-arg event", () => {
-		const result = runCli("sig-event 'SomeEvent(uint256)'")
+	it("handles single-arg event", async () => {
+		const result = await runCli("sig-event 'SomeEvent(uint256)'")
 		expect(result.exitCode).toBe(0)
 		const output = result.stdout.trim()
 		expect(output).toMatch(/^0x[0-9a-f]{64}$/)
@@ -1073,17 +1073,17 @@ describe("chop sig-event (E2E) — additional edge cases", () => {
 })
 
 describe("chop hash-message (E2E) — additional edge cases", () => {
-	it("handles numeric string message", () => {
-		const result = runCli("hash-message 12345")
+	it("handles numeric string message", async () => {
+		const result = await runCli("hash-message 12345")
 		expect(result.exitCode).toBe(0)
 		const output = result.stdout.trim()
 		expect(output).toMatch(/^0x[0-9a-f]{64}$/)
 		expect(output.length).toBe(66)
 	})
 
-	it("JSON output matches plain output for same input", () => {
-		const plain = runCli("hash-message test")
-		const json = runCli("hash-message --json test")
+	it("JSON output matches plain output for same input", async () => {
+		const plain = await runCli("hash-message test")
+		const json = await runCli("hash-message --json test")
 		expect(plain.exitCode).toBe(0)
 		expect(json.exitCode).toBe(0)
 		const parsed = JSON.parse(json.stdout.trim())
@@ -1381,44 +1381,44 @@ describe("hashMessageHandler — more boundary conditions", () => {
 // ---------------------------------------------------------------------------
 
 describe("E2E edge cases — additional", () => {
-	it("chop keccak with empty arg '' produces a hash", () => {
-		const result = runCli("keccak ''")
+	it("chop keccak with empty arg '' produces a hash", async () => {
+		const result = await runCli("keccak ''")
 		expect(result.exitCode).toBe(0)
 		const output = result.stdout.trim()
 		expect(output).toBe("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470")
 	})
 
-	it("chop sig with no arg should error (missing required argument)", () => {
-		const result = runCli("sig")
+	it("chop sig with no arg should error (missing required argument)", async () => {
+		const result = await runCli("sig")
 		expect(result.exitCode).not.toBe(0)
 	})
 
-	it("chop sig-event 'Transfer(address,address,uint256)' matches known topic hash", () => {
-		const result = runCli("sig-event 'Transfer(address,address,uint256)'")
+	it("chop sig-event 'Transfer(address,address,uint256)' matches known topic hash", async () => {
+		const result = await runCli("sig-event 'Transfer(address,address,uint256)'")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
 	})
 
-	it("chop hash-message with multi-word message", () => {
-		const result = runCli("hash-message 'the quick brown fox jumps over the lazy dog'")
+	it("chop hash-message with multi-word message", async () => {
+		const result = await runCli("hash-message 'the quick brown fox jumps over the lazy dog'")
 		expect(result.exitCode).toBe(0)
 		const output = result.stdout.trim()
 		expect(output).toMatch(/^0x[0-9a-f]{64}$/)
 		expect(output.length).toBe(66)
 	})
 
-	it("chop sig-event with no arg should error (missing required argument)", () => {
-		const result = runCli("sig-event")
+	it("chop sig-event with no arg should error (missing required argument)", async () => {
+		const result = await runCli("sig-event")
 		expect(result.exitCode).not.toBe(0)
 	})
 
-	it("chop hash-message with no arg should error (missing required argument)", () => {
-		const result = runCli("hash-message")
+	it("chop hash-message with no arg should error (missing required argument)", async () => {
+		const result = await runCli("hash-message")
 		expect(result.exitCode).not.toBe(0)
 	})
 
-	it("chop keccak with no arg should error (missing required argument)", () => {
-		const result = runCli("keccak")
+	it("chop keccak with no arg should error (missing required argument)", async () => {
+		const result = await runCli("keccak")
 		expect(result.exitCode).not.toBe(0)
 	})
 })

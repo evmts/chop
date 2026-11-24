@@ -335,66 +335,68 @@ describe("address command exports", () => {
 // ---------------------------------------------------------------------------
 
 describe("chop to-check-sum-address (E2E)", () => {
-	it("checksums Vitalik's address", () => {
-		const result = runCli("to-check-sum-address 0xd8da6bf26964af9d7eed9e03e53415d37aa96045")
+	it("checksums Vitalik's address", async () => {
+		const result = await runCli("to-check-sum-address 0xd8da6bf26964af9d7eed9e03e53415d37aa96045")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045")
 	})
 
-	it("produces JSON output with --json flag", () => {
-		const result = runCli("to-check-sum-address --json 0xd8da6bf26964af9d7eed9e03e53415d37aa96045")
+	it("produces JSON output with --json flag", async () => {
+		const result = await runCli("to-check-sum-address --json 0xd8da6bf26964af9d7eed9e03e53415d37aa96045")
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed.result).toBe("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045")
 	})
 
-	it("exits 1 on invalid address", () => {
-		const result = runCli("to-check-sum-address 0xbad")
+	it("exits 1 on invalid address", async () => {
+		const result = await runCli("to-check-sum-address 0xbad")
 		expect(result.exitCode).not.toBe(0)
 	})
 
-	it("exits 1 on non-hex address", () => {
-		const result = runCli("to-check-sum-address not-an-address")
+	it("exits 1 on non-hex address", async () => {
+		const result = await runCli("to-check-sum-address not-an-address")
 		expect(result.exitCode).not.toBe(0)
 	})
 })
 
 describe("chop compute-address (E2E)", () => {
-	it("computes CREATE address for Hardhat deployer nonce 0", () => {
-		const result = runCli("compute-address --deployer 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --nonce 0")
+	it("computes CREATE address for Hardhat deployer nonce 0", async () => {
+		const result = await runCli("compute-address --deployer 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --nonce 0")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim().toLowerCase()).toBe("0x5fbdb2315678afecb367f032d93f642f64180aa3")
 	})
 
-	it("produces JSON output with --json flag", () => {
-		const result = runCli("compute-address --json --deployer 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --nonce 0")
+	it("produces JSON output with --json flag", async () => {
+		const result = await runCli(
+			"compute-address --json --deployer 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --nonce 0",
+		)
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed.result.toLowerCase()).toBe("0x5fbdb2315678afecb367f032d93f642f64180aa3")
 	})
 
-	it("exits 1 on invalid deployer address", () => {
-		const result = runCli("compute-address --deployer 0xbad --nonce 0")
+	it("exits 1 on invalid deployer address", async () => {
+		const result = await runCli("compute-address --deployer 0xbad --nonce 0")
 		expect(result.exitCode).not.toBe(0)
 	})
 
-	it("exits 1 on invalid nonce", () => {
-		const result = runCli("compute-address --deployer 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --nonce abc")
+	it("exits 1 on invalid nonce", async () => {
+		const result = await runCli("compute-address --deployer 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --nonce abc")
 		expect(result.exitCode).not.toBe(0)
 	})
 })
 
 describe("chop create2 (E2E)", () => {
-	it("computes CREATE2 address for EIP-1014 test vector", () => {
-		const result = runCli(
+	it("computes CREATE2 address for EIP-1014 test vector", async () => {
+		const result = await runCli(
 			"create2 --deployer 0x0000000000000000000000000000000000000000 --salt 0x0000000000000000000000000000000000000000000000000000000000000000 --init-code 0x00",
 		)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0x4D1A2e2bB4F88F0250f26Ffff098B0b30B26BF38")
 	})
 
-	it("produces JSON output with --json flag", () => {
-		const result = runCli(
+	it("produces JSON output with --json flag", async () => {
+		const result = await runCli(
 			"create2 --json --deployer 0x0000000000000000000000000000000000000000 --salt 0x0000000000000000000000000000000000000000000000000000000000000000 --init-code 0x00",
 		)
 		expect(result.exitCode).toBe(0)
@@ -402,20 +404,22 @@ describe("chop create2 (E2E)", () => {
 		expect(parsed.result).toBe("0x4D1A2e2bB4F88F0250f26Ffff098B0b30B26BF38")
 	})
 
-	it("exits 1 on invalid deployer", () => {
-		const result = runCli(
+	it("exits 1 on invalid deployer", async () => {
+		const result = await runCli(
 			"create2 --deployer 0xbad --salt 0x0000000000000000000000000000000000000000000000000000000000000000 --init-code 0x00",
 		)
 		expect(result.exitCode).not.toBe(0)
 	})
 
-	it("exits 1 on invalid salt", () => {
-		const result = runCli("create2 --deployer 0x0000000000000000000000000000000000000000 --salt 0x01 --init-code 0x00")
+	it("exits 1 on invalid salt", async () => {
+		const result = await runCli(
+			"create2 --deployer 0x0000000000000000000000000000000000000000 --salt 0x01 --init-code 0x00",
+		)
 		expect(result.exitCode).not.toBe(0)
 	})
 
-	it("exits 1 on invalid init-code", () => {
-		const result = runCli(
+	it("exits 1 on invalid init-code", async () => {
+		const result = await runCli(
 			"create2 --deployer 0x0000000000000000000000000000000000000000 --salt 0x0000000000000000000000000000000000000000000000000000000000000000 --init-code not-hex",
 		)
 		expect(result.exitCode).not.toBe(0)
@@ -1157,52 +1161,52 @@ describe("ComputeAddressError — additional patterns", () => {
 // ---------------------------------------------------------------------------
 
 describe("chop to-check-sum-address — E2E edge cases", () => {
-	it("already-checksummed address returns same result", () => {
-		const result = runCli("to-check-sum-address 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045")
+	it("already-checksummed address returns same result", async () => {
+		const result = await runCli("to-check-sum-address 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045")
 	})
 
-	it("all-uppercase address is checksummed correctly", () => {
-		const result = runCli("to-check-sum-address 0xD8DA6BF26964AF9D7EED9E03E53415D37AA96045")
+	it("all-uppercase address is checksummed correctly", async () => {
+		const result = await runCli("to-check-sum-address 0xD8DA6BF26964AF9D7EED9E03E53415D37AA96045")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045")
 	})
 })
 
 describe("chop compute-address — E2E edge cases", () => {
-	it("computes CREATE address with nonce 1 (second deployment)", () => {
-		const result = runCli("compute-address --deployer 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --nonce 1")
+	it("computes CREATE address with nonce 1 (second deployment)", async () => {
+		const result = await runCli("compute-address --deployer 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --nonce 1")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim().toLowerCase()).toBe("0xe7f1725e7734ce288f8367e1bb143e90bb3f0512")
 	})
 
-	it("computes CREATE address with large nonce", () => {
-		const result = runCli("compute-address --deployer 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --nonce 999999")
+	it("computes CREATE address with large nonce", async () => {
+		const result = await runCli("compute-address --deployer 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --nonce 999999")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toMatch(/^0x[0-9a-fA-F]{40}$/)
 	})
 })
 
 describe("chop create2 — E2E edge cases", () => {
-	it("computes CREATE2 with zero salt", () => {
-		const result = runCli(
+	it("computes CREATE2 with zero salt", async () => {
+		const result = await runCli(
 			"create2 --deployer 0x0000000000000000000000000000000000000000 --salt 0x0000000000000000000000000000000000000000000000000000000000000000 --init-code 0x00",
 		)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0x4D1A2e2bB4F88F0250f26Ffff098B0b30B26BF38")
 	})
 
-	it("computes CREATE2 with all-ff deployer", () => {
-		const result = runCli(
+	it("computes CREATE2 with all-ff deployer", async () => {
+		const result = await runCli(
 			"create2 --deployer 0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF --salt 0x0000000000000000000000000000000000000000000000000000000000000000 --init-code 0x00",
 		)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toMatch(/^0x[0-9a-fA-F]{40}$/)
 	})
 
-	it("exits 1 on odd-length init-code hex", () => {
-		const result = runCli(
+	it("exits 1 on odd-length init-code hex", async () => {
+		const result = await runCli(
 			"create2 --deployer 0x0000000000000000000000000000000000000000 --salt 0x0000000000000000000000000000000000000000000000000000000000000000 --init-code 0xabc",
 		)
 		expect(result.exitCode).not.toBe(0)

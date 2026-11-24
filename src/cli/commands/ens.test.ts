@@ -177,20 +177,20 @@ describe("lookupAddressHandler", () => {
 // ============================================================================
 
 describe("CLI E2E — namehash", () => {
-	it("namehash of empty string returns zero hash", () => {
-		const result = runCli("namehash ''")
+	it("namehash of empty string returns zero hash", async () => {
+		const result = await runCli("namehash ''")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe(`0x${"00".repeat(32)}`)
 	})
 
-	it("namehash of 'eth' returns known hash", () => {
-		const result = runCli("namehash eth")
+	it("namehash of 'eth' returns known hash", async () => {
+		const result = await runCli("namehash eth")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0x93cdeb708b7545dc668eb9280176169d1c33cfd8ed6f04690a0bcc88a93fc4ae")
 	})
 
-	it("namehash --json outputs structured JSON", () => {
-		const result = runCli("namehash eth --json")
+	it("namehash --json outputs structured JSON", async () => {
+		const result = await runCli("namehash eth --json")
 		expect(result.exitCode).toBe(0)
 		const json = JSON.parse(result.stdout.trim())
 		expect(json).toHaveProperty("name", "eth")
@@ -198,8 +198,8 @@ describe("CLI E2E — namehash", () => {
 		expect(json.hash).toBe("0x93cdeb708b7545dc668eb9280176169d1c33cfd8ed6f04690a0bcc88a93fc4ae")
 	})
 
-	it("namehash of 'foo.eth' returns known hash", () => {
-		const result = runCli("namehash foo.eth")
+	it("namehash of 'foo.eth' returns known hash", async () => {
+		const result = await runCli("namehash foo.eth")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0xde9b09fd7c5f901e23a3f19fecc54828e9c848539801e86591bd9801b019f84f")
 	})
@@ -210,13 +210,13 @@ describe("CLI E2E — namehash", () => {
 // ============================================================================
 
 describe("CLI E2E — ENS RPC commands error handling", () => {
-	it("resolve-name with invalid URL exits non-zero", () => {
-		const result = runCli("resolve-name vitalik.eth -r http://127.0.0.1:1")
+	it("resolve-name with invalid URL exits non-zero", async () => {
+		const result = await runCli("resolve-name vitalik.eth -r http://127.0.0.1:1")
 		expect(result.exitCode).not.toBe(0)
 	})
 
-	it("lookup-address with invalid URL exits non-zero", () => {
-		const result = runCli("lookup-address 0x0000000000000000000000000000000000000000 -r http://127.0.0.1:1")
+	it("lookup-address with invalid URL exits non-zero", async () => {
+		const result = await runCli("lookup-address 0x0000000000000000000000000000000000000000 -r http://127.0.0.1:1")
 		expect(result.exitCode).not.toBe(0)
 	})
 })

@@ -624,8 +624,8 @@ describe("fourByteEventCommand.handler — in-process", () => {
 // ---------------------------------------------------------------------------
 
 describe("chop disassemble (E2E)", () => {
-	it("disassembles 0x6080604052 into opcode listing with PC offsets", () => {
-		const result = runCli("disassemble 0x6080604052")
+	it("disassembles 0x6080604052 into opcode listing with PC offsets", async () => {
+		const result = await runCli("disassemble 0x6080604052")
 		expect(result.exitCode).toBe(0)
 		const lines = result.stdout.trim().split("\n")
 		expect(lines).toHaveLength(3)
@@ -636,8 +636,8 @@ describe("chop disassemble (E2E)", () => {
 		expect(lines[2]).toContain("MSTORE")
 	})
 
-	it("produces JSON output with --json flag", () => {
-		const result = runCli("disassemble --json 0x6080604052")
+	it("produces JSON output with --json flag", async () => {
+		const result = await runCli("disassemble --json 0x6080604052")
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed.result).toHaveLength(3)
@@ -651,38 +651,38 @@ describe("chop disassemble (E2E)", () => {
 		expect(parsed.result[2].pc).toBe(4)
 	})
 
-	it("returns empty output for empty bytecode 0x", () => {
-		const result = runCli("disassemble 0x")
+	it("returns empty output for empty bytecode 0x", async () => {
+		const result = await runCli("disassemble 0x")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("")
 	})
 
-	it("returns empty JSON array for empty bytecode 0x with --json", () => {
-		const result = runCli("disassemble --json 0x")
+	it("returns empty JSON array for empty bytecode 0x with --json", async () => {
+		const result = await runCli("disassemble --json 0x")
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed.result).toEqual([])
 	})
 
-	it("exits non-zero on invalid hex input (0xZZZZ)", () => {
-		const result = runCli("disassemble 0xZZZZ")
+	it("exits non-zero on invalid hex input (0xZZZZ)", async () => {
+		const result = await runCli("disassemble 0xZZZZ")
 		expect(result.exitCode).not.toBe(0)
 	})
 
-	it("exits non-zero on missing 0x prefix", () => {
-		const result = runCli("disassemble 6080604052")
+	it("exits non-zero on missing 0x prefix", async () => {
+		const result = await runCli("disassemble 6080604052")
 		expect(result.exitCode).not.toBe(0)
 	})
 
-	it("disassembles single STOP opcode", () => {
-		const result = runCli("disassemble 0x00")
+	it("disassembles single STOP opcode", async () => {
+		const result = await runCli("disassemble 0x00")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toContain("STOP")
 	})
 
-	it("handles PUSH32 with full data", () => {
+	it("handles PUSH32 with full data", async () => {
 		const data = "ab".repeat(32)
-		const result = runCli(`disassemble 0x7f${data}`)
+		const result = await runCli(`disassemble 0x7f${data}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toContain("PUSH32")
 		expect(result.stdout.trim()).toContain(`0x${data}`)
@@ -694,26 +694,26 @@ describe("chop disassemble (E2E)", () => {
 // ---------------------------------------------------------------------------
 
 describe("chop 4byte (E2E)", () => {
-	it("looks up transfer selector 0xa9059cbb", () => {
-		const result = runCli("4byte 0xa9059cbb")
+	it("looks up transfer selector 0xa9059cbb", async () => {
+		const result = await runCli("4byte 0xa9059cbb")
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout).toContain("transfer(address,uint256)")
 	}, 15_000)
 
-	it("produces JSON output with --json flag", () => {
-		const result = runCli("4byte --json 0xa9059cbb")
+	it("produces JSON output with --json flag", async () => {
+		const result = await runCli("4byte --json 0xa9059cbb")
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed.result).toContain("transfer(address,uint256)")
 	}, 15_000)
 
-	it("exits non-zero on invalid selector format", () => {
-		const result = runCli("4byte 0xZZZZ")
+	it("exits non-zero on invalid selector format", async () => {
+		const result = await runCli("4byte 0xZZZZ")
 		expect(result.exitCode).not.toBe(0)
 	})
 
-	it("exits non-zero on missing argument", () => {
-		const result = runCli("4byte")
+	it("exits non-zero on missing argument", async () => {
+		const result = await runCli("4byte")
 		expect(result.exitCode).not.toBe(0)
 	})
 })
@@ -723,28 +723,28 @@ describe("chop 4byte (E2E)", () => {
 // ---------------------------------------------------------------------------
 
 describe("chop 4byte-event (E2E)", () => {
-	it("looks up Transfer event topic", () => {
+	it("looks up Transfer event topic", async () => {
 		const topic = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
-		const result = runCli(`4byte-event ${topic}`)
+		const result = await runCli(`4byte-event ${topic}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout).toContain("Transfer(address,address,uint256)")
 	}, 15_000)
 
-	it("produces JSON output with --json flag", () => {
+	it("produces JSON output with --json flag", async () => {
 		const topic = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
-		const result = runCli(`4byte-event --json ${topic}`)
+		const result = await runCli(`4byte-event --json ${topic}`)
 		expect(result.exitCode).toBe(0)
 		const parsed = JSON.parse(result.stdout.trim())
 		expect(parsed.result).toContain("Transfer(address,address,uint256)")
 	}, 15_000)
 
-	it("exits non-zero on invalid topic format", () => {
-		const result = runCli("4byte-event 0xa9059cbb")
+	it("exits non-zero on invalid topic format", async () => {
+		const result = await runCli("4byte-event 0xa9059cbb")
 		expect(result.exitCode).not.toBe(0)
 	})
 
-	it("exits non-zero on missing argument", () => {
-		const result = runCli("4byte-event")
+	it("exits non-zero on missing argument", async () => {
+		const result = await runCli("4byte-event")
 		expect(result.exitCode).not.toBe(0)
 	})
 })

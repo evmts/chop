@@ -180,46 +180,46 @@ describe("CLI E2E — RPC commands", () => {
 	// For true E2E, we'd start a server in the background.
 	// Instead, we test against an invalid URL to verify error handling.
 
-	it("chain-id with invalid URL exits non-zero", () => {
-		const result = runCli("chain-id -r http://127.0.0.1:1")
+	it("chain-id with invalid URL exits non-zero", async () => {
+		const result = await runCli("chain-id -r http://127.0.0.1:1")
 		expect(result.exitCode).not.toBe(0)
 		expect(result.stderr).toContain("RPC request failed")
 	})
 
-	it("block-number with invalid URL exits non-zero", () => {
-		const result = runCli("block-number -r http://127.0.0.1:1")
+	it("block-number with invalid URL exits non-zero", async () => {
+		const result = await runCli("block-number -r http://127.0.0.1:1")
 		expect(result.exitCode).not.toBe(0)
 		expect(result.stderr).toContain("RPC request failed")
 	})
 
-	it("balance with invalid URL exits non-zero", () => {
-		const result = runCli("balance 0x0000000000000000000000000000000000000000 -r http://127.0.0.1:1")
+	it("balance with invalid URL exits non-zero", async () => {
+		const result = await runCli("balance 0x0000000000000000000000000000000000000000 -r http://127.0.0.1:1")
 		expect(result.exitCode).not.toBe(0)
 		expect(result.stderr).toContain("RPC request failed")
 	})
 
-	it("nonce with invalid URL exits non-zero", () => {
-		const result = runCli("nonce 0x0000000000000000000000000000000000000000 -r http://127.0.0.1:1")
+	it("nonce with invalid URL exits non-zero", async () => {
+		const result = await runCli("nonce 0x0000000000000000000000000000000000000000 -r http://127.0.0.1:1")
 		expect(result.exitCode).not.toBe(0)
 		expect(result.stderr).toContain("RPC request failed")
 	})
 
-	it("code with invalid URL exits non-zero", () => {
-		const result = runCli("code 0x0000000000000000000000000000000000000000 -r http://127.0.0.1:1")
+	it("code with invalid URL exits non-zero", async () => {
+		const result = await runCli("code 0x0000000000000000000000000000000000000000 -r http://127.0.0.1:1")
 		expect(result.exitCode).not.toBe(0)
 		expect(result.stderr).toContain("RPC request failed")
 	})
 
-	it("storage with invalid URL exits non-zero", () => {
-		const result = runCli(
+	it("storage with invalid URL exits non-zero", async () => {
+		const result = await runCli(
 			"storage 0x0000000000000000000000000000000000000000 0x0000000000000000000000000000000000000000000000000000000000000000 -r http://127.0.0.1:1",
 		)
 		expect(result.exitCode).not.toBe(0)
 		expect(result.stderr).toContain("RPC request failed")
 	})
 
-	it("call with invalid URL exits non-zero", () => {
-		const result = runCli("call --to 0x0000000000000000000000000000000000000000 -r http://127.0.0.1:1")
+	it("call with invalid URL exits non-zero", async () => {
+		const result = await runCli("call --to 0x0000000000000000000000000000000000000000 -r http://127.0.0.1:1")
 		expect(result.exitCode).not.toBe(0)
 		expect(result.stderr).toContain("RPC request failed")
 	})
@@ -230,8 +230,8 @@ describe("CLI E2E — RPC commands", () => {
 // ============================================================================
 
 describe("CLI E2E — --json flag error output", () => {
-	it("chain-id --json with invalid URL exits non-zero", () => {
-		const result = runCli("chain-id -r http://127.0.0.1:1 --json")
+	it("chain-id --json with invalid URL exits non-zero", async () => {
+		const result = await runCli("chain-id -r http://127.0.0.1:1 --json")
 		expect(result.exitCode).not.toBe(0)
 	})
 })
@@ -257,53 +257,53 @@ describe("CLI E2E — RPC success with running server", () => {
 
 	// Issue 1: true CLI E2E success tests using runCli() against a running server
 
-	it("chop chain-id returns correct value", () => {
-		const result = runCli(`chain-id -r http://127.0.0.1:${server.port}`)
+	it("chop chain-id returns correct value", async () => {
+		const result = await runCli(`chain-id -r http://127.0.0.1:${server.port}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("31337")
 	})
 
-	it("chop block-number returns correct value", () => {
-		const result = runCli(`block-number -r http://127.0.0.1:${server.port}`)
+	it("chop block-number returns correct value", async () => {
+		const result = await runCli(`block-number -r http://127.0.0.1:${server.port}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0")
 	})
 
-	it("chop balance returns correct value", () => {
-		const result = runCli(`balance ${ZERO_ADDR} -r http://127.0.0.1:${server.port}`)
+	it("chop balance returns correct value", async () => {
+		const result = await runCli(`balance ${ZERO_ADDR} -r http://127.0.0.1:${server.port}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0")
 	})
 
-	it("chop nonce returns correct value", () => {
-		const result = runCli(`nonce ${ZERO_ADDR} -r http://127.0.0.1:${server.port}`)
+	it("chop nonce returns correct value", async () => {
+		const result = await runCli(`nonce ${ZERO_ADDR} -r http://127.0.0.1:${server.port}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0")
 	})
 
-	it("chop code returns correct value for EOA", () => {
-		const result = runCli(`code ${ZERO_ADDR} -r http://127.0.0.1:${server.port}`)
+	it("chop code returns correct value for EOA", async () => {
+		const result = await runCli(`code ${ZERO_ADDR} -r http://127.0.0.1:${server.port}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0x")
 	})
 
-	it("chop storage returns correct value", () => {
-		const result = runCli(`storage ${ZERO_ADDR} ${ZERO_SLOT} -r http://127.0.0.1:${server.port}`)
+	it("chop storage returns correct value", async () => {
+		const result = await runCli(`storage ${ZERO_ADDR} ${ZERO_SLOT} -r http://127.0.0.1:${server.port}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe(ZERO_SLOT)
 	})
 
 	// Issue 2: E2E test — start server → deploy contract → chop call → correct return
 
-	it("chop call against deployed contract returns correct result", () => {
-		const result = runCli(`call --to ${CONTRACT_ADDR} -r http://127.0.0.1:${server.port}`)
+	it("chop call against deployed contract returns correct result", async () => {
+		const result = await runCli(`call --to ${CONTRACT_ADDR} -r http://127.0.0.1:${server.port}`)
 		expect(result.exitCode).toBe(0)
 		// Contract returns 0x42 as a 32-byte word
 		expect(result.stdout.trim()).toContain("42")
 	})
 
-	it("chop code returns bytecode for deployed contract", () => {
-		const result = runCli(`code ${CONTRACT_ADDR} -r http://127.0.0.1:${server.port}`)
+	it("chop code returns bytecode for deployed contract", async () => {
+		const result = await runCli(`code ${CONTRACT_ADDR} -r http://127.0.0.1:${server.port}`)
 		expect(result.exitCode).toBe(0)
 		// Contract bytecode: 604260005260206000f3
 		expect(result.stdout.trim()).toContain("604260005260206000f3")
@@ -311,36 +311,36 @@ describe("CLI E2E — RPC success with running server", () => {
 
 	// Issue 3: --json flag success tests with structured JSON output
 
-	it("chop chain-id --json outputs structured JSON", () => {
-		const result = runCli(`chain-id -r http://127.0.0.1:${server.port} --json`)
+	it("chop chain-id --json outputs structured JSON", async () => {
+		const result = await runCli(`chain-id -r http://127.0.0.1:${server.port} --json`)
 		expect(result.exitCode).toBe(0)
 		const json = JSON.parse(result.stdout.trim())
 		expect(json).toEqual({ chainId: "31337" })
 	})
 
-	it("chop block-number --json outputs structured JSON", () => {
-		const result = runCli(`block-number -r http://127.0.0.1:${server.port} --json`)
+	it("chop block-number --json outputs structured JSON", async () => {
+		const result = await runCli(`block-number -r http://127.0.0.1:${server.port} --json`)
 		expect(result.exitCode).toBe(0)
 		const json = JSON.parse(result.stdout.trim())
 		expect(json).toEqual({ blockNumber: "0" })
 	})
 
-	it("chop balance --json outputs structured JSON", () => {
-		const result = runCli(`balance ${ZERO_ADDR} -r http://127.0.0.1:${server.port} --json`)
+	it("chop balance --json outputs structured JSON", async () => {
+		const result = await runCli(`balance ${ZERO_ADDR} -r http://127.0.0.1:${server.port} --json`)
 		expect(result.exitCode).toBe(0)
 		const json = JSON.parse(result.stdout.trim())
 		expect(json).toEqual({ address: ZERO_ADDR, balance: "0" })
 	})
 
-	it("chop nonce --json outputs structured JSON", () => {
-		const result = runCli(`nonce ${ZERO_ADDR} -r http://127.0.0.1:${server.port} --json`)
+	it("chop nonce --json outputs structured JSON", async () => {
+		const result = await runCli(`nonce ${ZERO_ADDR} -r http://127.0.0.1:${server.port} --json`)
 		expect(result.exitCode).toBe(0)
 		const json = JSON.parse(result.stdout.trim())
 		expect(json).toEqual({ address: ZERO_ADDR, nonce: "0" })
 	})
 
-	it("chop call --json outputs structured JSON", () => {
-		const result = runCli(`call --to ${CONTRACT_ADDR} -r http://127.0.0.1:${server.port} --json`)
+	it("chop call --json outputs structured JSON", async () => {
+		const result = await runCli(`call --to ${CONTRACT_ADDR} -r http://127.0.0.1:${server.port} --json`)
 		expect(result.exitCode).toBe(0)
 		const json = JSON.parse(result.stdout.trim())
 		expect(json.to).toBe(CONTRACT_ADDR)
@@ -446,19 +446,19 @@ describe("CLI E2E — RPC JSON output for all commands", () => {
 		server?.kill()
 	})
 
-	it("chop code --json outputs structured JSON", () => {
+	it("chop code --json outputs structured JSON", async () => {
 		const addr = "0x0000000000000000000000000000000000000000"
-		const result = runCli(`code ${addr} -r http://127.0.0.1:${server.port} --json`)
+		const result = await runCli(`code ${addr} -r http://127.0.0.1:${server.port} --json`)
 		expect(result.exitCode).toBe(0)
 		const json = JSON.parse(result.stdout.trim())
 		expect(json).toHaveProperty("address", addr)
 		expect(json).toHaveProperty("code")
 	})
 
-	it("chop storage --json outputs structured JSON", () => {
+	it("chop storage --json outputs structured JSON", async () => {
 		const addr = "0x0000000000000000000000000000000000000000"
 		const slot = "0x0000000000000000000000000000000000000000000000000000000000000000"
-		const result = runCli(`storage ${addr} ${slot} -r http://127.0.0.1:${server.port} --json`)
+		const result = await runCli(`storage ${addr} ${slot} -r http://127.0.0.1:${server.port} --json`)
 		expect(result.exitCode).toBe(0)
 		const json = JSON.parse(result.stdout.trim())
 		expect(json).toHaveProperty("address", addr)
@@ -466,9 +466,9 @@ describe("CLI E2E — RPC JSON output for all commands", () => {
 		expect(json).toHaveProperty("value")
 	})
 
-	it("chop code --json for contract with bytecode", () => {
+	it("chop code --json for contract with bytecode", async () => {
 		const contractAddr = `0x${"00".repeat(19)}42`
-		const result = runCli(`code ${contractAddr} -r http://127.0.0.1:${server.port} --json`)
+		const result = await runCli(`code ${contractAddr} -r http://127.0.0.1:${server.port} --json`)
 		expect(result.exitCode).toBe(0)
 		const json = JSON.parse(result.stdout.trim())
 		expect(json.address).toBe(contractAddr)
@@ -605,20 +605,20 @@ describe("rpcGenericHandler", () => {
 // ============================================================================
 
 describe("CLI E2E — new RPC commands error handling", () => {
-	it("estimate with invalid URL exits non-zero", () => {
-		const result = runCli("estimate --to 0x0000000000000000000000000000000000000000 -r http://127.0.0.1:1")
+	it("estimate with invalid URL exits non-zero", async () => {
+		const result = await runCli("estimate --to 0x0000000000000000000000000000000000000000 -r http://127.0.0.1:1")
 		expect(result.exitCode).not.toBe(0)
 	})
 
-	it("send with invalid URL exits non-zero", () => {
-		const result = runCli(
+	it("send with invalid URL exits non-zero", async () => {
+		const result = await runCli(
 			"send --to 0x0000000000000000000000000000000000000000 --from 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 -r http://127.0.0.1:1",
 		)
 		expect(result.exitCode).not.toBe(0)
 	})
 
-	it("rpc with invalid URL exits non-zero", () => {
-		const result = runCli("rpc eth_chainId -r http://127.0.0.1:1")
+	it("rpc with invalid URL exits non-zero", async () => {
+		const result = await runCli("rpc eth_chainId -r http://127.0.0.1:1")
 		expect(result.exitCode).not.toBe(0)
 	})
 })
@@ -638,14 +638,16 @@ describe("CLI E2E — new RPC commands success", () => {
 		server?.kill()
 	})
 
-	it("chop estimate returns a gas value", () => {
-		const result = runCli(`estimate --to 0x0000000000000000000000000000000000000000 -r http://127.0.0.1:${server.port}`)
+	it("chop estimate returns a gas value", async () => {
+		const result = await runCli(
+			`estimate --to 0x0000000000000000000000000000000000000000 -r http://127.0.0.1:${server.port}`,
+		)
 		expect(result.exitCode).toBe(0)
 		expect(Number(result.stdout.trim())).toBeGreaterThan(0)
 	})
 
-	it("chop estimate --json outputs structured JSON", () => {
-		const result = runCli(
+	it("chop estimate --json outputs structured JSON", async () => {
+		const result = await runCli(
 			`estimate --to 0x0000000000000000000000000000000000000000 -r http://127.0.0.1:${server.port} --json`,
 		)
 		expect(result.exitCode).toBe(0)
@@ -654,18 +656,18 @@ describe("CLI E2E — new RPC commands success", () => {
 		expect(Number(json.gas)).toBeGreaterThan(0)
 	})
 
-	it("chop send returns a tx hash", () => {
+	it("chop send returns a tx hash", async () => {
 		const from = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
-		const result = runCli(
+		const result = await runCli(
 			`send --to 0x0000000000000000000000000000000000000000 --from ${from} -r http://127.0.0.1:${server.port}`,
 		)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toMatch(/^0x[0-9a-f]{64}$/)
 	})
 
-	it("chop send --json outputs structured JSON", () => {
+	it("chop send --json outputs structured JSON", async () => {
 		const from = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
-		const result = runCli(
+		const result = await runCli(
 			`send --to 0x0000000000000000000000000000000000000000 --from ${from} -r http://127.0.0.1:${server.port} --json`,
 		)
 		expect(result.exitCode).toBe(0)
@@ -674,22 +676,22 @@ describe("CLI E2E — new RPC commands success", () => {
 		expect(json.txHash).toMatch(/^0x[0-9a-f]{64}$/)
 	})
 
-	it("chop rpc eth_chainId returns result", () => {
-		const result = runCli(`rpc eth_chainId -r http://127.0.0.1:${server.port}`)
+	it("chop rpc eth_chainId returns result", async () => {
+		const result = await runCli(`rpc eth_chainId -r http://127.0.0.1:${server.port}`)
 		expect(result.exitCode).toBe(0)
 		expect(result.stdout.trim()).toBe("0x7a69")
 	})
 
-	it("chop rpc --json outputs structured JSON", () => {
-		const result = runCli(`rpc eth_chainId -r http://127.0.0.1:${server.port} --json`)
+	it("chop rpc --json outputs structured JSON", async () => {
+		const result = await runCli(`rpc eth_chainId -r http://127.0.0.1:${server.port} --json`)
 		expect(result.exitCode).toBe(0)
 		const json = JSON.parse(result.stdout.trim())
 		expect(json).toHaveProperty("method", "eth_chainId")
 		expect(json).toHaveProperty("result", "0x7a69")
 	})
 
-	it("chop rpc with params works", () => {
-		const result = runCli(
+	it("chop rpc with params works", async () => {
+		const result = await runCli(
 			`rpc eth_getBalance '"0x0000000000000000000000000000000000000000"' '"latest"' -r http://127.0.0.1:${server.port}`,
 		)
 		expect(result.exitCode).toBe(0)

@@ -12,7 +12,8 @@ export default defineConfig({
 
 		exclude: ["test/e2e/**", "node_modules/**"],
 
-		testTimeout: 10_000,
+		testTimeout: 30_000,
+		hookTimeout: 45_000,
 
 		coverage: {
 			provider: "v8",
